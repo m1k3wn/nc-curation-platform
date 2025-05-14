@@ -1,6 +1,7 @@
 // src/pages/HomePage.jsx
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
+import { testSmithsonianAPI } from "../api/smithsonianService";
 
 function HomePage() {
   const navigate = useNavigate();
@@ -22,6 +23,16 @@ function HomePage() {
     navigate(`/search?q=${encodeURIComponent(term)}`);
   };
 
+  // Test function to trigger API call
+  const handleTestAPI = async () => {
+    try {
+      console.log("Testing Smithsonian API...");
+      await testSmithsonianAPI("mask");
+    } catch (error) {
+      console.log("Test failed:", error);
+    }
+  };
+
   return (
     <div className="py-12">
       <div className="container mx-auto px-4">
@@ -37,6 +48,15 @@ function HomePage() {
 
         <SearchBar />
 
+        {/* Test API Button - TEMPORARY FOR TESTING */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={handleTestAPI}
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+          >
+            Test Smithsonian API
+          </button>
+        </div>
         {/* Popular Searches */}
         <div className="mt-8 text-center">
           <h2 className="text-lg font-medium text-gray-600 mb-3">
