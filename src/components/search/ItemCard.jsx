@@ -1,42 +1,45 @@
-// src/components/search/ItemCard.jsx
+// Updated ItemCard.jsx with simplified image handling
 import { useState } from "react";
 
-function ItemCard({ item }) {
-  // Debug logging for image fetch
-  // if (process.env.NODE_ENV === "development") {
-  //   console.log("Item data:", item);
-  //   console.log("Thumbnail URL:", item.thumbnailUrl);
-  //   console.log("Full image URL:", item.imageUrl);
-  // }
+// Format dates on ItemCard
+function formatDateDisplay(dateStr) {
+  // Safety check for null/undefined
+  if (!dateStr) return "";
 
+  // Force to string
+  const dateString = String(dateStr);
+
+  // 1. Simple check for decade patterns
+  if (dateString.includes("s")) {
+    // Extract all strings that look like decades (number followed by 's')
+    const decadePattern = /\d+s/g;
+    const decades = dateString.match(decadePattern);
+
+    // If we found multiple decades
+    if (decades && decades.length > 1) {
+      // Just return first-last
+      return `${decades[0]}–${decades[decades.length - 1]}`;
+    }
+  }
+
+  // 2. For any other date, check if it's too long
+  if (dateString.length > 12) {
+    return dateString.substring(0, 12) + "...";
+  }
+
+  // 3. Otherwise return as is
+  return dateString;
+}
+
+function ItemCard({ item }) {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imgSrc, setImgSrc] = useState(item.thumbnailUrl); // Use thumbnail URL
 
   // Default placeholder if no image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  // Handle image error
-  const handleImageError = () => {
-    // If thumbnail fails, try the full image URL
-    if (
-      imgSrc === item.thumbnailUrl &&
-      item.imageUrl &&
-      item.imageUrl !== item.thumbnailUrl
-    ) {
-      console.error(`Thumbnail failed to load: ${imgSrc}`);
-      console.log(`Trying full image URL: ${item.imageUrl}`);
-      setImgSrc(item.imageUrl);
-      return; // Give the full image URL a chance to load
-    }
-
-    // If we've already tried the full image or there isn't one, use default
-    if (imgSrc !== defaultImage) {
-      console.error(`All image URLs failed to load, using default`);
-      setImgSrc(defaultImage);
-      setImageLoaded(true); // Skip loading animation for default
-    }
-  };
+  // Use the thumbnail URL provided by the service, with fallback to default
+  const imgSrc = item.thumbnailUrl || defaultImage;
 
   return (
     <div className="break-inside-avoid mb-4">
@@ -52,13 +55,19 @@ function ItemCard({ item }) {
 
           {/* Item image */}
           <img
-            src={imgSrc || defaultImage}
+            src={imgSrc}
             alt={item.title}
             className={`w-full h-full object-cover ${
               imageLoaded ? "opacity-100" : "opacity-0"
             } transition-opacity duration-300`}
             onLoad={() => setImageLoaded(true)}
-            onError={handleImageError}
+            onError={() => {
+              // If image fails to load, set default and mark as loaded
+              if (imgSrc !== defaultImage) {
+                console.error(`Image failed to load: ${imgSrc}`);
+                setImageLoaded(true); // Skip loading animation for default
+              }
+            }}
           />
         </div>
 
@@ -66,7 +75,7 @@ function ItemCard({ item }) {
         <div className="p-4">
           {/* Title */}
           <h3
-            className="font-semibold text-lg mb-1 line-clamp-2"
+            className="font-semibold text-base mb-1 overflow-hidden text-ellipsis line-clamp-3"
             title={item.title}
           >
             {item.title}
@@ -81,11 +90,12 @@ function ItemCard({ item }) {
               {item.description}
             </p>
           )}
-
           {/* Source & Date */}
           <div className="flex justify-between text-xs text-gray-500 mb-3">
             <span>{item.source || "Smithsonian"}</span>
-            <span>{item.datePublished || ""}</span>
+            <span>
+              {item.datePublished ? formatDateDisplay(item.datePublished) : ""}
+            </span>
           </div>
 
           {/* Action Button */}
