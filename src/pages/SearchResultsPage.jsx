@@ -10,15 +10,7 @@ function SearchResultsPage() {
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
 
-  const {
-    query,
-    results,
-    loading,
-    hasMore,
-    totalResults,
-    performSearch,
-    loadMore,
-  } = useSearch();
+  const { query, performSearch, totalResults, loading, error } = useSearch();
 
   // Perform search when query param changes
   useEffect(() => {
@@ -37,41 +29,30 @@ function SearchResultsPage() {
           </div>
 
           {/* Results Header */}
-          {(results.length > 0 || loading) && (
+          {queryParam && (
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">
                 Results for "{queryParam}"
               </h1>
-              <p className="text-gray-600">
-                {loading ? "Searching..." : `${totalResults} results found`}
-              </p>
+              {!loading && (
+                <p className="text-gray-600">
+                  {totalResults > 0
+                    ? `${totalResults} results found`
+                    : "No results found"}
+                </p>
+              )}
             </div>
           )}
 
-          {/* Results Grid */}
-          <SearchResultsGrid results={results} loading={loading} />
-
-          {/* Load More Button - show only if there are more results and not currently loading */}
-          {results.length > 0 && hasMore && !loading && (
-            <div className="mt-8 text-center">
-              <button
-                onClick={loadMore}
-                className="px-6 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Load More
-              </button>
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6">
+              {error}
             </div>
           )}
 
-          {/* No Results Message - shown when search is complete but no results */}
-          {!loading && queryParam && results.length === 0 && (
-            <div className="text-center py-16 bg-gray-50 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">No Results Found</h2>
-              <p className="text-gray-600">
-                Try adjusting your search terms or browse our collections.
-              </p>
-            </div>
-          )}
+          {/* Results Grid with built-in loading state */}
+          <SearchResultsGrid />
         </div>
       </div>
     </div>
