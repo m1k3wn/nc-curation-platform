@@ -1,8 +1,7 @@
 // src/pages/HomePage.jsx
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
-import { testSmithsonianAPI } from "../api/smithsonianService";
-import { Link } from "react-router-dom";
+// import { Link } from "react-router-dom";
 
 function HomePage() {
   const navigate = useNavigate();
@@ -38,19 +37,6 @@ function HomePage() {
         </div>
 
         <SearchBar />
-
-        {/* Image retrieval test */}
-        <div>
-          <Link to="/test" className="text-blue-500 hover:underline">
-            Image URL Test
-          </Link>
-        </div>
-        {/* direct image retrieval test */}
-        <div>
-          <Link to="/directtest" className="text-blue-500 hover:underline">
-            Direct Image Test
-          </Link>
-        </div>
 
         {/* Popular Searches */}
         <div className="mt-8 text-center">

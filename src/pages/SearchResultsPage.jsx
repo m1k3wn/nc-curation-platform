@@ -1,4 +1,4 @@
-// src/pages/SearchResultsPage.jsx
+// Updated SearchResultsPage.jsx
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
@@ -10,7 +10,15 @@ function SearchResultsPage() {
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
 
-  const { query, performSearch, totalResults, loading, error } = useSearch();
+  const {
+    query,
+    performSearch,
+    totalResults,
+    itemsWithImagesCount,
+    loading,
+    error,
+    searchInProgress,
+  } = useSearch();
 
   // Perform search when query param changes
   useEffect(() => {
@@ -18,6 +26,33 @@ function SearchResultsPage() {
       performSearch(queryParam);
     }
   }, [queryParam, query, performSearch]);
+
+  // Create better formatted result messages
+  const getResultsMessage = () => {
+    if (loading && !itemsWithImagesCount) {
+      return "Searching...";
+    }
+
+    // No image results yet
+    if (totalResults === 0) {
+      return "No results found";
+    }
+
+    // We have results but no images
+    if (totalResults > 0 && itemsWithImagesCount === 0) {
+      if (searchInProgress) {
+        return "Searching for items with images...";
+      }
+      return "No items with images found";
+    }
+
+    // Format for displaying both counts
+    const imageCount = searchInProgress
+      ? `${itemsWithImagesCount}+ items with images`
+      : `${itemsWithImagesCount} items with images`;
+
+    return `Found ${imageCount} (from ${totalResults} total results)`;
+  };
 
   return (
     <div className="py-8">
@@ -34,13 +69,7 @@ function SearchResultsPage() {
               <h1 className="text-2xl font-bold mb-2">
                 Results for "{queryParam}"
               </h1>
-              {!loading && (
-                <p className="text-gray-600">
-                  {totalResults > 0
-                    ? `${totalResults} results found`
-                    : "No results found"}
-                </p>
-              )}
+              <p className="text-gray-600">{getResultsMessage()}</p>
             </div>
           )}
 

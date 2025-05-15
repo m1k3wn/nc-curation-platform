@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 // Environment-aware base URL
@@ -18,70 +17,6 @@ const isDevelopment = () => {
   );
 };
 
-// test function DEV
-export const testSmithsonianAPI = async (query = "painting") => {
-  try {
-    console.log("Making API request with query:", query);
-
-    // Make basic request with minimal parameters
-    const response = await smithsonianAPI.get("/api/smithsonian/search", {
-      params: {
-        q: query,
-        rows: 5,
-        online_media_type: "Images",
-      },
-    });
-
-    console.log("API response received:", response.status);
-    console.log("Total results:", response.data.response?.rowCount || 0);
-
-    // Directly examine the raw response structure
-    const rows = response.data.response?.rows || [];
-    console.log(`Received ${rows.length} rows in response`);
-
-    // Check each item for media
-    const itemsWithMedia = [];
-
-    rows.forEach((item, index) => {
-      console.log(`\nExamining item ${index + 1}: ${item.title || "Untitled"}`);
-
-      // Output the full content structure for debugging
-      console.log("Full item structure:", JSON.stringify(item, null, 2));
-
-      // Try to find media
-      const mediaPath = item.content?.descriptiveNonRepeating?.online_media;
-      console.log("Media path exists:", !!mediaPath);
-
-      if (mediaPath && mediaPath.media && mediaPath.media.length > 0) {
-        console.log("Found media items:", mediaPath.media.length);
-        console.log("First media item:", mediaPath.media[0]);
-
-        itemsWithMedia.push({
-          index,
-          id: item.id,
-          title: item.title || "Untitled",
-          media: mediaPath.media.map((m) => ({
-            type: m.type,
-            url: m.content,
-            thumbnail: m.thumbnail,
-            idsId: m.idsId,
-          })),
-        });
-      } else {
-        console.log("No media found in this item");
-      }
-    });
-
-    return {
-      totalResults: response.data.response?.rowCount || 0,
-      itemsWithMedia,
-    };
-  } catch (error) {
-    console.error("Error in diagnostic test:", error);
-    throw error;
-  }
-};
-
 export const searchSmithsonian = async (
   query,
   page = 1,
@@ -98,19 +33,19 @@ export const searchSmithsonian = async (
       console.log("Searching for:", query);
     }
 
-    // Step 1: Make initial API call to get total count
+    // Step 1: initial API call to get total count
     const initialResponse = await smithsonianAPI.get(
       "/api/smithsonian/search",
       {
         params: {
           q: query,
-          rows: 1, // Just getting the total count here
+          rows: 1,
           online_media_type: "Images",
         },
       }
     );
 
-    // Check if we got a valid response
+    // Check for valid response
     if (!initialResponse.data?.response?.rowCount) {
       if (isDevelopment()) {
         console.log("No results from API");
@@ -120,11 +55,11 @@ export const searchSmithsonian = async (
 
     // Get total results count and calculate batches
     const totalResults = initialResponse.data.response.rowCount;
-    const batchSize = 100; // Fetch 100 items per batch for efficiency
+    const batchSize = 150; // Fetch 150 items per batch for efficiency - can handle 500 +
     const totalBatches = Math.ceil(totalResults / batchSize);
 
-    // Limit to 20 batches maximum (2000 items) to prevent excessive requests
-    const maxBatches = Math.min(totalBatches, 20);
+    // Limit to 25 batches maximum (2000 items) to prevent excessive requests
+    const maxBatches = Math.min(totalBatches, 25);
 
     if (isDevelopment()) {
       console.log(`Total results from API: ${totalResults}`);
@@ -183,7 +118,7 @@ export const searchSmithsonian = async (
       }
     }
 
-    // Check if we need more batches to find items with images
+    // Check if more batches needed to find items with images
     let needMoreBatches = allProcessedItems.length === 0 && maxBatches > 1;
 
     // If first batch has no results AND we have more batches,
@@ -199,7 +134,7 @@ export const searchSmithsonian = async (
         // Process the second batch synchronously to get at least some results
         const secondBatchItems = await fetchAndProcessBatch(
           query,
-          batchSize, // offset for second batch
+          batchSize,
           batchSize,
           1, // batchNum
           maxBatches
@@ -234,7 +169,7 @@ export const searchSmithsonian = async (
     const endIdx = startIdx + pageSize;
     const pageItems = allProcessedItems.slice(startIdx, endIdx);
 
-    // Adjust remaining batches to skip the ones we've already processed
+    // Adjust remaining batches to skip ones already processed
     const firstBatchToProcess = needMoreBatches ? 2 : 1;
 
     // Step 3: Fetch remaining batches in parallel

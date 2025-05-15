@@ -11,9 +11,6 @@ import ExplorePage from "../pages/ExplorePage";
 import { AuthProvider } from "../context/AuthContext";
 import { CollectionsProvider } from "../context/CollectionsContext";
 import { SearchProvider } from "../context/SearchContext";
-//  DEV - IMAGE RETRIEVAL TEST
-import SmithsonianImageTest from "../components/test/SmithsonianImageTest";
-import DirectImageTest from "../components/test/DirectImageTest";
 
 export default function App() {
   return (
@@ -27,9 +24,6 @@ export default function App() {
               <main className="flex-grow">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
-                  {/* FOR DEV  */}
-                  <Route path="/test" element={<SmithsonianImageTest />} />
-                  <Route path="/directtest" element={<DirectImageTest />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/user/:username" element={<UserProfilePage />} />
                   <Route path="/collections" element={<CollectionsPage />} />
