@@ -1,3 +1,4 @@
+// src/pages/SearchResultsPage.jsx
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
@@ -9,8 +10,15 @@ function SearchResultsPage() {
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
 
-  const { query, results, loading, hasMore, performSearch, loadMore } =
-    useSearch();
+  const {
+    query,
+    results,
+    loading,
+    hasMore,
+    totalResults,
+    performSearch,
+    loadMore,
+  } = useSearch();
 
   // Perform search when query param changes
   useEffect(() => {
@@ -29,47 +37,39 @@ function SearchResultsPage() {
           </div>
 
           {/* Results Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold mb-2">
-              Search Results for "{queryParam}"
-            </h1>
-            <p className="text-gray-600">{results.length} results found</p>
-          </div>
+          {(results.length > 0 || loading) && (
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold mb-2">
+                Results for "{queryParam}"
+              </h1>
+              <p className="text-gray-600">
+                {loading ? "Searching..." : `${totalResults} results found`}
+              </p>
+            </div>
+          )}
 
           {/* Results Grid */}
-          {results.length > 0 ? (
-            <>
-              <SearchResultsGrid results={results} />
+          <SearchResultsGrid results={results} loading={loading} />
 
-              {/* Load More Button */}
-              {hasMore && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={loadMore}
-                    disabled={loading}
-                    className="px-6 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                  >
-                    {loading ? "Loading..." : "Load More"}
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
+          {/* Load More Button - show only if there are more results and not currently loading */}
+          {results.length > 0 && hasMore && !loading && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={loadMore}
+                className="px-6 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+
+          {/* No Results Message - shown when search is complete but no results */}
+          {!loading && queryParam && results.length === 0 && (
             <div className="text-center py-16 bg-gray-50 rounded-lg">
-              {loading ? (
-                <div className="flex justify-center">
-                  <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
-                </div>
-              ) : queryParam ? (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">
-                    No Results Found
-                  </h2>
-                  <p className="text-gray-600">
-                    Try adjusting your search terms or browse our collections.
-                  </p>
-                </>
-              ) : null}
+              <h2 className="text-xl font-semibold mb-2">No Results Found</h2>
+              <p className="text-gray-600">
+                Try adjusting your search terms or browse our collections.
+              </p>
             </div>
           )}
         </div>
