@@ -1,6 +1,7 @@
+// src/context/SearchContext.jsx
 import { createContext, useContext, useState, useCallback } from "react";
 import { searchSmithsonian } from "../api/smithsonianService";
-import searchResultsManager from "../utils/searchResultsManager"; // We'll create this file next
+import searchResultsManager from "../utils/searchResultsManager";
 
 const SearchContext = createContext();
 
@@ -13,7 +14,7 @@ export function useSearch() {
 }
 
 export function SearchProvider({ children }) {
-  // Existing state variables
+  // State variables
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,22 +22,24 @@ export function SearchProvider({ children }) {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
-
-  // New state variables
   const [allCachedItems, setAllCachedItems] = useState([]);
   const [searchInProgress, setSearchInProgress] = useState(false);
   const [progress, setProgress] = useState(null);
   const [isFromCache, setIsFromCache] = useState(false);
   const [pageSize] = useState(20); // Default page size
-
-  // Track when we have full results
   const [hasFullResults, setHasFullResults] = useState(false);
+  const [itemsWithImagesCount, setItemsWithImagesCount] = useState(0); // Track actual count of items with images
 
   /**
    * Handle progress updates from the API
    */
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
+
+    // Update the image count from progress if available
+    if (progressData && progressData.itemsFound) {
+      setItemsWithImagesCount(progressData.itemsFound);
+    }
   }, []);
 
   /**
@@ -44,13 +47,12 @@ export function SearchProvider({ children }) {
    */
   const handleSearchCompletion = useCallback(
     (allItems, total, searchQuery) => {
-      console.log(
-        `Search completion callback: found ${allItems.length} items for "${searchQuery}"`
-      );
-
       // Store all items for pagination
       setAllCachedItems(allItems);
       setHasFullResults(true);
+
+      // Set the count of items with images
+      setItemsWithImagesCount(allItems.length);
 
       // Cache the results
       searchResultsManager.storeResults(searchQuery, allItems, total);
@@ -66,7 +68,7 @@ export function SearchProvider({ children }) {
       setResults(currentPageItems);
       setHasMore(page * pageSize < allItems.length);
 
-      // Make sure we're not showing loading state
+      // Update loading states
       setLoading(false);
       setSearchInProgress(false);
     },
@@ -74,19 +76,15 @@ export function SearchProvider({ children }) {
   );
 
   /**
-   * Perform a search with ADDED DEBUGGING
+   * Perform a search
    */
   const performSearch = useCallback(
     async (searchQuery, reset = true) => {
       if (!searchQuery || !searchQuery.trim()) {
-        console.log("Empty search query, aborting");
         return;
       }
 
       const normalizedQuery = searchQuery.trim();
-      console.log(
-        `Starting search for: "${normalizedQuery}" (reset: ${reset})`
-      );
 
       try {
         setLoading(true);
@@ -98,6 +96,7 @@ export function SearchProvider({ children }) {
           setResults([]);
           setHasFullResults(false);
           setIsFromCache(false);
+          setItemsWithImagesCount(0); // Reset the count when starting a new search
         }
 
         // Check cache first
@@ -109,14 +108,13 @@ export function SearchProvider({ children }) {
           cachedResults.items &&
           cachedResults.items.length > 0
         ) {
-          console.log(
-            `Found ${cachedResults.items.length} cached results for "${normalizedQuery}"`
-          );
-
           // Store all items for pagination
           setAllCachedItems(cachedResults.items);
           setHasFullResults(true);
           setIsFromCache(true);
+
+          // Set the count of items with images from cache
+          setItemsWithImagesCount(cachedResults.items.length);
 
           // Get the current page
           const searchPage = reset ? 1 : page;
@@ -124,10 +122,6 @@ export function SearchProvider({ children }) {
             cachedResults.items,
             searchPage,
             pageSize
-          );
-
-          console.log(
-            `Showing page ${searchPage} with ${pageItems.length} items`
           );
 
           // Update state
@@ -140,28 +134,16 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        console.log("No cached results, performing API search...");
-
         // Not in cache, perform search
         setSearchInProgress(true);
 
         const searchPage = reset ? 1 : page;
-        console.log(
-          `Making API request for page ${searchPage} (pageSize: ${pageSize})`
-        );
-
         const response = await searchSmithsonian(
           normalizedQuery,
           searchPage,
           pageSize,
           handleSearchProgress,
-          handleSearchCompletion // Pass completion callback
-        );
-
-        console.log(
-          `API response: total=${response.total}, items=${
-            response.items?.length || 0
-          }, allItems=${response.allItems?.length || 0}`
+          handleSearchCompletion
         );
 
         setTotalResults(response.total);
@@ -170,6 +152,11 @@ export function SearchProvider({ children }) {
         if (response.items && response.items.length > 0) {
           setResults(reset ? response.items : [...results, ...response.items]);
           setHasMore(true); // We should have more coming from batch processing
+
+          // Update the count with what we have initially
+          if (reset) {
+            setItemsWithImagesCount(response.allItems.length);
+          }
         }
 
         // Store any initial full results we got
@@ -268,6 +255,7 @@ export function SearchProvider({ children }) {
     setTotalResults(0);
     setHasFullResults(false);
     setIsFromCache(false);
+    setItemsWithImagesCount(0);
   }, []);
 
   /**
@@ -290,7 +278,6 @@ export function SearchProvider({ children }) {
     : Math.ceil(totalResults / pageSize);
 
   const value = {
-    // Original values
     query,
     results,
     loading,
@@ -300,17 +287,16 @@ export function SearchProvider({ children }) {
     performSearch,
     loadMore,
     clearSearch,
-
-    // New values
     page,
     pageSize,
     totalPages,
-    changePage, // Changed from goToPage to match component
+    changePage,
     refreshSearch,
     searchInProgress,
     progress,
     isFromCache,
     allItems: allCachedItems,
+    itemsWithImagesCount, // Add the new count to the context
   };
 
   return (

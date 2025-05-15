@@ -2,12 +2,12 @@
 import { useState } from "react";
 
 function ItemCard({ item }) {
-  // Debug logging only in development
-  if (process.env.NODE_ENV === "development") {
-    console.log("Item data:", item);
-    console.log("Thumbnail URL:", item.thumbnailUrl);
-    console.log("Full image URL:", item.imageUrl);
-  }
+  // Debug logging for image fetch
+  // if (process.env.NODE_ENV === "development") {
+  //   console.log("Item data:", item);
+  //   console.log("Thumbnail URL:", item.thumbnailUrl);
+  //   console.log("Full image URL:", item.imageUrl);
+  // }
 
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imgSrc, setImgSrc] = useState(item.thumbnailUrl); // Use thumbnail URL
