@@ -297,10 +297,32 @@ async function fetchAndProcessBatch(
   }
 }
 
-// Helper function to process items and extract image URLs with thumbnails
-// Updated portion of smithsonianService.js - improved image handling
+//  HELPER FUNCTIONS
 
-// Helper function to process items and extract image URLs with thumbnails
+/**
+ * Clean HTML tags from text
+ * @param {string} text - Text that might contain HTML tags
+ * @returns {string} Cleaned text without HTML tags
+ */
+function cleanHtmlTags(text) {
+  if (!text) return "";
+
+  // Convert to string just in case
+  const str = String(text);
+
+  // Remove common HTML tags like <I>, </I>, <em>, </em>, etc.
+  let cleanedText = str.replace(/<\/?[^>]+(>|$)/g, "");
+
+  // Also handle parentheses that might remain after tag removal
+  // For patterns like "(**text**)" or "(text)" that might be leftover
+  cleanedText = cleanedText.replace(/\(\s*\)/g, ""); // Empty parentheses
+  cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1"); // Text entirely in parentheses
+
+  // Trim any excess whitespace
+  return cleanedText.trim();
+}
+
+// Process items and extract image URLs with thumbnails
 function processItems(items) {
   return items
     .map((item) => {
@@ -310,7 +332,9 @@ function processItems(items) {
       return {
         id: item.id,
         title: item.title || "Untitled",
-        description: item.content?.descriptiveNonRepeating?.description || "",
+        description:
+          cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
+          "",
         imageUrl: imageData.fullImage, // Full resolution for detail view
         thumbnailUrl: imageData.thumbnail, // Smaller version for item cards
         source: item.unitCode || "Smithsonian",
