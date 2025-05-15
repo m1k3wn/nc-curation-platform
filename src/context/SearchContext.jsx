@@ -1,6 +1,6 @@
-// src/context/SearchContext.jsx
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useCallback } from "react";
 import { searchSmithsonian } from "../api/smithsonianService";
+import searchResultsManager from "../utils/searchResultsManager"; // We'll create this file next
 
 const SearchContext = createContext();
 
@@ -13,6 +13,7 @@ export function useSearch() {
 }
 
 export function SearchProvider({ children }) {
+  // Existing state variables
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,56 +22,275 @@ export function SearchProvider({ children }) {
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
 
-  const performSearch = async (searchQuery, reset = true) => {
-    if (!searchQuery.trim()) return;
+  // New state variables
+  const [allCachedItems, setAllCachedItems] = useState([]);
+  const [searchInProgress, setSearchInProgress] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [isFromCache, setIsFromCache] = useState(false);
+  const [pageSize] = useState(20); // Default page size
 
-    try {
-      setLoading(true);
-      setError(null);
+  // Track when we have full results
+  const [hasFullResults, setHasFullResults] = useState(false);
 
-      if (reset) {
-        setQuery(searchQuery);
-        setPage(1);
-        setResults([]);
-      }
+  /**
+   * Handle progress updates from the API
+   */
+  const handleSearchProgress = useCallback((progressData) => {
+    setProgress(progressData);
+  }, []);
 
-      const searchPage = reset ? 1 : page;
-      const response = await searchSmithsonian(searchQuery, searchPage);
-
-      setTotalResults(response.total);
-
-      // If reset, replace results, otherwise append
-      setResults((prev) =>
-        reset ? response.items : [...prev, ...response.items]
+  /**
+   * Handle search completion with all results
+   */
+  const handleSearchCompletion = useCallback(
+    (allItems, total, searchQuery) => {
+      console.log(
+        `Search completion callback: found ${allItems.length} items for "${searchQuery}"`
       );
 
-      // Update pagination
-      setHasMore(response.items.length > 0 && response.items.length === 10);
-      setPage((prev) => (reset ? 1 : prev + 1));
-    } catch (err) {
-      setError("Failed to search collections. Please try again.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      // Store all items for pagination
+      setAllCachedItems(allItems);
+      setHasFullResults(true);
 
-  const loadMore = () => {
-    if (!loading && hasMore && query) {
+      // Cache the results
+      searchResultsManager.storeResults(searchQuery, allItems, total);
+
+      // Update the current page of results
+      const currentPageItems = searchResultsManager.getPage(
+        allItems,
+        page,
+        pageSize
+      );
+
+      // Replace current results with the complete set for the current page
+      setResults(currentPageItems);
+      setHasMore(page * pageSize < allItems.length);
+
+      // Make sure we're not showing loading state
+      setLoading(false);
+      setSearchInProgress(false);
+    },
+    [page, pageSize]
+  );
+
+  /**
+   * Perform a search with ADDED DEBUGGING
+   */
+  const performSearch = useCallback(
+    async (searchQuery, reset = true) => {
+      if (!searchQuery || !searchQuery.trim()) {
+        console.log("Empty search query, aborting");
+        return;
+      }
+
+      const normalizedQuery = searchQuery.trim();
+      console.log(
+        `Starting search for: "${normalizedQuery}" (reset: ${reset})`
+      );
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (reset) {
+          setQuery(normalizedQuery);
+          setPage(1);
+          setResults([]);
+          setHasFullResults(false);
+          setIsFromCache(false);
+        }
+
+        // Check cache first
+        const cachedResults =
+          searchResultsManager.getCachedResults(normalizedQuery);
+
+        if (
+          cachedResults &&
+          cachedResults.items &&
+          cachedResults.items.length > 0
+        ) {
+          console.log(
+            `Found ${cachedResults.items.length} cached results for "${normalizedQuery}"`
+          );
+
+          // Store all items for pagination
+          setAllCachedItems(cachedResults.items);
+          setHasFullResults(true);
+          setIsFromCache(true);
+
+          // Get the current page
+          const searchPage = reset ? 1 : page;
+          const pageItems = searchResultsManager.getPage(
+            cachedResults.items,
+            searchPage,
+            pageSize
+          );
+
+          console.log(
+            `Showing page ${searchPage} with ${pageItems.length} items`
+          );
+
+          // Update state
+          setResults(reset ? pageItems : [...results, ...pageItems]);
+          setTotalResults(cachedResults.totalResults);
+          setHasMore(searchPage * pageSize < cachedResults.items.length);
+          setPage(reset ? 1 : page + 1);
+
+          setLoading(false);
+          return;
+        }
+
+        console.log("No cached results, performing API search...");
+
+        // Not in cache, perform search
+        setSearchInProgress(true);
+
+        const searchPage = reset ? 1 : page;
+        console.log(
+          `Making API request for page ${searchPage} (pageSize: ${pageSize})`
+        );
+
+        const response = await searchSmithsonian(
+          normalizedQuery,
+          searchPage,
+          pageSize,
+          handleSearchProgress,
+          handleSearchCompletion // Pass completion callback
+        );
+
+        console.log(
+          `API response: total=${response.total}, items=${
+            response.items?.length || 0
+          }, allItems=${response.allItems?.length || 0}`
+        );
+
+        setTotalResults(response.total);
+
+        // Update the UI with whatever items we have immediately
+        if (response.items && response.items.length > 0) {
+          setResults(reset ? response.items : [...results, ...response.items]);
+          setHasMore(true); // We should have more coming from batch processing
+        }
+
+        // Store any initial full results we got
+        if (response.allItems && response.allItems.length > 0) {
+          setAllCachedItems(response.allItems);
+        }
+
+        // Only update page if we have items
+        if (response.items && response.items.length > 0) {
+          setPage(reset ? 1 : page + 1);
+        }
+      } catch (error) {
+        setError("Failed to search collections. Please try again.");
+        console.error(error);
+        setLoading(false);
+        setSearchInProgress(false);
+        setProgress(null);
+      }
+    },
+    [page, pageSize, results, handleSearchProgress, handleSearchCompletion]
+  );
+
+  /**
+   * Load the next page of results
+   */
+  const loadMore = useCallback(() => {
+    if (loading || !hasMore || !query) return;
+
+    // If we have all results cached, just get the next page
+    if (hasFullResults && allCachedItems.length > 0) {
+      const nextPageItems = searchResultsManager.getPage(
+        allCachedItems,
+        page,
+        pageSize
+      );
+
+      setResults([...results, ...nextPageItems]);
+      setPage(page + 1);
+      setHasMore(page * pageSize < allCachedItems.length);
+    } else {
+      // Otherwise, perform a new search for the next page
       performSearch(query, false);
     }
-  };
+  }, [
+    loading,
+    hasMore,
+    query,
+    hasFullResults,
+    allCachedItems,
+    page,
+    pageSize,
+    results,
+    performSearch,
+  ]);
 
-  const clearSearch = () => {
+  /**
+   * Go to a specific page (for pagination)
+   */
+  const changePage = useCallback(
+    (pageNumber) => {
+      if (pageNumber < 1 || loading) return;
+
+      // If we have all results cached, just get that page
+      if (hasFullResults && allCachedItems.length > 0) {
+        const pageItems = searchResultsManager.getPage(
+          allCachedItems,
+          pageNumber,
+          pageSize
+        );
+
+        setResults(pageItems);
+        setPage(pageNumber);
+        setHasMore(pageNumber * pageSize < allCachedItems.length);
+
+        // Scroll to top
+        window.scrollTo(0, 0);
+      } else {
+        // Reset and search with the new page
+        setPage(pageNumber);
+        performSearch(query, true);
+      }
+    },
+    [loading, hasFullResults, allCachedItems, pageSize, query, performSearch]
+  );
+
+  /**
+   * Clear search and results
+   */
+  const clearSearch = useCallback(() => {
     setQuery("");
     setResults([]);
+    setAllCachedItems([]);
     setPage(1);
     setHasMore(true);
     setError(null);
     setTotalResults(0);
-  };
+    setHasFullResults(false);
+    setIsFromCache(false);
+  }, []);
+
+  /**
+   * Refresh search (clear cache and search again)
+   */
+  const refreshSearch = useCallback(() => {
+    if (!query) return;
+
+    // Clear cached results for this query
+    searchResultsManager.clearCacheItem(query);
+    setIsFromCache(false);
+
+    // Perform fresh search
+    performSearch(query, true);
+  }, [query, performSearch]);
+
+  // Calculate total pages
+  const totalPages = hasFullResults
+    ? Math.ceil(allCachedItems.length / pageSize)
+    : Math.ceil(totalResults / pageSize);
 
   const value = {
+    // Original values
     query,
     results,
     loading,
@@ -80,6 +300,17 @@ export function SearchProvider({ children }) {
     performSearch,
     loadMore,
     clearSearch,
+
+    // New values
+    page,
+    pageSize,
+    totalPages,
+    changePage, // Changed from goToPage to match component
+    refreshSearch,
+    searchInProgress,
+    progress,
+    isFromCache,
+    allItems: allCachedItems,
   };
 
   return (

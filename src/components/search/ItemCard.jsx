@@ -2,16 +2,41 @@
 import { useState } from "react";
 
 function ItemCard({ item }) {
-  // Add debugging logs at the beginning of the component
-  console.log("Item data:", item);
-  console.log("Image URL:", item.imageUrl);
+  // Debug logging only in development
+  if (process.env.NODE_ENV === "development") {
+    console.log("Item data:", item);
+    console.log("Thumbnail URL:", item.thumbnailUrl);
+    console.log("Full image URL:", item.imageUrl);
+  }
 
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imgSrc, setImgSrc] = useState(item.imageUrl); // Track image source in state
+  const [imgSrc, setImgSrc] = useState(item.thumbnailUrl); // Use thumbnail URL
 
   // Default placeholder if no image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
+
+  // Handle image error
+  const handleImageError = () => {
+    // If thumbnail fails, try the full image URL
+    if (
+      imgSrc === item.thumbnailUrl &&
+      item.imageUrl &&
+      item.imageUrl !== item.thumbnailUrl
+    ) {
+      console.error(`Thumbnail failed to load: ${imgSrc}`);
+      console.log(`Trying full image URL: ${item.imageUrl}`);
+      setImgSrc(item.imageUrl);
+      return; // Give the full image URL a chance to load
+    }
+
+    // If we've already tried the full image or there isn't one, use default
+    if (imgSrc !== defaultImage) {
+      console.error(`All image URLs failed to load, using default`);
+      setImgSrc(defaultImage);
+      setImageLoaded(true); // Skip loading animation for default
+    }
+  };
 
   return (
     <div className="break-inside-avoid mb-4">
@@ -33,33 +58,11 @@ function ItemCard({ item }) {
               imageLoaded ? "opacity-100" : "opacity-0"
             } transition-opacity duration-300`}
             onLoad={() => setImageLoaded(true)}
-            onError={() => {
-              // If image fails to load, try a secondary URL format
-              if (imgSrc !== defaultImage) {
-                console.error(`Failed to load image: ${imgSrc}`);
-
-                // Try alternative URL format based on item properties
-                if (item.id && item.museum) {
-                  // Extract record ID from the item ID if possible
-                  const idParts = item.id.split("_");
-                  if (idParts.length > 1) {
-                    const recordId = idParts[1];
-                    const altUrl = `https://ids.si.edu/ids/deliveryService?id=${item.museum}-${recordId}`;
-                    console.log(`Trying alternative URL: ${altUrl}`);
-                    setImgSrc(altUrl);
-                    return; // Give the alternative URL a chance to load
-                  }
-                }
-
-                // If we've tried alternatives or can't construct one, use default
-                setImgSrc(defaultImage);
-                setImageLoaded(true);
-              }
-            }}
+            onError={handleImageError}
           />
         </div>
 
-        {/* Content */}
+        {/* Content section */}
         <div className="p-4">
           {/* Title */}
           <h3

@@ -1,4 +1,4 @@
-// src/api/smithsonianService.js
+
 import axios from "axios";
 
 // Environment-aware base URL
@@ -6,14 +6,19 @@ import axios from "axios";
 // In development: use local Express server
 const API_URL = import.meta.env.PROD ? "" : "http://localhost:3000";
 
-// Create an axios instance
 const smithsonianAPI = axios.create({
   baseURL: API_URL,
 });
 
+// Safely check if we're in development mode
+const isDevelopment = () => {
+  return (
+    import.meta.env?.DEV === true ||
+    (typeof process !== "undefined" && process.env?.NODE_ENV === "development")
+  );
+};
+
 // test function DEV
-// Update the testSmithsonianAPI function
-// Simple diagnostic test function
 export const testSmithsonianAPI = async (query = "painting") => {
   try {
     console.log("Making API request with query:", query);
@@ -77,102 +82,231 @@ export const testSmithsonianAPI = async (query = "painting") => {
   }
 };
 
-// MAIN CODE
-
-// BASTARD
-export const searchSmithsonian = async (query, page = 1, pageSize = 10) => {
+export const searchSmithsonian = async (
+  query,
+  page = 1,
+  pageSize = 20,
+  progressCallback = null,
+  completionCallback = null
+) => {
   try {
-    console.log("Searching for:", query);
+    if (isDevelopment()) {
+      // DEBUGGING
+      console.log(
+        `SearchSmithsonian called with query: "${query}", page: ${page}, pageSize: ${pageSize}`
+      );
+      console.log("Searching for:", query);
+    }
 
-    // Initial API call to get total count and first batch
+    // Step 1: Make initial API call to get total count
     const initialResponse = await smithsonianAPI.get(
       "/api/smithsonian/search",
       {
         params: {
           q: query,
-          rows: 100, // Fetch 100 items per request (a reasonable batch size for efficiency)
-          online_media_type: "Images", // Filter for items with images
-          start: 0, // Start from the beginning
+          rows: 1, // Just getting the total count here
+          online_media_type: "Images",
         },
       }
     );
 
     // Check if we got a valid response
     if (!initialResponse.data?.response?.rowCount) {
-      console.log("No results from API");
-      return { total: 0, items: [] };
+      if (isDevelopment()) {
+        console.log("No results from API");
+      }
+      return { total: 0, items: [], allItems: [] };
     }
 
-    // Get total results count
+    // Get total results count and calculate batches
     const totalResults = initialResponse.data.response.rowCount;
-    console.log(`Total results from API: ${totalResults}`);
+    const batchSize = 100; // Fetch 100 items per batch for efficiency
+    const totalBatches = Math.ceil(totalResults / batchSize);
 
-    // Process first batch
-    let allItems = [];
+    // Limit to 20 batches maximum (2000 items) to prevent excessive requests
+    const maxBatches = Math.min(totalBatches, 20);
+
+    if (isDevelopment()) {
+      console.log(`Total results from API: ${totalResults}`);
+      console.log(`Will fetch in ${maxBatches} batches of ${batchSize} items`);
+    }
+
+    // Update progress
+    if (progressCallback) {
+      progressCallback({
+        current: 0,
+        total: maxBatches,
+        itemsFound: 0,
+        message: `Found ${totalResults} results. Retrieving items with images...`,
+      });
+    }
+
+    // Step 2: Fetch the first batch quickly to show initial results
+    const firstBatchResponse = await smithsonianAPI.get(
+      "/api/smithsonian/search",
+      {
+        params: {
+          q: query,
+          rows: batchSize,
+          online_media_type: "Images",
+          start: 0,
+        },
+      }
+    );
+
+    // Process the first batch
+    let allProcessedItems = [];
 
     if (
-      initialResponse.data.response?.rows &&
-      initialResponse.data.response.rows.length > 0
+      firstBatchResponse.data?.response?.rows &&
+      firstBatchResponse.data.response.rows.length > 0
     ) {
-      const firstBatch = processItems(initialResponse.data.response.rows);
-      allItems = [...firstBatch];
-      console.log(
-        `Processed first batch: ${firstBatch.length} items with images`
+      const firstBatchItems = processItems(
+        firstBatchResponse.data.response.rows
       );
-    }
+      allProcessedItems = [...firstBatchItems];
 
-    // Calculate how many more requests we need
-    const batchSize = 100; // Keep batch size at 100 for efficiency
-    const totalBatches = Math.ceil(totalResults / batchSize);
-    console.log(`Need to fetch ${totalBatches} batches in total`);
-
-    // Fetch remaining batches (start from 1 since we already fetched the first batch)
-    for (let batchNum = 1; batchNum < totalBatches; batchNum++) {
-      const offset = batchNum * batchSize;
-      console.log(
-        `Fetching batch ${batchNum + 1}/${totalBatches} (offset: ${offset})`
-      );
-
-      const batchResponse = await smithsonianAPI.get(
-        "/api/smithsonian/search",
-        {
-          params: {
-            q: query,
-            rows: batchSize,
-            online_media_type: "Images",
-            start: offset,
-          },
-        }
-      );
-
-      if (
-        batchResponse.data?.response?.rows &&
-        batchResponse.data.response.rows.length > 0
-      ) {
-        const batchItems = processItems(batchResponse.data.response.rows);
-        allItems = [...allItems, ...batchItems];
+      if (isDevelopment()) {
         console.log(
-          `Batch ${batchNum + 1} added ${
-            batchItems.length
-          } items with images (total: ${allItems.length})`
+          `First batch found ${firstBatchItems.length} items with images`
         );
-      } else {
-        console.log(`Batch ${batchNum + 1} returned no items, stopping`);
-        break; // Stop if we get an empty batch
+      }
+
+      // Update progress
+      if (progressCallback) {
+        progressCallback({
+          current: 1,
+          total: maxBatches,
+          itemsFound: allProcessedItems.length,
+          message: `Found ${allProcessedItems.length} items with images so far...`,
+        });
       }
     }
 
-    console.log(`Found a total of ${allItems.length} items with usable images`);
+    // Check if we need more batches to find items with images
+    let needMoreBatches = allProcessedItems.length === 0 && maxBatches > 1;
 
-    // Paginate the results for this specific page request
+    // If first batch has no results AND we have more batches,
+    // fetch the second batch synchronously before returning
+    if (needMoreBatches) {
+      try {
+        if (isDevelopment()) {
+          console.log(
+            "First batch had no items with images, trying second batch"
+          );
+        }
+
+        // Process the second batch synchronously to get at least some results
+        const secondBatchItems = await fetchAndProcessBatch(
+          query,
+          batchSize, // offset for second batch
+          batchSize,
+          1, // batchNum
+          maxBatches
+        );
+
+        if (secondBatchItems.length > 0) {
+          allProcessedItems = [...secondBatchItems];
+
+          if (isDevelopment()) {
+            console.log(
+              `Second batch found ${secondBatchItems.length} items with images`
+            );
+          }
+
+          // Update progress
+          if (progressCallback) {
+            progressCallback({
+              current: 2,
+              total: maxBatches,
+              itemsFound: allProcessedItems.length,
+              message: `Found ${allProcessedItems.length} items with images so far...`,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching second batch:", error);
+      }
+    }
+
+    // For the requested page, prepare results
     const startIdx = (page - 1) * pageSize;
     const endIdx = startIdx + pageSize;
-    const paginatedItems = allItems.slice(startIdx, endIdx);
+    const pageItems = allProcessedItems.slice(startIdx, endIdx);
+
+    // Adjust remaining batches to skip the ones we've already processed
+    const firstBatchToProcess = needMoreBatches ? 2 : 1;
+
+    // Step 3: Fetch remaining batches in parallel
+    const remainingBatchPromises = [];
+
+    for (
+      let batchNum = firstBatchToProcess;
+      batchNum < maxBatches;
+      batchNum++
+    ) {
+      const offset = batchNum * batchSize;
+
+      // Create promise for this batch
+      const batchPromise = fetchAndProcessBatch(
+        query,
+        offset,
+        batchSize,
+        batchNum,
+        maxBatches
+      ).then((batchItems) => {
+        // Update progress when each batch completes
+        if (progressCallback) {
+          const updatedItemCount = allProcessedItems.length + batchItems.length;
+          progressCallback({
+            current: batchNum + 1,
+            total: maxBatches,
+            itemsFound: updatedItemCount,
+            message: `Processing batch ${batchNum + 1}/${maxBatches}...`,
+          });
+        }
+        return batchItems;
+      });
+
+      remainingBatchPromises.push(batchPromise);
+    }
+
+    // Process all remaining batches (but don't block the initial return)
+    Promise.all(remainingBatchPromises)
+      .then((batchResults) => {
+        // Combine all batch results
+        let completeItems = [...allProcessedItems];
+
+        batchResults.forEach((batchItems) => {
+          completeItems = [...completeItems, ...batchItems];
+        });
+
+        if (isDevelopment()) {
+          console.log(
+            `All batches complete. Found ${completeItems.length} total items with images`
+          );
+        }
+
+        // Call completion callback with the full results
+        if (completionCallback) {
+          completionCallback(completeItems, totalResults, query);
+        }
+      })
+      .catch((error) => {
+        console.error("Error processing remaining batches:", error);
+      });
+
+    // Return the requested page results immediately
+    if (isDevelopment()) {
+      console.log(
+        `Returning from searchSmithsonian: total=${totalResults}, items=${pageItems.length}, allItems=${allProcessedItems.length}`
+      );
+    }
 
     return {
-      total: allItems.length, // Total count of items WITH images (not total API results)
-      items: paginatedItems,
-      allItemsCount: allItems.length, // For debugging
+      total: totalResults,
+      items: pageItems,
+      allItems: allProcessedItems, // Initial items, will be extended in background
     };
   } catch (error) {
     console.error("Error searching Smithsonian API:", error);
@@ -180,65 +314,134 @@ export const searchSmithsonian = async (query, page = 1, pageSize = 10) => {
   }
 };
 
-// Helper function to process items and filter for those with usable images
-function processItems(items) {
-  const processedItems = items.map((item) => {
-    let imageUrl = "";
-
-    // Extract image URL from the media content
-    const mediaContent =
-      item.content?.descriptiveNonRepeating?.online_media?.media;
-
-    if (mediaContent && mediaContent.length > 0) {
-      // First priority: Use idsId if available (most reliable)
-      if (mediaContent[0].idsId) {
-        imageUrl = `https://ids.si.edu/ids/deliveryService?id=${mediaContent[0].idsId}`;
-      }
-      // Second priority: Use content URL if it exists
-      else if (mediaContent[0].content) {
-        imageUrl = mediaContent[0].content;
-
-        // Ensure it uses the deliveryService endpoint
-        if (!imageUrl.includes("deliveryService")) {
-          // Handle various URL formats
-          if (imageUrl.includes("id=")) {
-            // Extract the ID parameter
-            const idMatch = imageUrl.match(/id=([^&]+)/);
-            if (idMatch && idMatch[1]) {
-              imageUrl = `https://ids.si.edu/ids/deliveryService?id=${idMatch[1]}`;
-            }
-          } else if (imageUrl.includes("/ids/")) {
-            // Try to convert other formats
-            imageUrl = imageUrl.replace(
-              /\/ids\/[^\/]+\//,
-              "/ids/deliveryService?id="
-            );
-          }
-        }
-      }
-      // Last resort: use thumbnail
-      else if (mediaContent[0].thumbnail) {
-        imageUrl = mediaContent[0].thumbnail;
-      }
+/**
+ * Fetches and processes a single batch
+ */
+async function fetchAndProcessBatch(
+  query,
+  offset,
+  batchSize,
+  batchNum,
+  totalBatches
+) {
+  try {
+    if (isDevelopment()) {
+      console.log(
+        `Fetching batch ${batchNum + 1}/${totalBatches} (offset: ${offset})`
+      );
     }
 
-    return {
-      id: item.id,
-      title: item.title || "Untitled",
-      description: item.content?.descriptiveNonRepeating?.description || "",
-      imageUrl,
-      source: item.unitCode || "Smithsonian",
-      datePublished: getDate(item),
-      url: item.content?.descriptiveNonRepeating?.record_link || "",
-      museum: item.unitCode || "Smithsonian",
-    };
-  });
+    const batchResponse = await smithsonianAPI.get("/api/smithsonian/search", {
+      params: {
+        q: query,
+        rows: batchSize,
+        online_media_type: "Images",
+        start: offset,
+      },
+    });
 
-  // Filter for items that have valid image URLs
-  return processedItems.filter(
-    (item) => item.imageUrl && item.imageUrl.length > 0
-  );
+    if (
+      batchResponse.data?.response?.rows &&
+      batchResponse.data.response.rows.length > 0
+    ) {
+      const batchItems = processItems(batchResponse.data.response.rows);
+
+      if (isDevelopment()) {
+        console.log(
+          `Batch ${batchNum + 1} found ${batchItems.length} items with images`
+        );
+      }
+
+      return batchItems;
+    }
+
+    return [];
+  } catch (error) {
+    console.error(`Error fetching batch ${batchNum + 1}:`, error);
+    return []; // Return empty array on error
+  }
 }
+
+// Helper function to process items and extract image URLs with thumbnails
+function processItems(items) {
+  return items
+    .map((item) => {
+      let imageUrl = ""; // Full image for detail view
+      let thumbnailUrl = ""; // Thumbnail for item cards
+
+      // Extract image URL from the media content
+      const mediaContent =
+        item.content?.descriptiveNonRepeating?.online_media?.media;
+
+      if (mediaContent && mediaContent.length > 0) {
+        const media = mediaContent[0];
+
+        // Try to find the best thumbnail
+
+        // 1. Check if there's a dedicated thumbnail URL
+        if (media.thumbnail) {
+          thumbnailUrl = media.thumbnail;
+        }
+
+        // 2. Check for thumbnail in resources array
+        if (media.resources && media.resources.length > 0) {
+          // Look for explicit thumbnail resource
+          const thumbResource = media.resources.find(
+            (res) =>
+              res.label === "Thumbnail Image" ||
+              (res.url && res.url.includes("_thumb"))
+          );
+
+          if (thumbResource && thumbResource.url) {
+            thumbnailUrl = thumbResource.url;
+          }
+          // If no thumbnail, try screen-sized image
+          else {
+            const screenResource = media.resources.find(
+              (res) =>
+                res.label === "Screen Image" ||
+                (res.url && res.url.includes("_screen"))
+            );
+
+            if (screenResource && screenResource.url) {
+              thumbnailUrl = screenResource.url;
+            }
+          }
+        }
+
+        // 3. Attempt to construct a thumbnail URL if none found
+        if (!thumbnailUrl && media.idsId) {
+          thumbnailUrl = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
+        }
+
+        // 4. Set full image URL for detail view
+        if (media.idsId) {
+          imageUrl = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
+        } else if (media.content) {
+          imageUrl = media.content;
+        }
+
+        // 5. If no thumbnail was found, use the full image as fallback
+        if (!thumbnailUrl) {
+          thumbnailUrl = imageUrl;
+        }
+      }
+
+      return {
+        id: item.id,
+        title: item.title || "Untitled",
+        description: item.content?.descriptiveNonRepeating?.description || "",
+        imageUrl, // Full resolution for detail view
+        thumbnailUrl, // Smaller version for item cards
+        source: item.unitCode || "Smithsonian",
+        datePublished: getDate(item),
+        url: item.content?.descriptiveNonRepeating?.record_link || "",
+        museum: item.unitCode || "Smithsonian",
+      };
+    })
+    .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0);
+}
+
 // Get details for a specific item
 export const getItemDetails = async (id) => {
   try {
