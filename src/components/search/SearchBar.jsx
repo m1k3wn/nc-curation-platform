@@ -1,12 +1,10 @@
 // src/components/search/SearchBar.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSearch } from "../../context/SearchContext";
 
 function SearchBar({ initialValue = "" }) {
   const [inputValue, setInputValue] = useState(initialValue);
   const navigate = useNavigate();
-  const { performSearch } = useSearch();
 
   // Update input value when initialValue changes
   useEffect(() => {
@@ -17,7 +15,6 @@ function SearchBar({ initialValue = "" }) {
     e.preventDefault();
     if (inputValue.trim()) {
       navigate(`/search?q=${encodeURIComponent(inputValue.trim())}`);
-      performSearch(inputValue.trim());
     }
   };
 

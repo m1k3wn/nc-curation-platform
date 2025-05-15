@@ -42,16 +42,18 @@ app.get("/api/test", (req, res) => {
 });
 
 // Smithsonian API proxy endpoint
+// Clean, simple endpoint for Smithsonian API
 app.get("/api/smithsonian/search", async (req, res) => {
   if (!SMITHSONIAN_API_KEY) {
     return res.status(500).json({ error: "API key not configured on server" });
   }
 
   try {
-    console.log("Making request to Smithsonian API with query:", req.query);
+    // Log the query parameters for debugging
+    console.log("Request query:", req.query);
 
     // Make request to Smithsonian API
-    const response = await axios.get(
+    const apiResponse = await axios.get(
       "https://api.si.edu/openaccess/api/v1.0/search",
       {
         params: {
@@ -61,22 +63,39 @@ app.get("/api/smithsonian/search", async (req, res) => {
       }
     );
 
-    console.log("Smithsonian API response status:", response.status);
-    res.json(response.data);
-  } catch (error) {
-    console.error("Smithsonian API error:", error.message);
+    // Log response info for debugging
+    console.log("Smithsonian API response status:", apiResponse.status);
+    console.log("Total results:", apiResponse.data.response?.rowCount || 0);
 
-    if (error.response) {
-      // Forward the error details
-      return res.status(error.response.status).json({
-        error: "Error from Smithsonian API",
-        details: error.response.data,
-        status: error.response.status,
+    // Check if we have any rows with online_media
+    let itemsWithMedia = 0;
+    if (apiResponse.data.response?.rows) {
+      apiResponse.data.response.rows.forEach((item) => {
+        const hasMedia =
+          item.content?.descriptiveNonRepeating?.online_media?.media;
+        if (hasMedia && hasMedia.length > 0) {
+          itemsWithMedia++;
+          // Log the first item with media for debugging
+          if (itemsWithMedia === 1) {
+            console.log(
+              "Example media item:",
+              JSON.stringify(hasMedia[0], null, 2)
+            );
+          }
+        }
       });
+      console.log(
+        `Found ${itemsWithMedia} items with media out of ${apiResponse.data.response.rows.length} results`
+      );
     }
 
-    res.status(500).json({
+    // Return the unmodified response
+    res.json(apiResponse.data);
+  } catch (error) {
+    console.error("Smithsonian API error:", error.message);
+    res.status(error.response?.status || 500).json({
       error: "Failed to fetch data from Smithsonian API",
+      details: error.response?.data || error.message,
     });
   }
 });

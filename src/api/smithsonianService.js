@@ -12,95 +12,233 @@ const smithsonianAPI = axios.create({
 });
 
 // test function DEV
-export const testSmithsonianAPI = async (query = "mask") => {
-  console.log("Starting Smithsonian API test via proxy server...");
-  console.log(
-    "Environment:",
-    import.meta.env.PROD ? "Production" : "Development"
-  );
-  console.log("Using API base URL:", API_URL || "Same origin (relative URL)");
-
+// Update the testSmithsonianAPI function
+// Simple diagnostic test function
+export const testSmithsonianAPI = async (query = "painting") => {
   try {
-    // Call your Express server endpoint, not Smithsonian directly
+    console.log("Making API request with query:", query);
+
+    // Make basic request with minimal parameters
     const response = await smithsonianAPI.get("/api/smithsonian/search", {
       params: {
         q: query,
-        rows: 3,
+        rows: 5,
+        online_media_type: "Images",
       },
     });
 
-    console.log("API Request successful!");
-    console.log("Response status:", response.status);
-    console.log("Full response data:", response.data);
+    console.log("API response received:", response.status);
+    console.log("Total results:", response.data.response?.rowCount || 0);
 
-    // Log specific parts of the response to understand structure
-    if (response.data && response.data.response) {
-      console.log("Total results:", response.data.response.rowCount);
-      console.log("First result:", response.data.response.rows[0]);
+    // Directly examine the raw response structure
+    const rows = response.data.response?.rows || [];
+    console.log(`Received ${rows.length} rows in response`);
 
-      // Try to extract important fields from first result
-      const firstItem = response.data.response.rows[0];
-      if (firstItem) {
-        console.log("Extracted data from first item:");
-        console.log("- ID:", firstItem.id);
-        console.log("- Title:", firstItem.title);
-        console.log(
-          "- Description:",
-          firstItem.content?.descriptiveNonRepeating?.description
-        );
+    // Check each item for media
+    const itemsWithMedia = [];
 
-        // Try to find image URL
-        const mediaContent =
-          firstItem.content?.descriptiveNonRepeating?.online_media?.media;
-        if (mediaContent && mediaContent.length > 0) {
-          console.log(
-            "- Image URL:",
-            mediaContent[0].content || mediaContent[0].thumbnail
-          );
-        } else {
-          console.log("- No image found");
-        }
+    rows.forEach((item, index) => {
+      console.log(`\nExamining item ${index + 1}: ${item.title || "Untitled"}`);
+
+      // Output the full content structure for debugging
+      console.log("Full item structure:", JSON.stringify(item, null, 2));
+
+      // Try to find media
+      const mediaPath = item.content?.descriptiveNonRepeating?.online_media;
+      console.log("Media path exists:", !!mediaPath);
+
+      if (mediaPath && mediaPath.media && mediaPath.media.length > 0) {
+        console.log("Found media items:", mediaPath.media.length);
+        console.log("First media item:", mediaPath.media[0]);
+
+        itemsWithMedia.push({
+          index,
+          id: item.id,
+          title: item.title || "Untitled",
+          media: mediaPath.media.map((m) => ({
+            type: m.type,
+            url: m.content,
+            thumbnail: m.thumbnail,
+            idsId: m.idsId,
+          })),
+        });
+      } else {
+        console.log("No media found in this item");
       }
-    }
+    });
 
-    return response.data;
+    return {
+      totalResults: response.data.response?.rowCount || 0,
+      itemsWithMedia,
+    };
   } catch (error) {
-    console.error("Error testing Smithsonian API:", error);
-    if (error.response) {
-      // The request was made and server responded with an error status
-      console.error("Response error data:", error.response.data);
-      console.error("Response status:", error.response.status);
-    } else if (error.request) {
-      // The request was made but no response received
-      console.error("No response received:", error.request);
-    } else {
-      // Something happened in setting up the request
-      console.error("Error message:", error.message);
-    }
+    console.error("Error in diagnostic test:", error);
     throw error;
   }
 };
 
 // MAIN CODE
 
-// Search the Smithsonian collections
+// BASTARD
 export const searchSmithsonian = async (query, page = 1, pageSize = 10) => {
   try {
-    const response = await smithsonianAPI.get("/api/smithsonian/search", {
-      params: {
-        q: query,
-        page,
-        rows: pageSize,
-      },
-    });
+    console.log("Searching for:", query);
 
-    return formatSearchResults(response.data);
+    // Initial API call to get total count and first batch
+    const initialResponse = await smithsonianAPI.get(
+      "/api/smithsonian/search",
+      {
+        params: {
+          q: query,
+          rows: 100, // Fetch 100 items per request (a reasonable batch size for efficiency)
+          online_media_type: "Images", // Filter for items with images
+          start: 0, // Start from the beginning
+        },
+      }
+    );
+
+    // Check if we got a valid response
+    if (!initialResponse.data?.response?.rowCount) {
+      console.log("No results from API");
+      return { total: 0, items: [] };
+    }
+
+    // Get total results count
+    const totalResults = initialResponse.data.response.rowCount;
+    console.log(`Total results from API: ${totalResults}`);
+
+    // Process first batch
+    let allItems = [];
+
+    if (
+      initialResponse.data.response?.rows &&
+      initialResponse.data.response.rows.length > 0
+    ) {
+      const firstBatch = processItems(initialResponse.data.response.rows);
+      allItems = [...firstBatch];
+      console.log(
+        `Processed first batch: ${firstBatch.length} items with images`
+      );
+    }
+
+    // Calculate how many more requests we need
+    const batchSize = 100; // Keep batch size at 100 for efficiency
+    const totalBatches = Math.ceil(totalResults / batchSize);
+    console.log(`Need to fetch ${totalBatches} batches in total`);
+
+    // Fetch remaining batches (start from 1 since we already fetched the first batch)
+    for (let batchNum = 1; batchNum < totalBatches; batchNum++) {
+      const offset = batchNum * batchSize;
+      console.log(
+        `Fetching batch ${batchNum + 1}/${totalBatches} (offset: ${offset})`
+      );
+
+      const batchResponse = await smithsonianAPI.get(
+        "/api/smithsonian/search",
+        {
+          params: {
+            q: query,
+            rows: batchSize,
+            online_media_type: "Images",
+            start: offset,
+          },
+        }
+      );
+
+      if (
+        batchResponse.data?.response?.rows &&
+        batchResponse.data.response.rows.length > 0
+      ) {
+        const batchItems = processItems(batchResponse.data.response.rows);
+        allItems = [...allItems, ...batchItems];
+        console.log(
+          `Batch ${batchNum + 1} added ${
+            batchItems.length
+          } items with images (total: ${allItems.length})`
+        );
+      } else {
+        console.log(`Batch ${batchNum + 1} returned no items, stopping`);
+        break; // Stop if we get an empty batch
+      }
+    }
+
+    console.log(`Found a total of ${allItems.length} items with usable images`);
+
+    // Paginate the results for this specific page request
+    const startIdx = (page - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    const paginatedItems = allItems.slice(startIdx, endIdx);
+
+    return {
+      total: allItems.length, // Total count of items WITH images (not total API results)
+      items: paginatedItems,
+      allItemsCount: allItems.length, // For debugging
+    };
   } catch (error) {
     console.error("Error searching Smithsonian API:", error);
     throw error;
   }
 };
 
+// Helper function to process items and filter for those with usable images
+function processItems(items) {
+  const processedItems = items.map((item) => {
+    let imageUrl = "";
+
+    // Extract image URL from the media content
+    const mediaContent =
+      item.content?.descriptiveNonRepeating?.online_media?.media;
+
+    if (mediaContent && mediaContent.length > 0) {
+      // First priority: Use idsId if available (most reliable)
+      if (mediaContent[0].idsId) {
+        imageUrl = `https://ids.si.edu/ids/deliveryService?id=${mediaContent[0].idsId}`;
+      }
+      // Second priority: Use content URL if it exists
+      else if (mediaContent[0].content) {
+        imageUrl = mediaContent[0].content;
+
+        // Ensure it uses the deliveryService endpoint
+        if (!imageUrl.includes("deliveryService")) {
+          // Handle various URL formats
+          if (imageUrl.includes("id=")) {
+            // Extract the ID parameter
+            const idMatch = imageUrl.match(/id=([^&]+)/);
+            if (idMatch && idMatch[1]) {
+              imageUrl = `https://ids.si.edu/ids/deliveryService?id=${idMatch[1]}`;
+            }
+          } else if (imageUrl.includes("/ids/")) {
+            // Try to convert other formats
+            imageUrl = imageUrl.replace(
+              /\/ids\/[^\/]+\//,
+              "/ids/deliveryService?id="
+            );
+          }
+        }
+      }
+      // Last resort: use thumbnail
+      else if (mediaContent[0].thumbnail) {
+        imageUrl = mediaContent[0].thumbnail;
+      }
+    }
+
+    return {
+      id: item.id,
+      title: item.title || "Untitled",
+      description: item.content?.descriptiveNonRepeating?.description || "",
+      imageUrl,
+      source: item.unitCode || "Smithsonian",
+      datePublished: getDate(item),
+      url: item.content?.descriptiveNonRepeating?.record_link || "",
+      museum: item.unitCode || "Smithsonian",
+    };
+  });
+
+  // Filter for items that have valid image URLs
+  return processedItems.filter(
+    (item) => item.imageUrl && item.imageUrl.length > 0
+  );
+}
 // Get details for a specific item
 export const getItemDetails = async (id) => {
   try {
@@ -110,44 +248,6 @@ export const getItemDetails = async (id) => {
     console.error("Error fetching item details:", error);
     throw error;
   }
-};
-
-// Helper function to format the search results into a consistent format
-const formatSearchResults = (data) => {
-  const { response } = data;
-
-  if (!response || !response.rows) {
-    return {
-      total: 0,
-      items: [],
-    };
-  }
-
-  return {
-    total: response.rowCount,
-    items: response.rows.map((item) => ({
-      id: item.id,
-      title: item.title || "Untitled",
-      description: item.content?.descriptiveNonRepeating?.description || "",
-      imageUrl: getImageUrl(item),
-      source: "Smithsonian",
-      datePublished: getDate(item),
-      url: item.content?.descriptiveNonRepeating?.record_link || "",
-      museum: item.unitCode || "Smithsonian",
-    })),
-  };
-};
-
-// Helper function to get the best available image
-const getImageUrl = (item) => {
-  if (
-    item.content?.descriptiveNonRepeating?.online_media?.media &&
-    item.content.descriptiveNonRepeating.online_media.media.length > 0
-  ) {
-    const media = item.content.descriptiveNonRepeating.online_media.media[0];
-    return media.content || media.thumbnail || "";
-  }
-  return "";
 };
 
 // Helper function to get the date
