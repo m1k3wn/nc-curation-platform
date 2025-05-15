@@ -298,76 +298,21 @@ async function fetchAndProcessBatch(
 }
 
 // Helper function to process items and extract image URLs with thumbnails
+// Updated portion of smithsonianService.js - improved image handling
+
+// Helper function to process items and extract image URLs with thumbnails
 function processItems(items) {
   return items
     .map((item) => {
-      let imageUrl = ""; // Full image for detail view
-      let thumbnailUrl = ""; // Thumbnail for item cards
-
-      // Extract image URL from the media content
-      const mediaContent =
-        item.content?.descriptiveNonRepeating?.online_media?.media;
-
-      if (mediaContent && mediaContent.length > 0) {
-        const media = mediaContent[0];
-
-        // Try to find the best thumbnail
-
-        // 1. Check if there's a dedicated thumbnail URL
-        if (media.thumbnail) {
-          thumbnailUrl = media.thumbnail;
-        }
-
-        // 2. Check for thumbnail in resources array
-        if (media.resources && media.resources.length > 0) {
-          // Look for explicit thumbnail resource
-          const thumbResource = media.resources.find(
-            (res) =>
-              res.label === "Thumbnail Image" ||
-              (res.url && res.url.includes("_thumb"))
-          );
-
-          if (thumbResource && thumbResource.url) {
-            thumbnailUrl = thumbResource.url;
-          }
-          // If no thumbnail, try screen-sized image
-          else {
-            const screenResource = media.resources.find(
-              (res) =>
-                res.label === "Screen Image" ||
-                (res.url && res.url.includes("_screen"))
-            );
-
-            if (screenResource && screenResource.url) {
-              thumbnailUrl = screenResource.url;
-            }
-          }
-        }
-
-        // 3. Attempt to construct a thumbnail URL if none found
-        if (!thumbnailUrl && media.idsId) {
-          thumbnailUrl = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
-        }
-
-        // 4. Set full image URL for detail view
-        if (media.idsId) {
-          imageUrl = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
-        } else if (media.content) {
-          imageUrl = media.content;
-        }
-
-        // 5. If no thumbnail was found, use the full image as fallback
-        if (!thumbnailUrl) {
-          thumbnailUrl = imageUrl;
-        }
-      }
+      // Enhanced image processing logic
+      const imageData = extractBestImages(item);
 
       return {
         id: item.id,
         title: item.title || "Untitled",
         description: item.content?.descriptiveNonRepeating?.description || "",
-        imageUrl, // Full resolution for detail view
-        thumbnailUrl, // Smaller version for item cards
+        imageUrl: imageData.fullImage, // Full resolution for detail view
+        thumbnailUrl: imageData.thumbnail, // Smaller version for item cards
         source: item.unitCode || "Smithsonian",
         datePublished: getDate(item),
         url: item.content?.descriptiveNonRepeating?.record_link || "",
@@ -375,6 +320,79 @@ function processItems(items) {
       };
     })
     .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0);
+}
+
+/**
+ * Extract the best available images from a Smithsonian item
+ * @param {Object} item - The raw item from the Smithsonian API
+ * @returns {Object} Object containing thumbnail and fullImage URLs
+ */
+function extractBestImages(item) {
+  let fullImage = "";
+  let thumbnail = "";
+
+  // Extract image URL from the media content
+  const mediaContent =
+    item.content?.descriptiveNonRepeating?.online_media?.media;
+
+  if (!mediaContent || mediaContent.length === 0) {
+    return { thumbnail, fullImage };
+  }
+
+  // Use the first media item (primary image)
+  const media = mediaContent[0];
+
+  // For the full image, prioritize:
+  // 1. IDS delivery service with the IDS ID
+  // 2. Direct content URL
+  if (media.idsId) {
+    fullImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
+  } else if (media.content) {
+    fullImage = media.content;
+  }
+
+  // For the thumbnail, try multiple sources in order of preference:
+  // 1. Dedicated thumbnail URL
+  if (media.thumbnail) {
+    thumbnail = media.thumbnail;
+  }
+  // 2. Thumbnail resource in the resources array
+  else if (media.resources && media.resources.length > 0) {
+    // Look for explicit thumbnail resource
+    const thumbResource = media.resources.find(
+      (res) =>
+        res.label === "Thumbnail Image" ||
+        (res.url && res.url.includes("_thumb"))
+    );
+
+    if (thumbResource && thumbResource.url) {
+      thumbnail = thumbResource.url;
+    }
+    // 3. Screen-sized image as fallback
+    else {
+      const screenResource = media.resources.find(
+        (res) =>
+          res.label === "Screen Image" ||
+          (res.url && res.url.includes("_screen"))
+      );
+
+      if (screenResource && screenResource.url) {
+        thumbnail = screenResource.url;
+      }
+    }
+  }
+
+  // 4. Construct thumbnail URL from IDS ID if nothing else is available
+  if (!thumbnail && media.idsId) {
+    thumbnail = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
+  }
+
+  // 5. Use full image as last resort fallback for thumbnail
+  if (!thumbnail && fullImage) {
+    thumbnail = fullImage;
+  }
+
+  return { thumbnail, fullImage };
 }
 
 // Get details for a specific item
