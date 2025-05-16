@@ -298,16 +298,161 @@ async function fetchAndProcessBatch(
   }
 }
 
-// Fetch details for a specific item ID
+// Fetch details for a specific item ID -   BASIC VERSION FOR DEV
+// Update this in smithsonianService.js
 export const getItemDetails = async (id) => {
   try {
     const response = await smithsonianAPI.get(`/api/smithsonian/content/${id}`);
-    return response.data;
+
+    // Log the raw response for debugging
+    if (isDevelopment()) {
+      console.log(
+        "Raw item details response:",
+        JSON.stringify(response.data, null, 2)
+      );
+    }
+
+    // Process the raw data into our formatted structure
+    const processedItem = processItemDetails(response.data);
+
+    // Log the processed item for debugging
+    if (isDevelopment()) {
+      console.log("Processed item:", processedItem);
+    }
+
+    return processedItem;
   } catch (error) {
     console.error("Error fetching item details:", error);
     throw error;
   }
 };
+
+// Process detailed SINGLE item data
+export function processItemDetails(rawItemData) {
+  // If no data, return null
+  if (!rawItemData) return null;
+
+  // Extract the item from response
+  const data = rawItemData.response || rawItemData;
+
+  /* Processing data points */
+
+  // Process image data
+  const mediaContent =
+    data.content?.descriptiveNonRepeating?.online_media?.media;
+  const imageData =
+    mediaContent && mediaContent.length > 0
+      ? {
+          fullImage: mediaContent[0].content,
+          thumbnail: mediaContent[0].thumbnail,
+        }
+      : { fullImage: "", thumbnail: "" };
+
+  // Extract free text fields by label
+  const freetext = data.content?.freetext || {};
+
+  // Get content from a freetext field by label
+  const getFreetextContent = (field, label = null) => {
+    if (!freetext[field]) return [];
+
+    if (label) {
+      return freetext[field]
+        .filter((item) => item.label === label || item.label.includes(label))
+        .map((item) => item.content);
+    }
+
+    return freetext[field].map((item) => ({
+      label: item.label,
+      content: item.content,
+    }));
+  };
+
+  // Concatenate multiple descripotion entries
+  function combineNotesByLabel(notes) {
+    // Create an object to group notes by label
+    const groupedNotes = {};
+
+    // Group all notes with the same label
+    notes.forEach((note) => {
+      if (!groupedNotes[note.label]) {
+        groupedNotes[note.label] = [];
+      }
+      groupedNotes[note.label].push(note.content);
+    });
+
+    // Convert back to array format but combine multiple contents into paragraphs
+    return Object.entries(groupedNotes).map(([label, contents]) => ({
+      label,
+      content: contents.join("\n\n"), // Join with double newlines for paragraph separation
+    }));
+  }
+
+  // Institution and collection sorting
+  const rawSetNames = getFreetextContent("setName").map((item) => item.content);
+  const collectionTypes = rawSetNames.map((str) => {
+    const parts = str.split(",");
+    // If there's a comma, return ONLY the first part after the comma
+    return parts.length > 1 ? parts[1].trim() : str;
+  });
+
+  // Build the processed item
+  const processedItem = {
+    // Basic identification
+    id: data.id,
+    title:
+      data.title ||
+      data.content?.descriptiveNonRepeating?.title?.content ||
+      "Untitled",
+    url: data.content?.descriptiveNonRepeating?.record_link || "",
+
+    // Source information
+    source:
+      data.unitCode ||
+      data.content?.descriptiveNonRepeating?.unit_code ||
+      "Smithsonian",
+    dataSource: getFreetextContent("dataSource")?.[0]?.content || "",
+    museum: data.unitCode || "Smithsonian",
+    recordId: data.content?.descriptiveNonRepeating?.record_ID || "",
+
+    // Images
+    imageUrl: imageData.fullImage,
+    thumbnailUrl: imageData.thumbnail,
+
+    // Dates
+    dateCollected: getFreetextContent("date", "Collection Date")?.[0] || "",
+    datePublished:
+      data.content?.indexedStructured?.date?.[0] ||
+      getFreetextContent("date")?.[0]?.content ||
+      "",
+
+    // Location information
+    place:
+      getFreetextContent("place")?.[0]?.content ||
+      data.content?.indexedStructured?.place?.join(", ") ||
+      "",
+    geoLocation: data.content?.indexedStructured?.geoLocation,
+
+    // People and organizations
+    collectors: getFreetextContent("name", "Collector"),
+    curatorName: getFreetextContent("name", "Curator"),
+    bioRegion: getFreetextContent("name", "Biogeographical Region"),
+
+    // Collection information
+    setNames: rawSetNames,
+    collectionTypes: collectionTypes,
+
+    // Identifiers
+    identifiers: getFreetextContent("identifier"),
+
+    // Notes and additional information
+    notes: combineNotesByLabel(getFreetextContent("notes")),
+
+    // Raw data (for debugging)
+    rawData: data,
+  };
+
+  return processedItem;
+}
 
 /*  HELPER FUNCTIONS */
 

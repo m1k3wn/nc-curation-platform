@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from "react";
-import { searchSmithsonian } from "../api/smithsonianService";
+import { searchSmithsonian, getItemDetails } from "../api/smithsonianService";
 import searchResultsManager from "../utils/searchResultsManager";
 
 const SearchContext = createContext();
@@ -28,10 +28,48 @@ export function SearchProvider({ children }) {
   const [pageSize] = useState(25); // default to 25 results per page (will change)
   const [hasFullResults, setHasFullResults] = useState(false);
   const [itemsWithImagesCount, setItemsWithImagesCount] = useState(0);
+  //  Single item state
+  const [currentItem, setCurrentItem] = useState(null);
+  const [itemLoading, setItemLoading] = useState(false);
+  const [itemError, setItemError] = useState(null);
 
-  /**
-   * Handle progress updates from the API
-   */
+  /* Fetch details for a specific item */
+  const fetchItemDetails = useCallback(
+    async (itemId) => {
+      if (!itemId) return;
+
+      try {
+        setItemLoading(true);
+        setItemError(null);
+
+        // Check if we already have basic item data in our cache
+        const cachedItem = allCachedItems.find((item) => item.id === itemId);
+
+        // Set basic item data immediately if available
+        if (cachedItem) {
+          setCurrentItem(cachedItem);
+        }
+
+        // Fetch detailed information regardless
+        const detailedItem = await getItemDetails(itemId);
+
+        // Update with full details
+        setCurrentItem(detailedItem);
+        return detailedItem;
+      } catch (error) {
+        console.error("Error fetching item details:", error);
+        setItemError("Failed to load item details. Please try again.");
+        // Don't clear currentItem if we previously set it from cache
+      } finally {
+        setItemLoading(false);
+      }
+    },
+    [allCachedItems]
+  );
+
+  /* Search through multiple items */
+
+  // Handle progress updates from the API
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
 
@@ -296,6 +334,10 @@ export function SearchProvider({ children }) {
     isFromCache,
     allItems: allCachedItems,
     itemsWithImagesCount,
+    currentItem,
+    itemLoading,
+    itemError,
+    fetchItemDetails,
   };
 
   return (
