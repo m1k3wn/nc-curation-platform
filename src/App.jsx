@@ -8,6 +8,7 @@ import UserProfilePage from "./pages/UserProfilePage";
 import CollectionsPage from "./pages/CollectionsPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import ExplorePage from "./pages/ExplorePage";
+import ItemPage from "./pages/ItemPage";
 import { AuthProvider } from "./context/AuthContext";
 import { CollectionsProvider } from "./context/CollectionsContext";
 import { SearchProvider } from "./context/SearchContext";
@@ -30,6 +31,7 @@ export default function App() {
                   <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/search" element={<SearchResultsPage />} />
                   {/* Add for item page ie /item/:id */}
+                  <Route path="/item/:id" element={<ItemPage />} />
                 </Routes>
               </main>
 

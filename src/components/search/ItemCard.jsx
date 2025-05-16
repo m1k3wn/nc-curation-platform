@@ -1,7 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function ItemCard({ item }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const navigate = useNavigate();
+
+  //  Navigate to item page
+  const handleCardClick = () => {
+    navigate(`/item/${item.id}`);
+  };
 
   // Format dates on ItemCard
   function formatDateDisplay(dateStr) {
@@ -36,7 +43,10 @@ export default function ItemCard({ item }) {
 
   return (
     <div className="break-inside-avoid mb-4">
-      <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+      <div
+        className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+        onClick={handleCardClick}
+      >
         {/* Image Container with fixed aspect ratio */}
         <div className="relative bg-gray-100 aspect-[4/3]">
           {/* Loading spinner shown until image loads */}
@@ -94,7 +104,10 @@ export default function ItemCard({ item }) {
           {/* Action Button */}
           <button
             className="w-full bg-gray-100 text-gray-800 py-1.5 rounded hover:bg-gray-200 transition-colors text-sm font-medium"
-            onClick={() => console.log("Add to collection clicked", item.id)}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click when button is clicked
+              console.log("Add to collection clicked", item.id);
+            }}
           >
             Add to Collection
           </button>
