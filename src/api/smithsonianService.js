@@ -1,15 +1,18 @@
 import axios from "axios";
+import { smithsonianConfig } from "./config";
 
-// Environment-aware base URL
-// In production: use relative URLs (same server)
-// In development: use local Express server
+/* 
+Environment-aware base URL
+  In production: relative URLs (same server)
+  In development: local Express server
+*/
 const API_URL = import.meta.env.PROD ? "" : "http://localhost:3000";
 
 const smithsonianAPI = axios.create({
   baseURL: API_URL,
 });
 
-// Safely check if we're in development mode
+// Check if in development mode
 const isDevelopment = () => {
   return (
     import.meta.env?.DEV === true ||
@@ -17,10 +20,11 @@ const isDevelopment = () => {
   );
 };
 
+//  Fetch search results in async batches
 export const searchSmithsonian = async (
   query,
   page = 1,
-  pageSize = 20,
+  pageSize = smithsonianConfig.defaultPageSize,
   progressCallback = null,
   completionCallback = null
 ) => {
@@ -33,7 +37,7 @@ export const searchSmithsonian = async (
       console.log("Searching for:", query);
     }
 
-    // Step 1: initial API call to get total count
+    // Initial API call to get total count of searchable items
     const initialResponse = await smithsonianAPI.get(
       "/api/smithsonian/search",
       {
@@ -53,14 +57,13 @@ export const searchSmithsonian = async (
       return { total: 0, items: [], allItems: [] };
     }
 
-    // Get total results count and calculate batches
+    // Defined in config.js
     const totalResults = initialResponse.data.response.rowCount;
-    const batchSize = 150; // Fetch 150 items per batch for efficiency - can handle 500 +
+    const batchSize = smithsonianConfig.batchSize;
     const totalBatches = Math.ceil(totalResults / batchSize);
+    const maxBatches = Math.min(totalBatches, smithsonianConfig.maxBatches);
 
-    // Limit to 25 batches maximum (2000 items) to prevent excessive requests
-    const maxBatches = Math.min(totalBatches, 25);
-
+    // Dev DEBUGGING
     if (isDevelopment()) {
       console.log(`Total results from API: ${totalResults}`);
       console.log(`Will fetch in ${maxBatches} batches of ${batchSize} items`);
@@ -76,7 +79,7 @@ export const searchSmithsonian = async (
       });
     }
 
-    // Step 2: Fetch the first batch quickly to show initial results
+    // Fetch the first batch, show initial results to user
     const firstBatchResponse = await smithsonianAPI.get(
       "/api/smithsonian/search",
       {
@@ -89,7 +92,7 @@ export const searchSmithsonian = async (
       }
     );
 
-    // Process the first batch
+    // Process first batch
     let allProcessedItems = [];
 
     if (
@@ -131,7 +134,7 @@ export const searchSmithsonian = async (
           );
         }
 
-        // Process the second batch synchronously to get at least some results
+        // Process the second batch synchronously to get quick results
         const secondBatchItems = await fetchAndProcessBatch(
           query,
           batchSize,
@@ -172,7 +175,7 @@ export const searchSmithsonian = async (
     // Adjust remaining batches to skip ones already processed
     const firstBatchToProcess = needMoreBatches ? 2 : 1;
 
-    // Step 3: Fetch remaining batches in parallel
+    // Fetch remaining batches in parallel
     const remainingBatchPromises = [];
 
     for (
@@ -206,7 +209,7 @@ export const searchSmithsonian = async (
       remainingBatchPromises.push(batchPromise);
     }
 
-    // Process all remaining batches (but don't block the initial return)
+    // Process all remaining batches
     Promise.all(remainingBatchPromises)
       .then((batchResults) => {
         // Combine all batch results
@@ -241,7 +244,7 @@ export const searchSmithsonian = async (
     return {
       total: totalResults,
       items: pageItems,
-      allItems: allProcessedItems, // Initial items, will be extended in background
+      allItems: allProcessedItems, // Initial items; will be extended in background
     };
   } catch (error) {
     console.error("Error searching Smithsonian API:", error);
@@ -249,9 +252,7 @@ export const searchSmithsonian = async (
   }
 };
 
-/**
- * Fetches and processes a single batch
- */
+// Fetches and processes a single batch
 async function fetchAndProcessBatch(
   query,
   offset,
@@ -293,32 +294,38 @@ async function fetchAndProcessBatch(
     return [];
   } catch (error) {
     console.error(`Error fetching batch ${batchNum + 1}:`, error);
-    return []; // Return empty array on error
+    return [];
   }
 }
 
-//  HELPER FUNCTIONS
+// Fetch details for a specific item ID
+export const getItemDetails = async (id) => {
+  try {
+    const response = await smithsonianAPI.get(`/api/smithsonian/content/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching item details:", error);
+    throw error;
+  }
+};
 
-/**
- * Clean HTML tags from text
- * @param {string} text - Text that might contain HTML tags
- * @returns {string} Cleaned text without HTML tags
- */
+/*  HELPER FUNCTIONS */
+
+// Clean HTML tags from text
 function cleanHtmlTags(text) {
   if (!text) return "";
 
-  // Convert to string just in case
+  // Convert to string
   const str = String(text);
 
-  // Remove common HTML tags like <I>, </I>, <em>, </em>, etc.
+  // Remove common HTML tags: <I>, </I>, <em>, </em>
   let cleanedText = str.replace(/<\/?[^>]+(>|$)/g, "");
 
-  // Also handle parentheses that might remain after tag removal
-  // For patterns like "(**text**)" or "(text)" that might be leftover
+  // Handle parentheses that might remain after tag removal
   cleanedText = cleanedText.replace(/\(\s*\)/g, ""); // Empty parentheses
   cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1"); // Text entirely in parentheses
 
-  // Trim any excess whitespace
+  // Trim excess whitespace
   return cleanedText.trim();
 }
 
@@ -336,7 +343,7 @@ function processItems(items) {
           cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
           "",
         imageUrl: imageData.fullImage, // Full resolution for detail view
-        thumbnailUrl: imageData.thumbnail, // Smaller version for item cards
+        thumbnailUrl: imageData.thumbnail, // Thumbnail for ItemCard
         source: item.unitCode || "Smithsonian",
         datePublished: getDate(item),
         url: item.content?.descriptiveNonRepeating?.record_link || "",
@@ -346,11 +353,7 @@ function processItems(items) {
     .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0);
 }
 
-/**
- * Extract the best available images from a Smithsonian item
- * @param {Object} item - The raw item from the Smithsonian API
- * @returns {Object} Object containing thumbnail and fullImage URLs
- */
+// Extract the best available images from item
 function extractBestImages(item) {
   let fullImage = "";
   let thumbnail = "";
@@ -363,26 +366,24 @@ function extractBestImages(item) {
     return { thumbnail, fullImage };
   }
 
-  // Use the first media item (primary image)
+  // Use the first media item
   const media = mediaContent[0];
 
-  // For the full image, prioritize:
-  // 1. IDS delivery service with the IDS ID
-  // 2. Direct content URL
+  // For the full image
   if (media.idsId) {
     fullImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
   } else if (media.content) {
     fullImage = media.content;
   }
 
-  // For the thumbnail, try multiple sources in order of preference:
+  // For the thumbnail, try multiple sources:
   // 1. Dedicated thumbnail URL
   if (media.thumbnail) {
     thumbnail = media.thumbnail;
   }
   // 2. Thumbnail resource in the resources array
   else if (media.resources && media.resources.length > 0) {
-    // Look for explicit thumbnail resource
+    // Look for thumbnail resource
     const thumbResource = media.resources.find(
       (res) =>
         res.label === "Thumbnail Image" ||
@@ -392,7 +393,7 @@ function extractBestImages(item) {
     if (thumbResource && thumbResource.url) {
       thumbnail = thumbResource.url;
     }
-    // 3. Screen-sized image as fallback
+    // 3. Full res image as fallback
     else {
       const screenResource = media.resources.find(
         (res) =>
@@ -411,24 +412,13 @@ function extractBestImages(item) {
     thumbnail = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
   }
 
-  // 5. Use full image as last resort fallback for thumbnail
+  // 5. Use full image as fallback for thumbnail
   if (!thumbnail && fullImage) {
     thumbnail = fullImage;
   }
 
   return { thumbnail, fullImage };
 }
-
-// Get details for a specific item
-export const getItemDetails = async (id) => {
-  try {
-    const response = await smithsonianAPI.get(`/api/smithsonian/content/${id}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching item details:", error);
-    throw error;
-  }
-};
 
 // Helper function to get the date
 const getDate = (item) => {

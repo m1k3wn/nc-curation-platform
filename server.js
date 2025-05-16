@@ -1,22 +1,21 @@
-// server.js
 import express from "express";
 import cors from "cors";
 import axios from "axios";
 import { fileURLToPath } from "url";
-import path from "path";
+// import path from "path";
 import { dirname } from "path";
 import dotenv from "dotenv";
 
-// Load environment variables
+// Load .envs
 dotenv.config();
 
-// ES module equivalent of __dirname
+// Root paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Get API key from environment variable
+// API Keys
 const SMITHSONIAN_API_KEY = process.env.VITE_SMITHSONIAN_API_KEY;
-const PORT = 3000; // Changed to port 3000
+const PORT = 3000;
 
 // Check if API key is available
 if (!SMITHSONIAN_API_KEY) {
@@ -33,7 +32,7 @@ app.use(cors());
 // Parse JSON request body
 app.use(express.json());
 
-// Simple test endpoint
+// Healthcheck endpoint
 app.get("/api/test", (req, res) => {
   res.json({
     message: "Server is working!",
@@ -42,7 +41,6 @@ app.get("/api/test", (req, res) => {
 });
 
 // Smithsonian API proxy endpoint
-// Clean, simple endpoint for Smithsonian API
 app.get("/api/smithsonian/search", async (req, res) => {
   if (!SMITHSONIAN_API_KEY) {
     return res.status(500).json({ error: "API key not configured on server" });
@@ -52,7 +50,7 @@ app.get("/api/smithsonian/search", async (req, res) => {
     // Log the query parameters for debugging
     console.log("Request query:", req.query);
 
-    // Make request to Smithsonian API
+    // Request to Smithsonian API
     const apiResponse = await axios.get(
       "https://api.si.edu/openaccess/api/v1.0/search",
       {
@@ -63,11 +61,11 @@ app.get("/api/smithsonian/search", async (req, res) => {
       }
     );
 
-    // Log response info for debugging
+    // Log for debugging
     console.log("Smithsonian API response status:", apiResponse.status);
     console.log("Total results:", apiResponse.data.response?.rowCount || 0);
 
-    // Check if we have any rows with online_media
+    // Check for images (rows with online_media)
     let itemsWithMedia = 0;
     if (apiResponse.data.response?.rows) {
       apiResponse.data.response.rows.forEach((item) => {
@@ -76,12 +74,12 @@ app.get("/api/smithsonian/search", async (req, res) => {
         if (hasMedia && hasMedia.length > 0) {
           itemsWithMedia++;
           // Log the first item with media for debugging
-          if (itemsWithMedia === 1) {
-            console.log(
-              "Example media item:",
-              JSON.stringify(hasMedia[0], null, 2)
-            );
-          }
+          // if (itemsWithMedia === 1) {
+          //   console.log(
+          //     "Example media item:",
+          //     JSON.stringify(hasMedia[0], null, 2)
+          //   );
+          // }
         }
       });
       console.log(
@@ -89,7 +87,7 @@ app.get("/api/smithsonian/search", async (req, res) => {
       );
     }
 
-    // Return the unmodified response
+    // Response
     res.json(apiResponse.data);
   } catch (error) {
     console.error("Smithsonian API error:", error.message);
@@ -127,7 +125,7 @@ app.get("/api/smithsonian/content/:id", async (req, res) => {
   }
 });
 
-// Start the server
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Test endpoint: http://localhost:${PORT}/api/test`);
