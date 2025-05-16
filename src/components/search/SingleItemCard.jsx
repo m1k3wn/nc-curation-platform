@@ -75,7 +75,9 @@ export default function SingleItemCard({ item, isLoading }) {
 
       <div className="md:flex">
         {/* Image Section */}
-        <div className="md:w-2/5 lg:w-1/3">
+        <div className="md:w-3/5 lg:w-1/2">
+          {" "}
+          {/* Changed from md:w-2/5 lg:w-1/3 */}
           <div
             className="relative bg-gray-100 aspect-square cursor-pointer"
             onClick={() => setShowFullImage(true)}
@@ -113,17 +115,15 @@ export default function SingleItemCard({ item, isLoading }) {
         </div>
 
         {/* Details Section */}
-        <div className="md:w-3/5 lg:w-2/3 p-6">
+        <div className="md:w-2/5 lg:w-1/2 p-6">
           {/* Loading overlay for when detailed data is being fetched */}
           {isLoading && (
             <div className="absolute top-2 right-2">
               <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
             </div>
           )}
-
           {/* Title and Scientific Name */}
           <h1 className="text-2xl font-bold mb-2">{item.title}</h1>
-
           {item.scientificNames && item.scientificNames.length > 0 && (
             <div className="text-gray-600 italic mb-4">
               {item.scientificNames.map((name, index) => (
@@ -132,11 +132,30 @@ export default function SingleItemCard({ item, isLoading }) {
             </div>
           )}
 
-          {/* Source & Collection Information */}
+          {/* Date created */}
+          <div>{item.dateCollected || item.datePublished}</div>
+
+          {/* Creator/Maker Information */}
+          {item.creatorInfo && item.creatorInfo.length > 0 && (
+            <div className="col-span-1 mb-4">
+              {/* <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
+                Creator
+              </h2> */}
+              {item.creatorInfo.map((creator, index) => (
+                <DisplayField
+                  key={index}
+                  label={creator.label}
+                  value={creator.content}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Source & Collection Information WIP
           <div className="flex flex-wrap justify-between text-sm text-gray-600 mb-6">
             <span>{item.source || item.museum}</span>
             <span>{item.dateCollected || item.datePublished}</span>
-          </div>
+          </div> */}
 
           {/* Notes Section */}
           {item.notes && item.notes.length > 0 && (
@@ -155,7 +174,6 @@ export default function SingleItemCard({ item, isLoading }) {
               ))}
             </div>
           )}
-
           {/* Main content divided into sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
             {/* Location Section */}
@@ -224,7 +242,6 @@ export default function SingleItemCard({ item, isLoading }) {
               </div>
             </div>
           </div>
-
           {/* External Link */}
           {item.url && (
             <div className="mt-6">

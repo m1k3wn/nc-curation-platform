@@ -367,7 +367,7 @@ export function processItemDetails(rawItemData) {
     }));
   };
 
-  // Concatenate multiple descripotion entries
+  // Concatenate multiple description entries
   function combineNotesByLabel(notes) {
     // Create an object to group notes by label
     const groupedNotes = {};
@@ -386,6 +386,14 @@ export function processItemDetails(rawItemData) {
       content: contents.join("\n\n"), // Join with double newlines for paragraph separation
     }));
   }
+
+  // Extract creator information
+  const creatorInfo = freetext.name
+    ? freetext.name.map((item) => ({
+        label: item.label,
+        content: item.content,
+      }))
+    : [];
 
   // Institution and collection sorting
   const rawSetNames = getFreetextContent("setName").map((item) => item.content);
@@ -431,6 +439,9 @@ export function processItemDetails(rawItemData) {
       data.content?.indexedStructured?.place?.join(", ") ||
       "",
     geoLocation: data.content?.indexedStructured?.geoLocation,
+
+    // Maker
+    creatorInfo: creatorInfo,
 
     // People and organizations
     collectors: getFreetextContent("name", "Collector"),
