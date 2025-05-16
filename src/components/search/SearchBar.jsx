@@ -1,9 +1,8 @@
-// src/components/search/SearchBar.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../../context/SearchContext";
 
-function SearchBar({ initialValue = "" }) {
+export default function SearchBar({ initialValue = "" }) {
   const [inputValue, setInputValue] = useState(initialValue);
   const navigate = useNavigate();
   const { loading } = useSearch();
@@ -63,5 +62,3 @@ function SearchBar({ initialValue = "" }) {
     </div>
   );
 }
-
-export default SearchBar;

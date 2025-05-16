@@ -1,4 +1,4 @@
-// src/components/search/Pagination.jsx
+// Handles UI for pagination of results
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
 

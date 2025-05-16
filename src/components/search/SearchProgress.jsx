@@ -1,4 +1,3 @@
-// src/components/search/SearchProgress.jsx
 export default function SearchProgress({ progress }) {
   if (!progress) return null;
 
@@ -17,6 +16,7 @@ export default function SearchProgress({ progress }) {
       </div>
 
       <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+        {/* Loading Bar */}
         <div
           className="h-full bg-blue-500 transition-all duration-300"
           style={{ width: `${percentage}%` }}

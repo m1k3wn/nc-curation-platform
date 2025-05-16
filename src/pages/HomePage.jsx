@@ -1,12 +1,11 @@
-// src/pages/HomePage.jsx
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
 // import { Link } from "react-router-dom";
 
-function HomePage() {
+export default function HomePage() {
   const navigate = useNavigate();
 
-  // Museum-related popular searches
+  // Museum-related popular searches - placeholder example
   const popularSearches = [
     "Ancient Egypt",
     "Renaissance Art",
@@ -16,7 +15,7 @@ function HomePage() {
     "Greek Pottery",
   ];
 
-  // Museum categories
+  // Museum categories - placeholder example
   const categories = ["Natural History", "Ancient Civilizations", "Modern Art"];
 
   const handlePopularSearch = (term) => {
@@ -76,5 +75,3 @@ function HomePage() {
     </div>
   );
 }
-
-export default HomePage;

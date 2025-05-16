@@ -1,4 +1,3 @@
-// src/context/SearchContext.jsx
 import { createContext, useContext, useState, useCallback } from "react";
 import { searchSmithsonian } from "../api/smithsonianService";
 import searchResultsManager from "../utils/searchResultsManager";
@@ -26,9 +25,9 @@ export function SearchProvider({ children }) {
   const [searchInProgress, setSearchInProgress] = useState(false);
   const [progress, setProgress] = useState(null);
   const [isFromCache, setIsFromCache] = useState(false);
-  const [pageSize] = useState(20); // Default page size
+  const [pageSize] = useState(25); // default to 25 results per page (will change)
   const [hasFullResults, setHasFullResults] = useState(false);
-  const [itemsWithImagesCount, setItemsWithImagesCount] = useState(0); // Track actual count of items with images
+  const [itemsWithImagesCount, setItemsWithImagesCount] = useState(0);
 
   /**
    * Handle progress updates from the API
@@ -148,10 +147,10 @@ export function SearchProvider({ children }) {
 
         setTotalResults(response.total);
 
-        // Update the UI with whatever items we have immediately
+        // Update the UI with first items
         if (response.items && response.items.length > 0) {
           setResults(reset ? response.items : [...results, ...response.items]);
-          setHasMore(true); // We should have more coming from batch processing
+          setHasMore(true);
 
           // Update the count with what we have initially
           if (reset) {
@@ -159,12 +158,12 @@ export function SearchProvider({ children }) {
           }
         }
 
-        // Store any initial full results we got
+        // Store any initial full results
         if (response.allItems && response.allItems.length > 0) {
           setAllCachedItems(response.allItems);
         }
 
-        // Only update page if we have items
+        // Only update page if items
         if (response.items && response.items.length > 0) {
           setPage(reset ? 1 : page + 1);
         }
@@ -296,7 +295,7 @@ export function SearchProvider({ children }) {
     progress,
     isFromCache,
     allItems: allCachedItems,
-    itemsWithImagesCount, // Add the new count to the context
+    itemsWithImagesCount,
   };
 
   return (

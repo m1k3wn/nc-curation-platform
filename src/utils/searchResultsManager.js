@@ -1,8 +1,8 @@
-// src/utils/searchResultsManager.js
+/* Handles all caching of stored search results */
 const CACHE_PREFIX = "smithsonian_search_";
-const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
-// Safely check if we're in development mode
+// Check if Dev mode
 const isDevelopment = () => {
   return (
     import.meta.env?.DEV === true ||
@@ -10,22 +10,13 @@ const isDevelopment = () => {
   );
 };
 
-/**
- * Normalizes a search query
- * @private
- */
+// Normalizes a search query
 const normalizeQuery = (query) => query?.trim().toLowerCase() || "";
 
-/**
- * Generates a cache key for a query
- * @private
- */
+// Generates a cache key for a query
 const getCacheKey = (query) => `${CACHE_PREFIX}${normalizeQuery(query)}`;
 
-/**
- * Safely access localStorage with fallbacks
- * @private
- */
+//Safely access localStorage with fallbacks
 const safeLocalStorage = {
   get: (key) => {
     try {
@@ -67,9 +58,7 @@ const safeLocalStorage = {
   },
 };
 
-/**
- * Manages caching and retrieval of search results
- */
+// Manages caching and retrieval of search results
 const searchResultsManager = {
   /**
    * Store search results in localStorage
@@ -152,10 +141,7 @@ const searchResultsManager = {
     return items.slice(startIndex, endIndex);
   },
 
-  /**
-   * Clear cache for a specific query
-   * @param {string} query - Query to clear
-   */
+  // Clear cache for a specific query
   clearCacheItem(query) {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery);
@@ -166,9 +152,7 @@ const searchResultsManager = {
     }
   },
 
-  /**
-   * Clear all caches
-   */
+  // Clear all caches
   clearAllCaches() {
     const keysToRemove = safeLocalStorage
       .keys()
@@ -181,9 +165,7 @@ const searchResultsManager = {
     }
   },
 
-  /**
-   * Clear old caches to free up space
-   */
+  // Clear old caches to free up space
   clearOldCaches() {
     const cacheEntries = [];
 

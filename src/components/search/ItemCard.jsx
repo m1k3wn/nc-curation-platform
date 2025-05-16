@@ -1,44 +1,37 @@
-// Updated ItemCard.jsx with simplified image handling
 import { useState } from "react";
 
-// Format dates on ItemCard
-function formatDateDisplay(dateStr) {
-  // Safety check for null/undefined
-  if (!dateStr) return "";
-
-  // Force to string
-  const dateString = String(dateStr);
-
-  // 1. Simple check for decade patterns
-  if (dateString.includes("s")) {
-    // Extract all strings that look like decades (number followed by 's')
-    const decadePattern = /\d+s/g;
-    const decades = dateString.match(decadePattern);
-
-    // If we found multiple decades
-    if (decades && decades.length > 1) {
-      // Just return first-last
-      return `${decades[0]}–${decades[decades.length - 1]}`;
-    }
-  }
-
-  // 2. For any other date, check if it's too long
-  if (dateString.length > 12) {
-    return dateString.substring(0, 12) + "...";
-  }
-
-  // 3. Otherwise return as is
-  return dateString;
-}
-
-function ItemCard({ item }) {
+export default function ItemCard({ item }) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Default placeholder if no image
+  // Format dates on ItemCard
+  function formatDateDisplay(dateStr) {
+    if (!dateStr) return "";
+    const dateString = String(dateStr);
+
+    // Extract date
+    if (dateString.includes("s")) {
+      const decadePattern = /\d+s/g;
+      const decades = dateString.match(decadePattern);
+
+      // If multiple decades
+      if (decades && decades.length > 1) {
+        // Returns first-last format
+        return `${decades[0]}–${decades[decades.length - 1]}`;
+      }
+    }
+
+    // Check length
+    if (dateString.length > 12) {
+      return dateString.substring(0, 12) + "...";
+    }
+    return dateString;
+  }
+
+  // Default placeholder image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  // Use the thumbnail URL provided by the service, with fallback to default
+  // Use the thumbnail URL provided by the service, or fallback to default
   const imgSrc = item.thumbnailUrl || defaultImage;
 
   return (
@@ -110,5 +103,3 @@ function ItemCard({ item }) {
     </div>
   );
 }
-
-export default ItemCard;
