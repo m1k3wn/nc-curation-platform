@@ -13,7 +13,7 @@ export const API_CONFIG = {
 // Smithsonian batch, page etc sizes
 export const smithsonianConfig = {
   batchSize: 150,
-  maxBatches: 25,
+  maxBatches: 100,
   defaultPageSize: 25, // results per page
   requestTimeout: 30000,
   // if limiting parallel requests
