@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
-// Page Imports
+
+// Page components
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import UserProfilePage from "./pages/UserProfilePage";
@@ -9,10 +10,15 @@ import CollectionsPage from "./pages/CollectionsPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import ExplorePage from "./pages/ExplorePage";
 import ItemPage from "./pages/ItemPage";
+
+// Context providers
 import { AuthProvider } from "./context/AuthContext";
 import { CollectionsProvider } from "./context/CollectionsContext";
 import { SearchProvider } from "./context/SearchContext";
 
+/**
+ * Main application component that sets up routing and context providers
+ */
 export default function App() {
   return (
     <AuthProvider>
@@ -30,8 +36,9 @@ export default function App() {
                   <Route path="/collections" element={<CollectionsPage />} />
                   <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/search" element={<SearchResultsPage />} />
-                  {/* Add for item page ie /item/:id */}
                   <Route path="/item/:id" element={<ItemPage />} />
+                  {/* Add a catch-all route for 404 errors */}
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
 
@@ -41,5 +48,25 @@ export default function App() {
         </SearchProvider>
       </CollectionsProvider>
     </AuthProvider>
+  );
+}
+
+/**
+ * 404 Not Found page component
+ */
+function NotFound() {
+  return (
+    <div className="container mx-auto px-4 py-16 text-center">
+      <h1 className="text-4xl font-bold mb-4">404 - Page Not Found</h1>
+      <p className="text-xl text-gray-600 mb-8">
+        The page you're looking for doesn't exist or has been moved.
+      </p>
+      <a
+        href="/"
+        className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Return to Home
+      </a>
+    </div>
   );
 }

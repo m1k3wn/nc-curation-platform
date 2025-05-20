@@ -1,11 +1,13 @@
-// Updated SearchResultsPage.jsx
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import { useSearch } from "../context/SearchContext";
 
-function SearchResultsPage() {
+/**
+ * Page component for displaying search results
+ */
+export default function SearchResultsPage() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
@@ -27,13 +29,16 @@ function SearchResultsPage() {
     }
   }, [queryParam, query, performSearch]);
 
-  // Create better formatted result messages
+  /**
+   * Get appropriate results message based on current state
+   * @returns {string} - Formatted results message
+   */
   const getResultsMessage = () => {
     if (loading && !itemsWithImagesCount) {
       return "Searching...";
     }
 
-    // No image results yet
+    // No results found
     if (totalResults === 0) {
       return "No results found";
     }
@@ -49,7 +54,9 @@ function SearchResultsPage() {
     // Format for displaying both counts
     const imageCount = searchInProgress
       ? `${itemsWithImagesCount}+ items with images`
-      : `${itemsWithImagesCount} items with images`;
+      : `${itemsWithImagesCount} ${
+          itemsWithImagesCount === 1 ? "item" : "items"
+        } with images`;
 
     return `Found ${imageCount} (from ${totalResults} total results)`;
   };
@@ -69,13 +76,18 @@ function SearchResultsPage() {
               <h1 className="text-2xl font-bold mb-2">
                 Results for "{queryParam}"
               </h1>
-              <p className="text-gray-600">{getResultsMessage()}</p>
+              <p className="text-gray-600" aria-live="polite">
+                {getResultsMessage()}
+              </p>
             </div>
           )}
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6">
+            <div
+              className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
+              role="alert"
+            >
               {error}
             </div>
           )}
@@ -87,5 +99,3 @@ function SearchResultsPage() {
     </div>
   );
 }
-
-export default SearchResultsPage;

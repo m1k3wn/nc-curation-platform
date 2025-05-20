@@ -1,18 +1,27 @@
-// SingleItemCard.jsx - Fixed version
 import { useState } from "react";
 
-export default function SingleItemCard({
-  item,
-  isLoading,
-  error,
-  // For debugging and data processing
-  rawApiResponse,
-}) {
+/**
+ * Displays detailed information about a museum item
+ *
+ * @param {Object} item - The item data to display
+ * @param {boolean} isLoading - Whether additional item details are being loaded
+ * @param {string} error - Error message, if any
+ */
+export default function SingleItemCard({ item, isLoading, error }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [debugTab, setDebugTab] = useState("formatted");
 
+  // Check if in development mode
+  const isDev =
+    import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
+
+  // Default placeholder image for missing or failed images
+  const defaultImage =
+    "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
+
+  // If no item is provided, show a loading state
   if (!item) {
     return (
       <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -21,33 +30,19 @@ export default function SingleItemCard({
     );
   }
 
-  // Default placeholder image
-  const defaultImage =
-    "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
-
-  // Only show the loading state when we have no item at all
-  if (!item && isLoading) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin mb-4 mx-auto"></div>
-        <p>Loading item details...</p>
-      </div>
-    );
-  }
-
-  // Show error only when we have no item
+  // If we have an error but no item, show error state
   if (!item && error) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+      <div
+        className="bg-white rounded-lg shadow-md p-8 text-center"
+        role="alert"
+      >
         <div className="text-red-500 mb-4">❌</div>
         <p className="text-red-600 font-medium">{error}</p>
         <p className="text-gray-500 mt-2">Please try again later</p>
       </div>
     );
   }
-
-  // If we have an item but also an error, show a warning banner
-  const hasWarning = error && item;
 
   // Use the full image for detailed view - with fallbacks for different structures
   const imgSrc =
@@ -57,19 +52,20 @@ export default function SingleItemCard({
     item.thumbnailUrl || // Original structure fallback
     defaultImage; // Default fallback
 
-  // Field display helper with safeguards against missing values
+  /**
+   * Display a field with its label if the value exists
+   */
   const DisplayField = ({ label, value, className = "" }) => {
-    // Additional safety checks
+    // Skip empty values
     if (value === undefined || value === null) return null;
     if (Array.isArray(value) && value.length === 0) return null;
     if (value === "") return null;
 
-    // Safe conversion for arrays and other types
+    // Format the display value
     let displayValue;
     try {
       displayValue = Array.isArray(value) ? value.join(", ") : String(value);
-    } catch (error) {
-      console.error(`Error formatting field ${label}:`, error);
+    } catch {
       displayValue = String(value);
     }
 
@@ -81,7 +77,9 @@ export default function SingleItemCard({
     );
   };
 
-  // Returns true if a section has data to display
+  /**
+   * Check if a value has data worth displaying
+   */
   const hasData = (value) => {
     if (value === undefined || value === null) return false;
     if (typeof value === "string") return value.trim() !== "";
@@ -97,11 +95,15 @@ export default function SingleItemCard({
         <div
           className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
           onClick={() => setShowFullImage(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fullsize image view"
         >
           <div className="relative max-w-5xl max-h-screen">
             <button
               className="absolute top-2 right-2 bg-white rounded-full p-2"
               onClick={() => setShowFullImage(false)}
+              aria-label="Close fullsize image"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -126,12 +128,15 @@ export default function SingleItemCard({
           </div>
         </div>
       )}
+
       <div className="md:flex">
         {/* Image Section */}
         <div className="md:w-3/5 lg:w-1/2">
           <div
             className="relative bg-gray-100 aspect-square cursor-pointer"
             onClick={() => setShowFullImage(true)}
+            role="button"
+            aria-label="Click to see fullsize image"
           >
             {/* Loading spinner */}
             {!imageLoaded && (
@@ -150,7 +155,6 @@ export default function SingleItemCard({
               onLoad={() => setImageLoaded(true)}
               onError={() => {
                 if (imgSrc !== defaultImage) {
-                  console.error(`Image failed to load: ${imgSrc}`);
                   setImageLoaded(true);
                 }
               }}
@@ -167,7 +171,7 @@ export default function SingleItemCard({
 
         {/* Details Section */}
         <div className="md:w-2/5 lg:w-1/2 p-6">
-          {/* Loading overlay for when detailed data is being fetched */}
+          {/* Loading indicator */}
           {isLoading && (
             <div className="absolute top-2 right-2">
               <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
@@ -332,7 +336,7 @@ export default function SingleItemCard({
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Identifiers
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {hasData(item.identifiers) &&
                   item.identifiers.map((identifier, index) => (
                     <DisplayField
@@ -367,20 +371,18 @@ export default function SingleItemCard({
         </div>
       </div>
 
-      {/* Simplified debugging section */}
-      {(process.env.NODE_ENV === "development" ||
-        import.meta.env?.DEV === true) && (
+      {/* Development-only debugging section */}
+      {isDev && (
         <div className="mt-8 pt-4 border-t border-gray-200">
           <button
             onClick={() => setShowDebug(!showDebug)}
-            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded font-medium"
+            className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded font-medium"
           >
             {showDebug ? "Hide" : "Show"} Debug Data
           </button>
 
           {showDebug && (
             <div className="mt-4">
-              {/* Simple tabs with no fancy styling */}
               <div className="mb-2 flex gap-2">
                 <button
                   onClick={() => setDebugTab("formatted")}
@@ -392,47 +394,12 @@ export default function SingleItemCard({
                 >
                   Formatted Data
                 </button>
-                <button
-                  onClick={() => setDebugTab("raw")}
-                  className={`px-3 py-1 ${
-                    debugTab === "raw"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200"
-                  } rounded`}
-                >
-                  Raw API Data
-                </button>
               </div>
 
-              {/* Debug content */}
               <div className="border border-gray-300 rounded">
-                {debugTab === "formatted" && (
-                  <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
-                    {JSON.stringify(item, null, 2)}
-                  </pre>
-                )}
-
-                {debugTab === "raw" && (
-                  <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
-                    {(() => {
-                      if (rawApiResponse) {
-                        return JSON.stringify(rawApiResponse, null, 2);
-                      } else if (item?.rawData) {
-                        return JSON.stringify(item.rawData, null, 2);
-                      } else if (item?._rawApiResponse) {
-                        return JSON.stringify(item._rawApiResponse, null, 2);
-                      } else if (error) {
-                        return `Error: ${error}\n\nFallback: Using formatted item data for debug\n\n${JSON.stringify(
-                          item,
-                          null,
-                          2
-                        )}`;
-                      } else {
-                        return "Loading raw API data...";
-                      }
-                    })()}
-                  </pre>
-                )}
+                <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
+                  {JSON.stringify(item, null, 2)}
+                </pre>
               </div>
             </div>
           )}
