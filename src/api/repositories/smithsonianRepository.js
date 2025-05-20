@@ -1,18 +1,23 @@
-// Modified getSmithsonianItemDetails with request cancellation
 import axios from "axios";
 
-/* 
-Environment-aware base URL
-  In production: relative URLs (same server)
-  In development: local Express server
-*/
+/**
+ * Environment-aware base URL:
+ * - In production: relative URLs (same server)
+ * - In development: local Express server
+ */
 const API_URL = import.meta.env.PROD ? "" : "http://localhost:3000";
 
+/**
+ * Axios instance for Smithsonian API requests
+ */
 const smithsonianAPI = axios.create({
   baseURL: API_URL,
 });
 
-// Check if in development mode (for logging)
+/**
+ * Check if application is running in development mode
+ * @returns {boolean} True if in development mode
+ */
 const isDevelopment = () => {
   return (
     import.meta.env?.DEV === true ||
@@ -21,65 +26,53 @@ const isDevelopment = () => {
 };
 
 /**
- * Fetch details for a specific item by ID
+ * Fetch details for a specific Smithsonian item by ID
  *
  * @param {string} id - Item ID
  * @param {CancelToken} cancelToken - Optional Axios cancel token
  * @returns {Promise<Object>} - Raw API response
  */
 export const getSmithsonianItemDetails = async (id, cancelToken = null) => {
+  if (!id) {
+    throw new Error("Item ID is required");
+  }
+
   try {
     // For special characters in IDs
     const encodedId = encodeURIComponent(id);
 
-    // Log to debug
-    console.log(`DEBUG TRYING TO FETCH ITEM: ${id}`);
-
-    // Add this debug line
-    console.log(`DEBUG: FETCHING ITEM WITH ID: ${id}`);
-
-    // THIS IS THE KEY: Log what's actually being sent to the server
-    console.log(
-      `Full repository request URL: ${smithsonianAPI.defaults.baseURL}/api/smithsonian/content/${encodedId}`
-    );
-
-    // Add the cancel token to the request if provided
+    // Prepare request configuration
     const requestConfig = {};
     if (cancelToken) {
       requestConfig.cancelToken = cancelToken;
     }
 
-    // Add a debounce delay to help with rate limiting
-    // This introduces a small artificial delay to spread out requests
+    // Log in development mode only
     if (isDevelopment()) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      console.log(`Fetching Smithsonian item: ${id}`);
     }
 
+    // Make the API request
     const response = await smithsonianAPI.get(
       `/api/smithsonian/content/${encodedId}`,
       requestConfig
     );
 
-    // If successful, log what worked
-    console.log(`SUCCESS! Got data for item: ${id}`);
-
     return response.data;
   } catch (error) {
-    // Check if this is a cancelled request
+    // Handle cancelled requests
     if (axios.isCancel(error)) {
-      console.log(`Request for item ${id} was cancelled`);
+      if (isDevelopment()) {
+        console.log(`Request for item ${id} was cancelled`);
+      }
       throw error;
     }
 
-    console.error(
-      `Smithsonian Repository: Error fetching item details for ${id}`,
-      error
-    );
+    // Handle other errors
+    console.error(`Error fetching Smithsonian item ${id}:`, error.message);
     throw error;
   }
 };
-
-// Other existing methods remain unchanged
 
 /**
  * Make a search request to the Smithsonian API
@@ -96,12 +89,17 @@ export const searchSmithsonianItems = async (
   rows = 10,
   additionalParams = {}
 ) => {
+  if (!query) {
+    throw new Error("Search query is required");
+  }
+
   try {
-    if (isDevelopment()) {
-      console.log(
-        `Repository: Searching for "${query}", start=${start}, rows=${rows}`
-      );
-    }
+    //  Debug fetch log
+    // if (isDevelopment()) {
+    //   console.log(
+    //     `Searching Smithsonian: "${query}", start=${start}, rows=${rows}`
+    //   );
+    // }
 
     const response = await smithsonianAPI.get("/api/smithsonian/search", {
       params: {
@@ -113,17 +111,15 @@ export const searchSmithsonianItems = async (
       },
     });
 
-    if (isDevelopment()) {
-      console.log(
-        `Repository: Received ${
-          response.data?.response?.rowCount || 0
-        } total results`
-      );
-    }
+    //  Debug fetch log
+    // if (isDevelopment()) {
+    //   const resultCount = response.data?.response?.rowCount || 0;
+    //   console.log(`Smithsonian search returned ${resultCount} total results`);
+    // }
 
     return response.data;
   } catch (error) {
-    console.error("Smithsonian Repository: Error searching items", error);
+    console.error(`Error searching Smithsonian items: ${error.message}`);
     throw error;
   }
 };

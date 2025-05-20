@@ -1,4 +1,3 @@
-// Fixed SearchContext.jsx with request cancellation and better caching
 import {
   createContext,
   useContext,
@@ -6,13 +5,19 @@ import {
   useCallback,
   useRef,
 } from "react";
-// Use the new museumService
+import axios from "axios";
 import { searchItems, getItemDetails } from "../api/museumService";
 import searchResultsManager from "../utils/searchResultsManager";
-import axios from "axios"; // Make sure axios is imported
 
+/**
+ * Context for managing search state and operations across the application
+ */
 const SearchContext = createContext();
 
+/**
+ * Hook to access the search context
+ * @returns {Object} Search context value
+ */
 export function useSearch() {
   const context = useContext(SearchContext);
   if (!context) {
@@ -21,11 +26,11 @@ export function useSearch() {
   return context;
 }
 
-// Simple cache for item details
-const itemDetailsCache = new Map();
-
+/**
+ * Provider component for search functionality
+ */
 export function SearchProvider({ children }) {
-  // State variables
+  // Search state
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,10 +42,11 @@ export function SearchProvider({ children }) {
   const [searchInProgress, setSearchInProgress] = useState(false);
   const [progress, setProgress] = useState(null);
   const [isFromCache, setIsFromCache] = useState(false);
-  const [pageSize] = useState(25); // default to 25 results per page (will change)
+  const [pageSize] = useState(25);
   const [hasFullResults, setHasFullResults] = useState(false);
   const [itemsWithImagesCount, setItemsWithImagesCount] = useState(0);
-  //  Single item state
+
+  // Item detail state
   const [currentItem, setCurrentItem] = useState(null);
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState(null);
@@ -48,7 +54,14 @@ export function SearchProvider({ children }) {
   // Reference to current request cancelation token
   const cancelTokenRef = useRef(null);
 
-  /* Fetch details for a specific item */
+  // Simple cache for item details
+  const itemDetailsCache = useRef(new Map());
+
+  /**
+   * Fetch details for a specific item
+   * @param {string} itemId - ID of the item to fetch
+   * @returns {Promise<Object>} - Item details
+   */
   const fetchItemDetails = useCallback(
     async (itemId) => {
       if (!itemId) return;
@@ -70,11 +83,10 @@ export function SearchProvider({ children }) {
 
         // Check cache first
         const cacheKey = `smithsonian:${itemId}`;
-        if (itemDetailsCache.has(cacheKey)) {
-          console.log(`Using cached item details for ${itemId}`);
-          setCurrentItem(itemDetailsCache.get(cacheKey));
+        if (itemDetailsCache.current.has(cacheKey)) {
+          setCurrentItem(itemDetailsCache.current.get(cacheKey));
           setItemLoading(false);
-          return itemDetailsCache.get(cacheKey);
+          return itemDetailsCache.current.get(cacheKey);
         }
 
         // Check if we already have basic item data in our cache
@@ -86,7 +98,6 @@ export function SearchProvider({ children }) {
         }
 
         // Fetch detailed information
-        console.log(`Fetching detailed item info for ${itemId}`);
         const detailedItem = await getItemDetails(
           "smithsonian",
           itemId,
@@ -94,37 +105,35 @@ export function SearchProvider({ children }) {
         );
 
         // Cache the result
-        itemDetailsCache.set(cacheKey, detailedItem);
+        itemDetailsCache.current.set(cacheKey, detailedItem);
 
         // Update with full details
         setCurrentItem(detailedItem);
         return detailedItem;
       } catch (error) {
-        // Check if this was a cancelled request
+        // Ignore canceled requests
         if (axios.isCancel(error)) {
-          console.log("Request canceled:", error.message);
           return;
         }
 
-        console.error("Error fetching item details:", error);
-
-        // Only set error if we don't have a current item
-        setItemError(`Failed to load item details: ${error.message}`);
+        setItemError(
+          `Failed to load item details. ${error.message || "Please try again."}`
+        );
       } finally {
         setItemLoading(false);
       }
     },
     [allCachedItems]
-  ); // Remove currentItem from dependency array
+  );
 
-  /* Search through multiple items */
-
-  // Handle progress updates from the API
+  /**
+   * Handle progress updates from the API
+   */
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
 
     // Update the image count from progress if available
-    if (progressData && progressData.itemsFound) {
+    if (progressData?.itemsFound) {
       setItemsWithImagesCount(progressData.itemsFound);
     }
   }, []);
@@ -137,8 +146,6 @@ export function SearchProvider({ children }) {
       // Store all items for pagination
       setAllCachedItems(allItems);
       setHasFullResults(true);
-
-      // Set the count of items with images
       setItemsWithImagesCount(allItems.length);
 
       // Cache the results
@@ -164,10 +171,12 @@ export function SearchProvider({ children }) {
 
   /**
    * Perform a search
+   * @param {string} searchQuery - Query string to search for
+   * @param {boolean} reset - Whether to reset current results
    */
   const performSearch = useCallback(
     async (searchQuery, reset = true) => {
-      if (!searchQuery || !searchQuery.trim()) {
+      if (!searchQuery?.trim()) {
         return;
       }
 
@@ -183,24 +192,18 @@ export function SearchProvider({ children }) {
           setResults([]);
           setHasFullResults(false);
           setIsFromCache(false);
-          setItemsWithImagesCount(0); // Reset the count when starting a new search
+          setItemsWithImagesCount(0);
         }
 
         // Check cache first
         const cachedResults =
           searchResultsManager.getCachedResults(normalizedQuery);
 
-        if (
-          cachedResults &&
-          cachedResults.items &&
-          cachedResults.items.length > 0
-        ) {
-          // Store all items for pagination
+        if (cachedResults?.items?.length > 0) {
+          // Use cached results
           setAllCachedItems(cachedResults.items);
           setHasFullResults(true);
           setIsFromCache(true);
-
-          // Set the count of items with images from cache
           setItemsWithImagesCount(cachedResults.items.length);
 
           // Get the current page
@@ -216,7 +219,6 @@ export function SearchProvider({ children }) {
           setTotalResults(cachedResults.totalResults);
           setHasMore(searchPage * pageSize < cachedResults.items.length);
           setPage(reset ? 1 : page + 1);
-
           setLoading(false);
           return;
         }
@@ -225,9 +227,8 @@ export function SearchProvider({ children }) {
         setSearchInProgress(true);
 
         const searchPage = reset ? 1 : page;
-        // Use the new museumService with source parameter
         const response = await searchItems(
-          "smithsonian", // Specify the source
+          "smithsonian",
           normalizedQuery,
           searchPage,
           pageSize,
@@ -238,7 +239,7 @@ export function SearchProvider({ children }) {
         setTotalResults(response.total);
 
         // Update the UI with first items
-        if (response.items && response.items.length > 0) {
+        if (response.items?.length > 0) {
           setResults(reset ? response.items : [...results, ...response.items]);
           setHasMore(true);
 
@@ -249,20 +250,24 @@ export function SearchProvider({ children }) {
         }
 
         // Store any initial full results
-        if (response.allItems && response.allItems.length > 0) {
+        if (response.allItems?.length > 0) {
           setAllCachedItems(response.allItems);
         }
 
         // Only update page if items
-        if (response.items && response.items.length > 0) {
+        if (response.items?.length > 0) {
           setPage(reset ? 1 : page + 1);
         }
       } catch (error) {
         setError("Failed to search collections. Please try again.");
-        console.error(error);
+        console.error("Search error:", error.message);
+      } finally {
         setLoading(false);
-        setSearchInProgress(false);
-        setProgress(null);
+        if (!handleSearchCompletion) {
+          // If we're not waiting for completion callback
+          setSearchInProgress(false);
+          setProgress(null);
+        }
       }
     },
     [page, pageSize, results, handleSearchProgress, handleSearchCompletion]
@@ -272,7 +277,7 @@ export function SearchProvider({ children }) {
    * Clear the item details cache
    */
   const clearItemCache = useCallback(() => {
-    itemDetailsCache.clear();
+    itemDetailsCache.current.clear();
   }, []);
 
   /**
@@ -309,7 +314,8 @@ export function SearchProvider({ children }) {
   ]);
 
   /**
-   * Go to a specific page (for pagination)
+   * Go to a specific page
+   * @param {number} pageNumber - Page number to go to
    */
   const changePage = useCallback(
     (pageNumber) => {
@@ -373,6 +379,7 @@ export function SearchProvider({ children }) {
     ? Math.ceil(allCachedItems.length / pageSize)
     : Math.ceil(totalResults / pageSize);
 
+  // Context value
   const value = {
     query,
     results,

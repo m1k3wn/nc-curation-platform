@@ -1,6 +1,7 @@
-// src/api/adapters/smithsonianAdapter.js
-
-// Check if in development mode (for logging)
+/**
+ * Check if application is running in development mode
+ * @returns {boolean} True if in development mode
+ */
 const isDevelopment = () => {
   return (
     import.meta.env?.DEV === true ||
@@ -31,11 +32,10 @@ export const adaptSmithsonianSearchResults = (
   // Process items to extract only those with images and in a clean format
   const processedItems = processItems(items);
 
-  if (isDevelopment()) {
-    console.log(
-      `Adapter: Processed ${processedItems.length} items with images`
-    );
-  }
+  //  Dev fetch log
+  // if (isDevelopment()) {
+  //   console.log(`Processed ${processedItems.length} items with images`);
+  // }
 
   return {
     total: totalResults,
@@ -50,7 +50,6 @@ export const adaptSmithsonianSearchResults = (
  * @param {Object} apiData - Raw API response
  * @returns {Object} - Adapted item details
  */
-
 export const adaptSmithsonianItemDetails = (apiData) => {
   if (!apiData) return null;
 
@@ -70,7 +69,7 @@ export const adaptSmithsonianItemDetails = (apiData) => {
       _rawApiResponse: rawApiResponse,
     };
   } catch (error) {
-    console.error("Error adapting Smithsonian item details:", error);
+    console.error("Error adapting item details:", error.message);
 
     // Fall back to the basic processed item if organization fails
     try {
@@ -80,7 +79,7 @@ export const adaptSmithsonianItemDetails = (apiData) => {
         _rawApiResponse: rawApiResponse,
       };
     } catch (fallbackError) {
-      console.error("Error in fallback processing:", fallbackError);
+      console.error("Error in fallback processing:", fallbackError.message);
 
       // Return a minimal valid object as last resort
       return {
@@ -93,9 +92,13 @@ export const adaptSmithsonianItemDetails = (apiData) => {
   }
 };
 
-/*  HELPER FUNCTIONS */
+/* ----------------------- HELPER FUNCTIONS ----------------------- */
 
-// Clean HTML tags from text
+/**
+ * Clean HTML tags from text
+ * @param {string} text - Text to clean
+ * @returns {string} - Cleaned text
+ */
 function cleanHtmlTags(text) {
   if (!text) return "";
 
@@ -112,48 +115,44 @@ function cleanHtmlTags(text) {
 
     // Trim excess whitespace
     return cleanedText.trim();
-  } catch (error) {
-    console.error("Error cleaning HTML tags:", error);
+  } catch {
     return String(text || "");
   }
 }
 
-// Process items and extract image URLs with thumbnails
-// Updated processItems function for smithsonianAdapter.js
-
+/**
+ * Process items from search results and extract only those with images
+ * @param {Array} items - Raw item array from search results
+ * @returns {Array} - Processed items with consistent structure
+ */
 function processItems(items) {
   if (!items || !Array.isArray(items)) return [];
 
   return items
     .map((item) => {
       try {
-        // Enhanced image processing logic
+        // Extract image URLs
         const imageData = extractBestImages(item);
 
-        // IMPORTANT: Based on our testing, we know that item.id and item.url
-        // both work with the content endpoint, while record_ID does not.
-        // We prioritize item.id and item.url
+        // We prioritize item.id and item.url as they work with the content endpoint
         const id = item.id || item.url || "";
 
         return {
-          //  Use the ID that works with the content endpoint
           id: id,
-          //  Store the record_ID as a separate property for reference
           recordId: item.content?.descriptiveNonRepeating?.record_ID || "",
           title: item.title || "Untitled",
           description:
             cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
             "",
-          imageUrl: imageData.fullImage, // Full resolution for detail view
-          thumbnailUrl: imageData.thumbnail, // Thumbnail for ItemCard
+          imageUrl: imageData.fullImage,
+          thumbnailUrl: imageData.thumbnail,
           source: item.unitCode || "Smithsonian",
           datePublished: getDate(item),
           url: item.content?.descriptiveNonRepeating?.record_link || "",
           museum: item.unitCode || "Smithsonian",
         };
-      } catch (error) {
-        console.error("Error processing search item:", error);
-        // Return at least an ID and title for the item
+      } catch {
+        // Return minimal data on error
         return {
           id: item.id || "",
           title: item.title || "Untitled Item",
@@ -164,7 +163,11 @@ function processItems(items) {
     .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0);
 }
 
-// Extract the best available images from item
+/**
+ * Extract the best available images from an item
+ * @param {Object} item - Item from search results
+ * @returns {Object} - Object with fullImage and thumbnail URLs
+ */
 function extractBestImages(item) {
   let fullImage = "";
   let thumbnail = "";
@@ -188,13 +191,10 @@ function extractBestImages(item) {
       fullImage = media.content;
     }
 
-    // For the thumbnail, try multiple sources:
-    // 1. Dedicated thumbnail URL
+    // For the thumbnail, try multiple sources in order of preference
     if (media.thumbnail) {
       thumbnail = media.thumbnail;
-    }
-    // 2. Thumbnail resource in the resources array
-    else if (media.resources && media.resources.length > 0) {
+    } else if (media.resources && media.resources.length > 0) {
       // Look for thumbnail resource
       const thumbResource = media.resources.find(
         (res) =>
@@ -204,9 +204,7 @@ function extractBestImages(item) {
 
       if (thumbResource && thumbResource.url) {
         thumbnail = thumbResource.url;
-      }
-      // 3. Full res image as fallback
-      else {
+      } else {
         const screenResource = media.resources.find(
           (res) =>
             res.label === "Screen Image" ||
@@ -219,24 +217,28 @@ function extractBestImages(item) {
       }
     }
 
-    // 4. Construct thumbnail URL from IDS ID if nothing else is available
+    // Construct thumbnail URL from IDS ID if nothing else is available
     if (!thumbnail && media.idsId) {
       thumbnail = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
     }
 
-    // 5. Use full image as fallback for thumbnail
+    // Use full image as fallback for thumbnail
     if (!thumbnail && fullImage) {
       thumbnail = fullImage;
     }
-  } catch (error) {
-    console.error("Error extracting images:", error);
+  } catch {
+    // Silent fail - return empty strings
   }
 
   return { thumbnail, fullImage };
 }
 
-// Helper function to get the date
-const getDate = (item) => {
+/**
+ * Extract publication date from item
+ * @param {Object} item - Item from search results
+ * @returns {string} - Formatted date or empty string
+ */
+function getDate(item) {
   try {
     if (item.content?.indexedStructured?.date) {
       return Array.isArray(item.content.indexedStructured.date)
@@ -244,22 +246,22 @@ const getDate = (item) => {
         : item.content.indexedStructured.date;
     }
     return "";
-  } catch (error) {
-    console.error("Error getting date:", error);
+  } catch {
     return "";
   }
-};
+}
 
-// Process detailed SINGLE item data
+/**
+ * Process detailed information for a single item
+ * @param {Object} rawItemData - Raw item data from API
+ * @returns {Object} - Processed item with consistent structure
+ */
 function processItemDetails(rawItemData) {
-  // If no data, return null
   if (!rawItemData) return null;
 
   try {
     // Extract the item from response
     const data = rawItemData.response || rawItemData;
-
-    /* Processing data points */
 
     // Process image data
     const mediaContent =
@@ -275,61 +277,6 @@ function processItemDetails(rawItemData) {
     // Extract free text fields by label
     const freetext = data.content?.freetext || {};
 
-    // Get content from a freetext field by label
-    const getFreetextContent = (field, label = null) => {
-      try {
-        if (!freetext[field]) return [];
-
-        if (label) {
-          return freetext[field]
-            .filter(
-              (item) => item.label === label || item.label.includes(label)
-            )
-            .map((item) => item.content);
-        }
-
-        return freetext[field].map((item) => ({
-          label: item.label,
-          content: item.content,
-        }));
-      } catch (error) {
-        console.error(`Error extracting freetext field ${field}:`, error);
-        return [];
-      }
-    };
-
-    // Concatenate multiple description entries
-    function combineNotesByLabel(notes) {
-      try {
-        if (!notes || !Array.isArray(notes) || notes.length === 0) return [];
-
-        // Create an object to group notes by label
-        const groupedNotes = {};
-
-        // Group all notes with the same label
-        notes.forEach((note) => {
-          if (!note || !note.label) return;
-
-          if (!groupedNotes[note.label]) {
-            groupedNotes[note.label] = [];
-          }
-
-          if (note.content) {
-            groupedNotes[note.label].push(note.content);
-          }
-        });
-
-        // Convert back to array format but combine multiple contents into paragraphs
-        return Object.entries(groupedNotes).map(([label, contents]) => ({
-          label,
-          content: contents.join("\n\n"), // Join with double newlines for paragraph separation
-        }));
-      } catch (error) {
-        console.error("Error combining notes:", error);
-        return [];
-      }
-    }
-
     // Extract creator information
     const creatorInfo = freetext.name
       ? freetext.name.map((item) => ({
@@ -339,25 +286,15 @@ function processItemDetails(rawItemData) {
       : [];
 
     // Institution and collection sorting
-    const rawSetNames = getFreetextContent("setName").map(
+    const rawSetNames = getFreetextContent(freetext, "setName").map(
       (item) => item.content
     );
 
     // Extract collection types with error handling
-    let collectionTypes = [];
-    try {
-      collectionTypes = rawSetNames.map((str) => {
-        if (!str) return "";
-        const parts = str.split(",");
-        // If there's a comma, return ONLY the first part after the comma
-        return parts.length > 1 ? parts[1].trim() : str;
-      });
-    } catch (error) {
-      console.error("Error extracting collection types:", error);
-    }
+    const collectionTypes = extractCollectionTypes(rawSetNames);
 
     // Build the processed item
-    const processedItem = {
+    return {
       // Basic identification
       id: data.id || "",
       title:
@@ -371,7 +308,8 @@ function processItemDetails(rawItemData) {
         data.unitCode ||
         data.content?.descriptiveNonRepeating?.unit_code ||
         "Smithsonian",
-      dataSource: getFreetextContent("dataSource")?.[0]?.content || "",
+      dataSource:
+        getFreetextContent(freetext, "dataSource")?.[0]?.content || "",
       museum: data.unitCode || "Smithsonian",
       recordId: data.content?.descriptiveNonRepeating?.record_ID || "",
 
@@ -380,17 +318,18 @@ function processItemDetails(rawItemData) {
       thumbnailUrl: imageData.thumbnail || "",
 
       // Dates
-      dateCollected: getFreetextContent("date", "Collection Date")?.[0] || "",
+      dateCollected:
+        getFreetextContent(freetext, "date", "Collection Date")?.[0] || "",
       datePublished:
         (Array.isArray(data.content?.indexedStructured?.date)
           ? data.content?.indexedStructured?.date[0]
           : data.content?.indexedStructured?.date) ||
-        getFreetextContent("date")?.[0]?.content ||
+        getFreetextContent(freetext, "date")?.[0]?.content ||
         "",
 
       // Location information
       place:
-        getFreetextContent("place")?.[0]?.content ||
+        getFreetextContent(freetext, "place")?.[0]?.content ||
         (Array.isArray(data.content?.indexedStructured?.place)
           ? data.content?.indexedStructured?.place.join(", ")
           : data.content?.indexedStructured?.place) ||
@@ -401,27 +340,29 @@ function processItemDetails(rawItemData) {
       creatorInfo: creatorInfo || [],
 
       // People and organizations
-      collectors: getFreetextContent("name", "Collector") || [],
-      curatorName: getFreetextContent("name", "Curator") || [],
-      bioRegion: getFreetextContent("name", "Biogeographical Region") || [],
+      collectors: getFreetextContent(freetext, "name", "Collector") || [],
+      curatorName: getFreetextContent(freetext, "name", "Curator") || [],
+      bioRegion:
+        getFreetextContent(freetext, "name", "Biogeographical Region") || [],
 
       // Collection information
       setNames: rawSetNames || [],
       collectionTypes: collectionTypes || [],
 
       // Identifiers
-      identifiers: getFreetextContent("identifier") || [],
+      identifiers: getFreetextContent(freetext, "identifier") || [],
 
       // Notes and additional information
-      notes: combineNotesByLabel(getFreetextContent("notes")) || [],
+      notes: combineNotesByLabel(getFreetextContent(freetext, "notes")) || [],
 
       // Raw data (for debugging)
       rawData: data,
     };
-
-    return processedItem;
   } catch (error) {
-    console.error("Error processing item details:", error);
+    if (isDevelopment()) {
+      console.error("Error processing item details:", error.message);
+    }
+
     // Return minimal information if processing fails
     return {
       id: rawItemData.id || rawItemData.response?.id || "",
@@ -433,8 +374,88 @@ function processItemDetails(rawItemData) {
 }
 
 /**
+ * Get content from a freetext field by label
+ * @param {Object} freetext - The freetext object from API response
+ * @param {string} field - Field name to extract
+ * @param {string|null} label - Optional label to filter by
+ * @returns {Array} - Array of content items
+ */
+function getFreetextContent(freetext, field, label = null) {
+  try {
+    if (!freetext || !freetext[field]) return [];
+
+    if (label) {
+      return freetext[field]
+        .filter((item) => item.label === label || item.label.includes(label))
+        .map((item) => item.content);
+    }
+
+    return freetext[field].map((item) => ({
+      label: item.label,
+      content: item.content,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Extract collection types from set names
+ * @param {Array} rawSetNames - Array of set names
+ * @returns {Array} - Array of collection types
+ */
+function extractCollectionTypes(rawSetNames) {
+  try {
+    return rawSetNames.map((str) => {
+      if (!str) return "";
+      const parts = str.split(",");
+      // If there's a comma, return ONLY the first part after the comma
+      return parts.length > 1 ? parts[1].trim() : str;
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Combine multiple notes with the same label
+ * @param {Array} notes - Array of note objects
+ * @returns {Array} - Array of combined notes
+ */
+function combineNotesByLabel(notes) {
+  try {
+    if (!notes || !Array.isArray(notes) || notes.length === 0) return [];
+
+    // Create an object to group notes by label
+    const groupedNotes = {};
+
+    // Group all notes with the same label
+    notes.forEach((note) => {
+      if (!note || !note.label) return;
+
+      if (!groupedNotes[note.label]) {
+        groupedNotes[note.label] = [];
+      }
+
+      if (note.content) {
+        groupedNotes[note.label].push(note.content);
+      }
+    });
+
+    // Convert back to array format but combine multiple contents into paragraphs
+    return Object.entries(groupedNotes).map(([label, contents]) => ({
+      label,
+      content: contents.join("\n\n"), // Join with double newlines for paragraph separation
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Organize item data into clear categories for UI display
- * This moves formatting logic out of the UI component
+ * @param {Object} item - Processed item data
+ * @returns {Object} - Organized item data for UI
  */
 function organizeItemForDisplay(item) {
   if (!item) return null;
@@ -448,7 +469,6 @@ function organizeItemForDisplay(item) {
       recordId: item.recordId || item.id || "",
 
       // Preserve original format keys for backward compatibility
-      // This ensures the component will work with either data format
       ...item,
 
       // Enhanced organized data
@@ -474,7 +494,6 @@ function organizeItemForDisplay(item) {
       location: {
         place: item.place || "",
         geoLocation: item.geoLocation || null,
-        coordinates: formatCoordinates(item.geoLocation),
       },
 
       creators: organizeCreatorInfo(item.creatorInfo),
@@ -488,34 +507,22 @@ function organizeItemForDisplay(item) {
         allCollections: item.setNames || [],
       },
 
-      descriptions: organiseDescriptions(item.notes),
+      descriptions: organizeDescriptions(item.notes),
 
       // Raw data (for debugging)
       rawData: item.rawData || item,
     };
-  } catch (error) {
-    console.error("Error organizing item for display:", error);
+  } catch {
     // Return the original item to avoid breaking the UI
     return item;
   }
 }
 
-// Helper functions with better error handling
-
-function formatCoordinates(geoLocation) {
-  if (!geoLocation) return null;
-
-  try {
-    if (Array.isArray(geoLocation) && geoLocation.length >= 2) {
-      return `${geoLocation[0]}, ${geoLocation[1]}`;
-    }
-  } catch (error) {
-    console.error("Error formatting coordinates:", error);
-  }
-
-  return null;
-}
-
+/**
+ * Format a list of names into a comma-separated string
+ * @param {Array|string} names - List of names
+ * @returns {string} - Formatted name list
+ */
 function formatNameList(names) {
   try {
     if (!names) return "";
@@ -523,12 +530,16 @@ function formatNameList(names) {
       return names.join(", ");
     }
     return String(names);
-  } catch (error) {
-    console.error("Error formatting name list:", error);
+  } catch {
     return "";
   }
 }
 
+/**
+ * Get the main collection from a list of set names
+ * @param {Array} setNames - List of collection set names
+ * @returns {string} - Main collection name
+ */
 function getMainCollection(setNames) {
   try {
     if (!setNames || !Array.isArray(setNames) || setNames.length === 0) {
@@ -537,12 +548,16 @@ function getMainCollection(setNames) {
 
     const collections = [...setNames].sort((a, b) => a.length - b.length);
     return collections[0] || "";
-  } catch (error) {
-    console.error("Error getting main collection:", error);
+  } catch {
     return "";
   }
 }
 
+/**
+ * Organize creator information into a structured format
+ * @param {Array} creatorInfo - Creator information from the API
+ * @returns {Array} - Structured creator information
+ */
 function organizeCreatorInfo(creatorInfo) {
   try {
     if (
@@ -575,13 +590,17 @@ function organizeCreatorInfo(creatorInfo) {
       names: Array.isArray(names) ? names : [names],
       displayText: Array.isArray(names) ? names.join(", ") : String(names),
     }));
-  } catch (error) {
-    console.error("Error organizing creator info:", error);
+  } catch {
     return [];
   }
 }
 
-function organiseDescriptions(notes) {
+/**
+ * Organize descriptions into a more UI-friendly format
+ * @param {Array} notes - Notes from the API
+ * @returns {Array} - Structured descriptions
+ */
+function organizeDescriptions(notes) {
   try {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
       return [];
@@ -599,8 +618,7 @@ function organiseDescriptions(notes) {
         };
       })
       .filter(Boolean); // Remove null entries
-  } catch (error) {
-    console.error("Error organizing descriptions:", error);
+  } catch {
     return [];
   }
 }

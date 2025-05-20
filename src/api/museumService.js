@@ -1,14 +1,33 @@
+// src/api/museumService.js
 import axios from "axios";
 import { smithsonianConfig } from "./config";
 import * as smithsonianRepository from "./repositories/smithsonianRepository";
 import * as smithsonianAdapter from "./adapters/smithsonianAdapter";
 
-// Check if in development mode (for logging)
+/**
+ * Check if application is running in development mode
+ * @returns {boolean} True if in development mode
+ */
 const isDevelopment = () => {
   return (
     import.meta.env?.DEV === true ||
     (typeof process !== "undefined" && process.env?.NODE_ENV === "development")
   );
+};
+
+/**
+ * Supported API sources
+ * Add new sources here as they become available
+ */
+const SUPPORTED_SOURCES = ["smithsonian"];
+
+/**
+ * Validates if a source is supported
+ * @param {string} source - API source to validate
+ * @returns {boolean} - True if source is supported
+ */
+const isSourceSupported = (source) => {
+  return SUPPORTED_SOURCES.includes(source);
 };
 
 /**
@@ -30,23 +49,42 @@ export const searchItems = async (
   progressCallback = null,
   completionCallback = null
 ) => {
+  if (!query) {
+    throw new Error("Search query is required");
+  }
+
+  if (!isSourceSupported(source)) {
+    throw new Error(
+      `Unsupported source: ${source}. Supported sources are: ${SUPPORTED_SOURCES.join(
+        ", "
+      )}`
+    );
+  }
+
   try {
-    // Currently only handling Smithsonian, but will expand
-    if (source === "smithsonian") {
-      return await searchSmithsonian(
-        query,
-        page,
-        pageSize,
-        progressCallback,
-        completionCallback
-      );
+    // Route to appropriate source-specific implementation
+    switch (source) {
+      case "smithsonian":
+        return await searchSmithsonian(
+          query,
+          page,
+          pageSize,
+          progressCallback,
+          completionCallback
+        );
+
+      // Add other API cases here as needed
+      // case "met":
+      //   return await searchMet(query, page, pageSize, progressCallback, completionCallback);
+
+      default:
+        // This shouldn't happen due to the isSourceSupported check, but just in case
+        throw new Error(`Source implementation not found: ${source}`);
     }
-
-    // Add other APIs here in the future
-
-    throw new Error(`Unsupported source: ${source}`);
   } catch (error) {
-    console.error(`Error searching ${source}:`, error);
+    if (isDevelopment()) {
+      console.error(`Error searching ${source}: ${error.message}`);
+    }
     throw error;
   }
 };
@@ -64,77 +102,119 @@ export const getItemDetails = async (
   id,
   cancelToken = null
 ) => {
+  if (!id) {
+    throw new Error("Item ID is required");
+  }
+
+  if (!isSourceSupported(source)) {
+    throw new Error(
+      `Unsupported source: ${source}. Supported sources are: ${SUPPORTED_SOURCES.join(
+        ", "
+      )}`
+    );
+  }
+
   try {
-    if (source === "smithsonian") {
-      try {
-        console.log(`Fetching item details for ID: ${id}`);
-        // Get the raw data from repository
-        const rawData = await smithsonianRepository.getSmithsonianItemDetails(
-          id,
-          cancelToken
+    // Route to appropriate source-specific implementation
+    switch (source) {
+      case "smithsonian":
+        return await getSmithsonianItemDetails(id, cancelToken);
+
+      // Add other API cases here as needed
+      // case "met":
+      //   return await getMetItemDetails(id, cancelToken);
+
+      default:
+        // This shouldn't happen due to the isSourceSupported check, but just in case
+        throw new Error(`Source implementation not found: ${source}`);
+    }
+  } catch (error) {
+    // Only log non-cancellation errors
+    if (!axios.isCancel(error)) {
+      if (isDevelopment()) {
+        console.error(
+          `Error fetching item details from ${source}: ${error.message}`
         );
-        console.log(`Got raw data for ID: ${id}`);
-
-        // Keep a copy of the original raw data
-        const originalRawData = { ...rawData };
-
-        // Adapt the raw data for display
-        const adaptedData =
-          smithsonianAdapter.adaptSmithsonianItemDetails(rawData);
-        console.log(`Adapted data for ID: ${id}`);
-
-        // Make sure the raw data is preserved
-        if (!adaptedData.rawData) {
-          adaptedData.rawData = originalRawData;
-        }
-        if (!adaptedData._rawApiResponse) {
-          adaptedData._rawApiResponse = originalRawData;
-        }
-
-        return adaptedData;
-      } catch (error) {
-        // If this is a cancellation, just forward the error
-        if (axios.isCancel(error)) {
-          throw error;
-        }
-
-        console.error(`Error in Smithsonian getItemDetails for ${id}:`, error);
-
-        // Check if we have a meaningful error response
-        const errorData = error.response?.data;
-
-        // Create a minimal item with error details
-        return {
-          id: id,
-          title: `Item ${id}`,
-          error: error.message,
-          // Include raw error data for debugging
-          rawData: {
-            error: error.message,
-            status: error.response?.status,
-            data: errorData,
-          },
-          _rawApiResponse: {
-            error: error.message,
-            status: error.response?.status,
-            data: errorData,
-          },
-        };
       }
     }
-
-    // Add other APIs here in the future
-
-    throw new Error(`Unsupported source: ${source}`);
-  } catch (error) {
-    console.error(`Error fetching item details from ${source}:`, error);
     throw error;
   }
 };
 
 /**
+ * Get item details from Smithsonian API
+ *
+ * @param {string} id - Item ID
+ * @param {CancelToken} cancelToken - Optional Axios cancel token
+ * @returns {Promise<Object>} - Item details
+ */
+async function getSmithsonianItemDetails(id, cancelToken = null) {
+  try {
+    if (isDevelopment()) {
+      console.log(`Fetching Smithsonian item details for ID: ${id}`);
+    }
+
+    // Get the raw data from repository
+    const rawData = await smithsonianRepository.getSmithsonianItemDetails(
+      id,
+      cancelToken
+    );
+
+    // Adapt the raw data for display
+    const adaptedData = smithsonianAdapter.adaptSmithsonianItemDetails(rawData);
+
+    // Make sure the raw data is preserved
+    if (!adaptedData.rawData) {
+      adaptedData.rawData = rawData;
+    }
+    if (!adaptedData._rawApiResponse) {
+      adaptedData._rawApiResponse = rawData;
+    }
+
+    return adaptedData;
+  } catch (error) {
+    // Handle cancellation errors silently
+    if (axios.isCancel(error)) {
+      if (isDevelopment()) {
+        console.log(`Request for Smithsonian item ${id} was cancelled`);
+      }
+      throw error;
+    }
+
+    if (isDevelopment()) {
+      console.error(`Error fetching Smithsonian item ${id}: ${error.message}`);
+    }
+
+    // Create a minimal item with error details
+    return {
+      id: id,
+      title: `Item ${id}`,
+      error: error.message,
+      source: "smithsonian",
+      // Include raw error data for debugging
+      rawData: {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      },
+      _rawApiResponse: {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      },
+    };
+  }
+}
+
+/**
  * Search Smithsonian API with batch processing
- * (This retains the batch logic from your original smithsonianService.js)
+ *
+ * @param {string} query - Search query
+ * @param {number} page - Current page number
+ * @param {number} pageSize - Items per page
+ * @param {Function} progressCallback - Callback for search progress
+ * @param {Function} completionCallback - Callback for search completion
+ * @returns {Promise<Object>} - Search results
  */
 async function searchSmithsonian(
   query,
@@ -144,11 +224,12 @@ async function searchSmithsonian(
   completionCallback = null
 ) {
   try {
-    if (isDevelopment()) {
-      console.log(
-        `SearchSmithsonian called with query: "${query}", page: ${page}, pageSize: ${pageSize}`
-      );
-    }
+    //  Dev debug logs
+    // if (isDevelopment()) {
+    //   console.log(
+    //     `Searching Smithsonian: "${query}", page=${page}, pageSize=${pageSize}`
+    //   );
+    // }
 
     // Initial API call to get total count of searchable items
     const initialResponse = await smithsonianRepository.searchSmithsonianItems(
@@ -159,25 +240,23 @@ async function searchSmithsonian(
 
     // Check for valid response
     if (!initialResponse?.response?.rowCount) {
-      if (isDevelopment()) {
-        console.log("No results from API");
-      }
       return { total: 0, items: [], allItems: [] };
     }
 
-    // Defined in config.js
+    // Get configuration values
     const totalResults = initialResponse.response.rowCount;
     const batchSize = smithsonianConfig.batchSize;
     const totalBatches = Math.ceil(totalResults / batchSize);
     const maxBatches = Math.min(totalBatches, smithsonianConfig.maxBatches);
 
-    // Dev DEBUGGING
-    if (isDevelopment()) {
-      console.log(`Total results from API: ${totalResults}`);
-      console.log(`Will fetch in ${maxBatches} batches of ${batchSize} items`);
-    }
+    // Dev logs
+    // if (isDevelopment()) {
+    //   console.log(
+    //     `Found ${totalResults} total results, processing in ${maxBatches} batches`
+    //   );
+    // }
 
-    // Update progress
+    // Initialize progress
     if (progressCallback) {
       progressCallback({
         current: 0,
@@ -187,12 +266,9 @@ async function searchSmithsonian(
       });
     }
 
-    // Fetch the first batch, show initial results to user
+    // Fetch and process first batch
     const firstBatchResponse =
       await smithsonianRepository.searchSmithsonianItems(query, 0, batchSize);
-
-    // Process first batch
-    let allProcessedItems = [];
 
     const firstBatchAdapted = smithsonianAdapter.adaptSmithsonianSearchResults(
       firstBatchResponse,
@@ -200,14 +276,11 @@ async function searchSmithsonian(
       batchSize
     );
 
+    // Store processed items
+    let allProcessedItems = [];
+
     if (firstBatchAdapted.items.length > 0) {
       allProcessedItems = [...firstBatchAdapted.items];
-
-      if (isDevelopment()) {
-        console.log(
-          `First batch found ${firstBatchAdapted.items.length} items with images`
-        );
-      }
 
       // Update progress
       if (progressCallback) {
@@ -220,21 +293,13 @@ async function searchSmithsonian(
       }
     }
 
-    // Check if more batches needed to find items with images
-    let needMoreBatches = allProcessedItems.length === 0 && maxBatches > 1;
+    // Check if we need to fetch a second batch immediately
+    const needMoreBatches = allProcessedItems.length === 0 && maxBatches > 1;
 
-    // If first batch has no results AND we have more batches,
-    // fetch the second batch synchronously before returning
+    // If first batch has no results, fetch second batch synchronously
     if (needMoreBatches) {
       try {
-        if (isDevelopment()) {
-          console.log(
-            "First batch had no items with images, trying second batch"
-          );
-        }
-
-        // Process the second batch synchronously to get quick results
-        const secondBatchItems = await fetchAndProcessBatch(
+        const secondBatchItems = await fetchSmithsonianBatch(
           query,
           batchSize,
           batchSize,
@@ -244,12 +309,6 @@ async function searchSmithsonian(
 
         if (secondBatchItems.length > 0) {
           allProcessedItems = [...secondBatchItems];
-
-          if (isDevelopment()) {
-            console.log(
-              `Second batch found ${secondBatchItems.length} items with images`
-            );
-          }
 
           // Update progress
           if (progressCallback) {
@@ -262,97 +321,144 @@ async function searchSmithsonian(
           }
         }
       } catch (error) {
-        console.error("Error fetching second batch:", error);
+        if (isDevelopment()) {
+          console.error(`Error fetching second batch: ${error.message}`);
+        }
       }
     }
 
-    // For the requested page, prepare results
+    // Prepare results for the requested page
     const startIdx = (page - 1) * pageSize;
     const endIdx = startIdx + pageSize;
     const pageItems = allProcessedItems.slice(startIdx, endIdx);
 
-    // Adjust remaining batches to skip ones already processed
+    // Determine which batches to fetch next
     const firstBatchToProcess = needMoreBatches ? 2 : 1;
 
     // Fetch remaining batches in parallel
-    const remainingBatchPromises = [];
-
-    for (
-      let batchNum = firstBatchToProcess;
-      batchNum < maxBatches;
-      batchNum++
-    ) {
-      const offset = batchNum * batchSize;
-
-      // Create promise for this batch
-      const batchPromise = fetchAndProcessBatch(
+    if (maxBatches > firstBatchToProcess) {
+      fetchRemainingSmithsonianBatches(
         query,
-        offset,
         batchSize,
-        batchNum,
-        maxBatches
-      ).then((batchItems) => {
-        // Update progress when each batch completes
-        if (progressCallback) {
-          const updatedItemCount = allProcessedItems.length + batchItems.length;
-          progressCallback({
-            current: batchNum + 1,
-            total: maxBatches,
-            itemsFound: updatedItemCount,
-            message: `Processing batch ${batchNum + 1}/${maxBatches}...`,
-          });
-        }
-        return batchItems;
-      });
-
-      remainingBatchPromises.push(batchPromise);
-    }
-
-    // Process all remaining batches
-    Promise.all(remainingBatchPromises)
-      .then((batchResults) => {
-        // Combine all batch results
-        let completeItems = [...allProcessedItems];
-
-        batchResults.forEach((batchItems) => {
-          completeItems = [...completeItems, ...batchItems];
-        });
-
-        if (isDevelopment()) {
-          console.log(
-            `All batches complete. Found ${completeItems.length} total items with images`
-          );
-        }
-
-        // Call completion callback with the full results
-        if (completionCallback) {
-          completionCallback(completeItems, totalResults, query);
-        }
-      })
-      .catch((error) => {
-        console.error("Error processing remaining batches:", error);
-      });
-
-    // Return the requested page results immediately
-    if (isDevelopment()) {
-      console.log(
-        `Returning from searchSmithsonian: total=${totalResults}, items=${pageItems.length}, allItems=${allProcessedItems.length}`
+        maxBatches,
+        firstBatchToProcess,
+        allProcessedItems,
+        progressCallback,
+        completionCallback
       );
+    } else if (completionCallback) {
+      // If no more batches to fetch, call completion callback
+      completionCallback(allProcessedItems, totalResults, query);
     }
 
+    // Return current results immediately
     return {
       total: totalResults,
       items: pageItems,
-      allItems: allProcessedItems, // Initial items; will be extended in background
+      allItems: allProcessedItems,
+      source: "smithsonian",
     };
   } catch (error) {
-    console.error("Error searching Smithsonian API:", error);
+    if (isDevelopment()) {
+      console.error(`Error searching Smithsonian API: ${error.message}`);
+    }
     throw error;
   }
 }
 
-// Helper function for batch processing
-async function fetchAndProcessBatch(
+/**
+ * Fetch remaining batches from Smithsonian API in parallel
+ *
+ * @param {string} query - Search query
+ * @param {number} batchSize - Size of each batch
+ * @param {number} maxBatches - Maximum number of batches to process
+ * @param {number} startBatchNum - Batch number to start from
+ * @param {Array} currentItems - Currently processed items
+ * @param {Function} progressCallback - Callback for progress updates
+ * @param {Function} completionCallback - Callback for completion
+ */
+async function fetchRemainingSmithsonianBatches(
+  query,
+  batchSize,
+  maxBatches,
+  startBatchNum,
+  currentItems,
+  progressCallback,
+  completionCallback
+) {
+  const remainingBatchPromises = [];
+
+  // Create promises for all remaining batches
+  for (let batchNum = startBatchNum; batchNum < maxBatches; batchNum++) {
+    const offset = batchNum * batchSize;
+
+    // Create promise for this batch
+    const batchPromise = fetchSmithsonianBatch(
+      query,
+      offset,
+      batchSize,
+      batchNum,
+      maxBatches
+    ).then((batchItems) => {
+      // Update progress when each batch completes
+      if (progressCallback) {
+        progressCallback({
+          current: batchNum + 1,
+          total: maxBatches,
+          itemsFound: currentItems.length + batchItems.length,
+          message: `Processing batch ${batchNum + 1}/${maxBatches}...`,
+        });
+      }
+      return batchItems;
+    });
+
+    remainingBatchPromises.push(batchPromise);
+  }
+
+  // Process all remaining batches
+  Promise.all(remainingBatchPromises)
+    .then((batchResults) => {
+      // Combine all batch results
+      let completeItems = [...currentItems];
+
+      batchResults.forEach((batchItems) => {
+        completeItems = [...completeItems, ...batchItems];
+      });
+
+      if (isDevelopment()) {
+        console.log(
+          `All batches complete. Found ${completeItems.length} total items with images`
+        );
+      }
+
+      // Call completion callback with the full results
+      if (completionCallback) {
+        completionCallback(completeItems, completeItems.length, query);
+      }
+    })
+    .catch((error) => {
+      if (isDevelopment()) {
+        console.error(`Error processing remaining batches: ${error.message}`);
+      }
+
+      // Still call completion callback with partial results
+      if (completionCallback) {
+        completionCallback(currentItems, currentItems.length, query);
+      }
+    });
+}
+
+/**
+ * Fetch and process a single batch from Smithsonian API
+ *
+ * @param {string} query - Search query
+ * @param {number} offset - Starting offset for this batch
+ * @param {number} batchSize - Size of the batch
+ * @param {number} batchNum - Batch number (zero-based)
+ * @param {number} totalBatches - Total number of batches
+ * @returns {Promise<Array>} - Processed items from this batch
+ */
+async function fetchSmithsonianBatch(
   query,
   offset,
   batchSize,
@@ -360,11 +466,14 @@ async function fetchAndProcessBatch(
   totalBatches
 ) {
   try {
-    if (isDevelopment()) {
-      console.log(
-        `Fetching batch ${batchNum + 1}/${totalBatches} (offset: ${offset})`
-      );
-    }
+    // Debug dev log
+    // if (isDevelopment()) {
+    //   console.log(
+    //     `Fetching Smithsonian batch ${
+    //       batchNum + 1
+    //     }/${totalBatches} (offset: ${offset})`
+    //   );
+    // }
 
     const batchResponse = await smithsonianRepository.searchSmithsonianItems(
       query,
@@ -379,20 +488,35 @@ async function fetchAndProcessBatch(
     );
 
     if (adaptedBatch.items.length > 0) {
-      if (isDevelopment()) {
-        console.log(
-          `Batch ${batchNum + 1} found ${
-            adaptedBatch.items.length
-          } items with images`
-        );
-      }
-
+      //  Dev debug log
+      // if (isDevelopment()) {
+      //   console.log(
+      //     `Batch ${batchNum + 1} found ${
+      //       adaptedBatch.items.length
+      //     } items with images`
+      //   );
+      // }
       return adaptedBatch.items;
     }
 
     return [];
   } catch (error) {
-    console.error(`Error fetching batch ${batchNum + 1}:`, error);
+    if (isDevelopment()) {
+      console.error(`Error fetching batch ${batchNum + 1}: ${error.message}`);
+    }
     return [];
   }
 }
+
+// Template for adding a new API source
+/*
+export const addNewApiSource = () => {
+  // 1. Create a repository file (e.g., metRepository.js)
+  // 2. Create an adapter file (e.g., metAdapter.js)
+  // 3. Add the source to SUPPORTED_SOURCES array above
+  // 4. Implement source-specific methods like:
+  //    - getMetItemDetails()
+  //    - searchMet()
+  // 5. Add the source case to switch statements in searchItems() and getItemDetails()
+}
+*/

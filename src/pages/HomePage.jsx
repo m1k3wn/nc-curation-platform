@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
-// import { Link } from "react-router-dom";
 
+/**
+ * Home page component with search functionality and quick access categories
+ */
 export default function HomePage() {
   const navigate = useNavigate();
 
-  // Museum-related popular searches - placeholder example
+  // Museum-related popular searches
   const popularSearches = [
     "Ancient Egypt",
     "Renaissance Art",
@@ -15,16 +17,21 @@ export default function HomePage() {
     "Greek Pottery",
   ];
 
-  // Museum categories - placeholder example
+  // Museum categories
   const categories = ["Natural History", "Ancient Civilizations", "Modern Art"];
 
-  const handlePopularSearch = (term) => {
+  /**
+   * Navigate to search results for the selected term
+   * @param {string} term - The search term to use
+   */
+  const handleSearch = (term) => {
     navigate(`/search?q=${encodeURIComponent(term)}`);
   };
 
   return (
     <div className="py-12">
       <div className="container mx-auto px-4">
+        {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">
             Discover Museum Collections
@@ -35,6 +42,7 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* Search Bar */}
         <SearchBar />
 
         {/* Popular Searches */}
@@ -46,8 +54,9 @@ export default function HomePage() {
             {popularSearches.map((term) => (
               <button
                 key={term}
-                onClick={() => handlePopularSearch(term)}
+                onClick={() => handleSearch(term)}
                 className="px-4 py-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                aria-label={`Search for ${term}`}
               >
                 {term}
               </button>
@@ -55,19 +64,21 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Categories */}
         <div className="mt-16">
           <h2 className="text-2xl font-semibold mb-6 text-center">
             Browse Categories
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {categories.map((category) => (
-              <div
+              <button
                 key={category}
-                className="border border-gray-200 rounded-lg p-8 text-center hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handlePopularSearch(category)}
+                className="border border-gray-200 rounded-lg p-8 text-center hover:shadow-md transition-shadow"
+                onClick={() => handleSearch(category)}
+                aria-label={`Browse ${category} category`}
               >
                 <h3 className="text-xl font-medium">{category}</h3>
-              </div>
+              </button>
             ))}
           </div>
         </div>
