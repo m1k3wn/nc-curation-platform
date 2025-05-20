@@ -1,5 +1,5 @@
-// ItemPage.jsx
-import { useEffect } from "react";
+// ItemPage.jsx - Properly fixed version
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import SingleItemCard from "../components/search/SingleItemCard";
 import { useSearch } from "../context/SearchContext";
@@ -8,12 +8,38 @@ export default function ItemPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentItem, itemLoading, itemError, fetchItemDetails } = useSearch();
+  const [rawApiResponse, setRawApiResponse] = useState(null);
 
+  // Normal item fetch through the context - only when ID changes
   useEffect(() => {
     if (id) {
+      console.log(`Fetching item details for ID: ${id}`);
       fetchItemDetails(id);
+
+      // Reset raw API response when ID changes
+      setRawApiResponse(null);
     }
   }, [id, fetchItemDetails]);
+
+  // Set raw API response only when currentItem changes and we have a new item
+  useEffect(() => {
+    if (currentItem && id) {
+      console.log("Processing raw API response from currentItem");
+
+      // Check all possible properties where raw data might be stored
+      if (currentItem.rawData) {
+        console.log("Found rawData property");
+        setRawApiResponse(currentItem.rawData);
+      } else if (currentItem._rawApiResponse) {
+        console.log("Found _rawApiResponse property");
+        setRawApiResponse(currentItem._rawApiResponse);
+      } else {
+        // If no raw data found, use the currentItem itself for debugging
+        console.log("No raw data found, using currentItem for debug");
+        setRawApiResponse(currentItem);
+      }
+    }
+  }, [currentItem, id]);
 
   const handleBackClick = () => {
     navigate(-1); // Go back to previous page
@@ -41,6 +67,18 @@ export default function ItemPage() {
         Back to results
       </button>
 
+      {/* Debug panel in development mode */}
+      {(import.meta.env?.DEV === true ||
+        process.env.NODE_ENV === "development") && (
+        <div className="mb-4 p-3 bg-gray-100 rounded text-sm">
+          <h3 className="font-bold">Debug Info:</h3>
+          <div>Item ID: {id}</div>
+          <div>Has currentItem: {currentItem ? "Yes" : "No"}</div>
+          <div>Has rawApiResponse: {rawApiResponse ? "Yes" : "No"}</div>
+          <div>Error: {itemError || "None"}</div>
+        </div>
+      )}
+
       {/* Error message */}
       {itemError && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6">
@@ -57,7 +95,12 @@ export default function ItemPage() {
 
       {/* Item details */}
       {currentItem && (
-        <SingleItemCard item={currentItem} isLoading={itemLoading} />
+        <SingleItemCard
+          item={currentItem}
+          isLoading={itemLoading}
+          error={itemError}
+          rawApiResponse={rawApiResponse}
+        />
       )}
     </div>
   );

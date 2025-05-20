@@ -1,11 +1,17 @@
-// SingleItemCard.jsx
+// SingleItemCard.jsx - Fixed version
 import { useState } from "react";
 
-export default function SingleItemCard({ item, isLoading }) {
+export default function SingleItemCard({
+  item,
+  isLoading,
+  error,
+  // For debugging and data processing
+  rawApiResponse,
+}) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
-  //  For debugging only
   const [showDebug, setShowDebug] = useState(false);
+  const [debugTab, setDebugTab] = useState("formatted");
 
   if (!item) {
     return (
@@ -19,14 +25,53 @@ export default function SingleItemCard({ item, isLoading }) {
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  // Use the full image for detailed view
-  const imgSrc = item.imageUrl || item.thumbnailUrl || defaultImage;
+  // Only show the loading state when we have no item at all
+  if (!item && isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin mb-4 mx-auto"></div>
+        <p>Loading item details...</p>
+      </div>
+    );
+  }
 
-  // Field display helper
+  // Show error only when we have no item
+  if (!item && error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="text-red-500 mb-4">❌</div>
+        <p className="text-red-600 font-medium">{error}</p>
+        <p className="text-gray-500 mt-2">Please try again later</p>
+      </div>
+    );
+  }
+
+  // If we have an item but also an error, show a warning banner
+  const hasWarning = error && item;
+
+  // Use the full image for detailed view - with fallbacks for different structures
+  const imgSrc =
+    (item.media && item.media.primaryImage) || // New structure
+    item.imageUrl || // Original structure
+    (item.media && item.media.thumbnail) || // New structure fallback
+    item.thumbnailUrl || // Original structure fallback
+    defaultImage; // Default fallback
+
+  // Field display helper with safeguards against missing values
   const DisplayField = ({ label, value, className = "" }) => {
-    if (!value || (Array.isArray(value) && value.length === 0)) return null;
+    // Additional safety checks
+    if (value === undefined || value === null) return null;
+    if (Array.isArray(value) && value.length === 0) return null;
+    if (value === "") return null;
 
-    const displayValue = Array.isArray(value) ? value.join(", ") : value;
+    // Safe conversion for arrays and other types
+    let displayValue;
+    try {
+      displayValue = Array.isArray(value) ? value.join(", ") : String(value);
+    } catch (error) {
+      console.error(`Error formatting field ${label}:`, error);
+      displayValue = String(value);
+    }
 
     return (
       <div className={`mb-3 ${className}`}>
@@ -34,6 +79,15 @@ export default function SingleItemCard({ item, isLoading }) {
         <p className="text-gray-800">{displayValue}</p>
       </div>
     );
+  };
+
+  // Returns true if a section has data to display
+  const hasData = (value) => {
+    if (value === undefined || value === null) return false;
+    if (typeof value === "string") return value.trim() !== "";
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value).length > 0;
+    return true;
   };
 
   return (
@@ -66,18 +120,15 @@ export default function SingleItemCard({ item, isLoading }) {
             </button>
             <img
               src={imgSrc}
-              alt={item.title}
+              alt={item.title || "Item image"}
               className="max-w-full max-h-screen object-contain"
             />
           </div>
         </div>
       )}
-
       <div className="md:flex">
         {/* Image Section */}
         <div className="md:w-3/5 lg:w-1/2">
-          {" "}
-          {/* Changed from md:w-2/5 lg:w-1/3 */}
           <div
             className="relative bg-gray-100 aspect-square cursor-pointer"
             onClick={() => setShowFullImage(true)}
@@ -92,7 +143,7 @@ export default function SingleItemCard({ item, isLoading }) {
             {/* Item image */}
             <img
               src={imgSrc}
-              alt={item.title}
+              alt={item.title || "Item image"}
               className={`w-full h-full object-contain ${
                 imageLoaded ? "opacity-100" : "opacity-0"
               } transition-opacity duration-300`}
@@ -122,43 +173,72 @@ export default function SingleItemCard({ item, isLoading }) {
               <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
             </div>
           )}
-          {/* Title and Scientific Name */}
-          <h1 className="text-2xl font-bold mb-2">{item.title}</h1>
-          {item.scientificNames && item.scientificNames.length > 0 && (
-            <div className="text-gray-600 italic mb-4">
-              {item.scientificNames.map((name, index) => (
-                <div key={index}>{name}</div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold mb-2">
+            {item.title || "Untitled Item"}
+          </h1>
+
+          {/* Date created - supports both structures */}
+          {(item.dates?.display ||
+            item.dateCollected ||
+            item.datePublished) && (
+            <div className="mb-3">
+              {item.dates?.display || item.dateCollected || item.datePublished}
+            </div>
+          )}
+
+          {/* Creator/Maker Information - supports both structures */}
+          {hasData(item.creators) && (
+            <div className="mb-4">
+              {item.creators.map((creator, index) => (
+                <DisplayField
+                  key={index}
+                  label={creator.role || "Creator"}
+                  value={creator.displayText || creator.names?.join(", ")}
+                />
               ))}
             </div>
           )}
 
-          {/* Date created */}
-          <div>{item.dateCollected || item.datePublished}</div>
-
-          {/* Creator/Maker Information */}
-          {item.creatorInfo && item.creatorInfo.length > 0 && (
-            <div className="col-span-1 mb-4">
-              {/* <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Creator
-              </h2> */}
+          {/* Original creator info structure fallback */}
+          {!hasData(item.creators) && hasData(item.creatorInfo) && (
+            <div className="mb-4">
               {item.creatorInfo.map((creator, index) => (
                 <DisplayField
                   key={index}
-                  label={creator.label}
+                  label={creator.label || "Creator"}
                   value={creator.content}
                 />
               ))}
             </div>
           )}
 
-          {/* Source & Collection Information WIP
-          <div className="flex flex-wrap justify-between text-sm text-gray-600 mb-6">
-            <span>{item.source || item.museum}</span>
-            <span>{item.dateCollected || item.datePublished}</span>
-          </div> */}
+          {/* Notes Section - supports both structures */}
+          {hasData(item.descriptions) && (
+            <div className="col-span-1 md:col-span-2 mb-4">
+              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
+                Description
+              </h2>
+              {item.descriptions.map((description, index) => (
+                <div key={index} className="mb-4">
+                  {description.paragraphs &&
+                  description.paragraphs.length > 0 ? (
+                    description.paragraphs.map((paragraph, i) => (
+                      <p key={i} className="text-gray-800 mb-2">
+                        {paragraph}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-gray-800">{description.content}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* Notes Section */}
-          {item.notes && item.notes.length > 0 && (
+          {/* Original notes structure fallback */}
+          {!hasData(item.descriptions) && hasData(item.notes) && (
             <div className="col-span-1 md:col-span-2 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Description
@@ -174,105 +254,186 @@ export default function SingleItemCard({ item, isLoading }) {
               ))}
             </div>
           )}
+
           {/* Main content divided into sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-            {/* Location Section */}
-            <div className="col-span-1 md:col-span-2 mb-4">
-              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Location
-              </h2>
-              <DisplayField label="Place" value={item.place} />
-            </div>
+            {/* Location Section - supports both structures */}
+            {(hasData(item.location?.place) || hasData(item.place)) && (
+              <div className="col-span-1 md:col-span-2 mb-4">
+                <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
+                  Location
+                </h2>
+                <DisplayField
+                  label="Place"
+                  value={item.location?.place || item.place}
+                />
+                {hasData(item.location?.coordinates) && (
+                  <DisplayField
+                    label="Coordinates"
+                    value={item.location.coordinates}
+                  />
+                )}
+              </div>
+            )}
 
-            {/* Collection Information */}
+            {/* Collection Information - supports both structures */}
             <div className="col-span-1 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Collection
               </h2>
-              <DisplayField label="Source" value={item.source || item.museum} />
-              <DisplayField label="Collectors" value={item.collectors} />
-              <DisplayField label="Curator" value={item.curatorName} />
+              <DisplayField
+                label="Source"
+                value={item.source?.name || item.source || item.museum}
+              />
+
+              <DisplayField
+                label="Collectors"
+                value={
+                  item.collection?.collectors ||
+                  (Array.isArray(item.collectors)
+                    ? item.collectors.join(", ")
+                    : item.collectors)
+                }
+              />
+
+              <DisplayField
+                label="Curator"
+                value={
+                  item.collection?.curatorName ||
+                  (Array.isArray(item.curatorName)
+                    ? item.curatorName.join(", ")
+                    : item.curatorName)
+                }
+              />
+
               <DisplayField
                 label="Collection Type"
-                value={item.collectionTypes}
+                value={item.collection?.types || item.collectionTypes}
               />
-              <DisplayField label="Date Collected" value={item.dateCollected} />
+
+              <DisplayField
+                label="Date Collected"
+                value={item.dates?.collected || item.dateCollected}
+              />
+
               <DisplayField
                 label="Biogeographical Region"
-                value={item.bioRegion}
+                value={
+                  item.collection?.bioRegion ||
+                  (Array.isArray(item.bioRegion)
+                    ? item.bioRegion.join(", ")
+                    : item.bioRegion)
+                }
               />
             </div>
 
-            {/* Taxonomic Information */}
-            {/* <div className="col-span-1 mb-4">
-              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Taxonomy
-              </h2>
-              {item.taxonomy && (
-                <>
-                  <DisplayField label="Kingdom" value={item.taxonomy.kingdom} />
-                  <DisplayField label="Phylum" value={item.taxonomy.phylum} />
-                  <DisplayField label="Order" value={item.taxonomy.order} />
-                  <DisplayField label="Family" value={item.taxonomy.family} />
-                </>
-              )}
-              <DisplayField label="Taxonomy Path" value={item.taxonomyPath} />
-            </div> */}
-
-            {/* Identifiers */}
+            {/* Identifiers - supports both structures */}
             <div className="col-span-1 md:col-span-2 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Identifiers
               </h2>
               <div className="grid grid-cols-2 gap-2">
-                {item.identifiers &&
+                {hasData(item.identifiers) &&
                   item.identifiers.map((identifier, index) => (
                     <DisplayField
                       key={index}
-                      label={identifier.label}
+                      label={identifier.label || "Identifier"}
                       value={identifier.content}
                       className="col-span-1"
                     />
                   ))}
                 <DisplayField
                   label="Record ID"
-                  value={item.recordId}
+                  value={item.recordId || item.id}
                   className="col-span-1"
                 />
               </div>
             </div>
           </div>
-          {/* External Link */}
-          {item.url && (
+
+          {/* External Link - supports both structures */}
+          {(item.source?.url || item.url) && (
             <div className="mt-6">
               <a
-                href={item.url}
+                href={item.source?.url || item.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
               >
-                View on Smithsonian
+                View on {item.source?.name || item.source || "Smithsonian"}
               </a>
             </div>
           )}
         </div>
       </div>
-      {/*  debugging - button to show full response object below entry */}
-      {process.env.NODE_ENV === "development" && (
+
+      {/* Simplified debugging section */}
+      {(process.env.NODE_ENV === "development" ||
+        import.meta.env?.DEV === true) && (
         <div className="mt-8 pt-4 border-t border-gray-200">
           <button
             onClick={() => setShowDebug(!showDebug)}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm"
+            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded font-medium"
           >
             {showDebug ? "Hide" : "Show"} Debug Data
           </button>
 
           {showDebug && (
             <div className="mt-4">
-              <h3 className="font-medium mb-2">Raw Response Data:</h3>
-              <pre className="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-96">
-                {JSON.stringify(item.rawData, null, 2)}
-              </pre>
+              {/* Simple tabs with no fancy styling */}
+              <div className="mb-2 flex gap-2">
+                <button
+                  onClick={() => setDebugTab("formatted")}
+                  className={`px-3 py-1 ${
+                    debugTab === "formatted"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200"
+                  } rounded`}
+                >
+                  Formatted Data
+                </button>
+                <button
+                  onClick={() => setDebugTab("raw")}
+                  className={`px-3 py-1 ${
+                    debugTab === "raw"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200"
+                  } rounded`}
+                >
+                  Raw API Data
+                </button>
+              </div>
+
+              {/* Debug content */}
+              <div className="border border-gray-300 rounded">
+                {debugTab === "formatted" && (
+                  <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
+                    {JSON.stringify(item, null, 2)}
+                  </pre>
+                )}
+
+                {debugTab === "raw" && (
+                  <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
+                    {(() => {
+                      if (rawApiResponse) {
+                        return JSON.stringify(rawApiResponse, null, 2);
+                      } else if (item?.rawData) {
+                        return JSON.stringify(item.rawData, null, 2);
+                      } else if (item?._rawApiResponse) {
+                        return JSON.stringify(item._rawApiResponse, null, 2);
+                      } else if (error) {
+                        return `Error: ${error}\n\nFallback: Using formatted item data for debug\n\n${JSON.stringify(
+                          item,
+                          null,
+                          2
+                        )}`;
+                      } else {
+                        return "Loading raw API data...";
+                      }
+                    })()}
+                  </pre>
+                )}
+              </div>
             </div>
           )}
         </div>

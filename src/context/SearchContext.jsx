@@ -1,6 +1,15 @@
-import { createContext, useContext, useState, useCallback } from "react";
-import { searchSmithsonian, getItemDetails } from "../api/smithsonianService";
+// Fixed SearchContext.jsx with request cancellation and better caching
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
+// Use the new museumService
+import { searchItems, getItemDetails } from "../api/museumService";
 import searchResultsManager from "../utils/searchResultsManager";
+import axios from "axios"; // Make sure axios is imported
 
 const SearchContext = createContext();
 
@@ -11,6 +20,9 @@ export function useSearch() {
   }
   return context;
 }
+
+// Simple cache for item details
+const itemDetailsCache = new Map();
 
 export function SearchProvider({ children }) {
   // State variables
@@ -33,14 +45,37 @@ export function SearchProvider({ children }) {
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState(null);
 
+  // Reference to current request cancelation token
+  const cancelTokenRef = useRef(null);
+
   /* Fetch details for a specific item */
   const fetchItemDetails = useCallback(
     async (itemId) => {
       if (!itemId) return;
 
+      // Cancel previous request if exists
+      if (cancelTokenRef.current) {
+        cancelTokenRef.current.cancel("Operation canceled due to new request.");
+      }
+
+      // Create a new cancellation token
+      cancelTokenRef.current = axios.CancelToken.source();
+
       try {
         setItemLoading(true);
         setItemError(null);
+
+        // Clear previous item when fetching a new one
+        setCurrentItem(null);
+
+        // Check cache first
+        const cacheKey = `smithsonian:${itemId}`;
+        if (itemDetailsCache.has(cacheKey)) {
+          console.log(`Using cached item details for ${itemId}`);
+          setCurrentItem(itemDetailsCache.get(cacheKey));
+          setItemLoading(false);
+          return itemDetailsCache.get(cacheKey);
+        }
 
         // Check if we already have basic item data in our cache
         const cachedItem = allCachedItems.find((item) => item.id === itemId);
@@ -50,22 +85,37 @@ export function SearchProvider({ children }) {
           setCurrentItem(cachedItem);
         }
 
-        // Fetch detailed information regardless
-        const detailedItem = await getItemDetails(itemId);
+        // Fetch detailed information
+        console.log(`Fetching detailed item info for ${itemId}`);
+        const detailedItem = await getItemDetails(
+          "smithsonian",
+          itemId,
+          cancelTokenRef.current.token
+        );
+
+        // Cache the result
+        itemDetailsCache.set(cacheKey, detailedItem);
 
         // Update with full details
         setCurrentItem(detailedItem);
         return detailedItem;
       } catch (error) {
+        // Check if this was a cancelled request
+        if (axios.isCancel(error)) {
+          console.log("Request canceled:", error.message);
+          return;
+        }
+
         console.error("Error fetching item details:", error);
-        setItemError("Failed to load item details. Please try again.");
-        // Don't clear currentItem if we previously set it from cache
+
+        // Only set error if we don't have a current item
+        setItemError(`Failed to load item details: ${error.message}`);
       } finally {
         setItemLoading(false);
       }
     },
     [allCachedItems]
-  );
+  ); // Remove currentItem from dependency array
 
   /* Search through multiple items */
 
@@ -175,7 +225,9 @@ export function SearchProvider({ children }) {
         setSearchInProgress(true);
 
         const searchPage = reset ? 1 : page;
-        const response = await searchSmithsonian(
+        // Use the new museumService with source parameter
+        const response = await searchItems(
+          "smithsonian", // Specify the source
           normalizedQuery,
           searchPage,
           pageSize,
@@ -215,6 +267,13 @@ export function SearchProvider({ children }) {
     },
     [page, pageSize, results, handleSearchProgress, handleSearchCompletion]
   );
+
+  /**
+   * Clear the item details cache
+   */
+  const clearItemCache = useCallback(() => {
+    itemDetailsCache.clear();
+  }, []);
 
   /**
    * Load the next page of results
@@ -338,6 +397,7 @@ export function SearchProvider({ children }) {
     itemLoading,
     itemError,
     fetchItemDetails,
+    clearItemCache,
   };
 
   return (
