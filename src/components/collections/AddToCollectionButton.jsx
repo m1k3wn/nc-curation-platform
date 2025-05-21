@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCollections } from "../../context/CollectionsContext";
 
 /**
@@ -9,8 +10,14 @@ import { useCollections } from "../../context/CollectionsContext";
 export default function AddToCollectionButton({ item }) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [feedback, setFeedback] = useState({
+    show: false,
+    message: "",
+    collectionId: null,
+  });
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
+  const navigate = useNavigate();
 
   const {
     collections,
@@ -50,6 +57,16 @@ export default function AddToCollectionButton({ item }) {
     };
   }, []);
 
+  // Clear feedback message after timeout
+  useEffect(() => {
+    if (feedback.show) {
+      const timer = setTimeout(() => {
+        setFeedback({ show: false, message: "", collectionId: null });
+      }, 3000); // Hide after 3 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
+
   /**
    * Toggle collection menu
    */
@@ -61,14 +78,34 @@ export default function AddToCollectionButton({ item }) {
   /**
    * Handle adding/removing item from collection
    */
-  const handleCollectionAction = (e, collectionId) => {
+  const handleCollectionAction = (e, collectionId, collectionName) => {
     e.stopPropagation();
 
     if (itemExistsInCollection(collectionId, item.id)) {
       removeItemFromCollection(collectionId, item.id);
+      setFeedback({
+        show: true,
+        message: `Removed from "${collectionName}"`,
+        collectionId: null,
+      });
     } else {
       addItemToCollection(collectionId, item);
+      setFeedback({
+        show: true,
+        message: `Added to "${collectionName}"`,
+        collectionId: collectionId,
+      });
     }
+
+    setShowMenu(false); // Close the dropdown after action
+  };
+
+  /**
+   * Navigate to the collection
+   */
+  const handleViewCollection = (e, collectionId) => {
+    e.stopPropagation();
+    navigate(`/collections/${collectionId}`);
   };
 
   /**
@@ -78,11 +115,26 @@ export default function AddToCollectionButton({ item }) {
   const handleCreateCollectionClick = (e) => {
     e.stopPropagation();
     setShowMenu(false); // Close the dropdown menu
-    openCreateModal(); // Open the create collection modal
+    openCreateModal(item); // Open the create collection modal with item to add
   };
 
   return (
     <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
+      {/* Feedback message */}
+      {feedback.show && (
+        <div className="absolute -top-10 right-0 bg-gray-800 text-white px-3 py-1 rounded text-sm shadow-lg whitespace-nowrap z-50">
+          {feedback.message}
+          {feedback.collectionId && (
+            <button
+              className="ml-2 text-blue-300 hover:text-blue-200 underline"
+              onClick={(e) => handleViewCollection(e, feedback.collectionId)}
+            >
+              View
+            </button>
+          )}
+        </div>
+      )}
+
       <button
         ref={buttonRef}
         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
@@ -106,7 +158,7 @@ export default function AddToCollectionButton({ item }) {
         </svg>
       </button>
 
-      {/* Collection menu dropdown - render in portal to avoid containment issues */}
+      {/* Collection menu dropdown - render with fixed positioning */}
       {showMenu && (
         <div
           ref={menuRef}
@@ -124,16 +176,42 @@ export default function AddToCollectionButton({ item }) {
           <div className="max-h-48 overflow-y-auto">
             {collections.length > 0 ? (
               collections.map((collection) => (
-                <button
+                <div
                   key={collection.id}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center justify-between"
-                  onClick={(e) => handleCollectionAction(e, collection.id)}
                 >
-                  <span className="truncate">{collection.name}</span>
-                  {itemExistsInCollection(collection.id, item.id) && (
-                    <span className="text-green-600 text-xs">✓</span>
+                  {itemExistsInCollection(collection.id, item.id) ? (
+                    <>
+                      <span className="truncate text-gray-600">
+                        {collection.name}
+                      </span>
+                      <div className="flex items-center">
+                        <span className="text-green-600 text-xs mr-2">✓</span>
+                        <button
+                          className="text-blue-600 text-xs hover:underline"
+                          onClick={(e) =>
+                            handleViewCollection(e, collection.id)
+                          }
+                        >
+                          View
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      className="w-full text-left"
+                      onClick={(e) =>
+                        handleCollectionAction(
+                          e,
+                          collection.id,
+                          collection.name
+                        )
+                      }
+                    >
+                      <span className="truncate">{collection.name}</span>
+                    </button>
                   )}
-                </button>
+                </div>
               ))
             ) : (
               <div className="px-3 py-2 text-xs text-gray-500">

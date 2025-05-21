@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AddToCollectionButton from "../collections/AddToCollectionButton";
 
 /**
  * Displays detailed information about a museum item
@@ -178,10 +179,13 @@ export default function SingleItemCard({ item, isLoading, error }) {
             </div>
           )}
 
-          {/* Title */}
-          <h1 className="text-2xl font-bold mb-2">
-            {item.title || "Untitled Item"}
-          </h1>
+          {/* Title and "Add to Collection" button */}
+          <div className="flex justify-between items-start mb-2">
+            <h1 className="text-2xl font-bold">
+              {item.title || "Untitled Item"}
+            </h1>
+            <AddToCollectionButton item={item} />
+          </div>
 
           {/* Date created - supports both structures */}
           {(item.dates?.display ||
