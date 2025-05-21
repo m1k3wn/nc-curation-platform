@@ -263,6 +263,8 @@ async function searchSmithsonian(
         total: maxBatches,
         itemsFound: 0,
         message: `Found ${totalResults} results. Retrieving items with images...`,
+        batchesCompleted: 0,
+        totalBatches: maxBatches,
       });
     }
 
@@ -317,6 +319,8 @@ async function searchSmithsonian(
               total: maxBatches,
               itemsFound: allProcessedItems.length,
               message: `Found ${allProcessedItems.length} items with images so far...`,
+              batchesCompleted: 1,
+              totalBatches: maxBatches,
             });
           }
         }
@@ -386,66 +390,90 @@ async function fetchRemainingSmithsonianBatches(
   progressCallback,
   completionCallback
 ) {
-  const remainingBatchPromises = [];
+  // config.js defines num of parallel batches
+  const MAX_PARALLEL_REQUESTS = smithsonianConfig.maxParallelRequests;
+  let completeItems = [...currentItems];
+  let processedBatchCount = startBatchNum - 1;
 
-  // Create promises for all remaining batches
-  for (let batchNum = startBatchNum; batchNum < maxBatches; batchNum++) {
-    const offset = batchNum * batchSize;
-
-    // Create promise for this batch
-    const batchPromise = fetchSmithsonianBatch(
-      query,
-      offset,
-      batchSize,
-      batchNum,
-      maxBatches
-    ).then((batchItems) => {
-      // Update progress when each batch completes
-      if (progressCallback) {
-        progressCallback({
-          current: batchNum + 1,
-          total: maxBatches,
-          itemsFound: currentItems.length + batchItems.length,
-          message: `Processing batch ${batchNum + 1}/${maxBatches}...`,
-        });
-      }
-      return batchItems;
-    });
-
-    remainingBatchPromises.push(batchPromise);
+  if (isDevelopment()) {
+    console.log(
+      `Processing remaining batches in groups of ${MAX_PARALLEL_REQUESTS}`
+    );
   }
 
-  // Process all remaining batches
-  Promise.all(remainingBatchPromises)
-    .then((batchResults) => {
-      // Combine all batch results
-      let completeItems = [...currentItems];
-
-      batchResults.forEach((batchItems) => {
-        completeItems = [...completeItems, ...batchItems];
-      });
+  try {
+    // Process batches in groups
+    for (
+      let groupStart = startBatchNum;
+      groupStart < maxBatches;
+      groupStart += MAX_PARALLEL_REQUESTS
+    ) {
+      const groupEnd = Math.min(groupStart + MAX_PARALLEL_REQUESTS, maxBatches);
+      const batchPromises = [];
 
       if (isDevelopment()) {
         console.log(
-          `All batches complete. Found ${completeItems.length} total items with images`
+          `Processing batch group from ${groupStart} to ${groupEnd - 1}`
         );
       }
 
-      // Call completion callback with the full results
-      if (completionCallback) {
-        completionCallback(completeItems, completeItems.length, query);
-      }
-    })
-    .catch((error) => {
-      if (isDevelopment()) {
-        console.error(`Error processing remaining batches: ${error.message}`);
+      // Create promises for this group of batches
+      for (let batchNum = groupStart; batchNum < groupEnd; batchNum++) {
+        const offset = batchNum * batchSize;
+        batchPromises.push(
+          fetchSmithsonianBatch(query, offset, batchSize, batchNum, maxBatches)
+        );
       }
 
-      // Still call completion callback with partial results
-      if (completionCallback) {
-        completionCallback(currentItems, currentItems.length, query);
+      // Process this group in parallel
+      const batchResults = await Promise.all(batchPromises);
+
+      // Update progress and accumulate results for this group
+      for (let i = 0; i < batchResults.length; i++) {
+        const batchItems = batchResults[i];
+        processedBatchCount++;
+
+        // Add items from this batch to our collection
+        completeItems = [...completeItems, ...batchItems];
+
+        // Update progress
+        if (progressCallback) {
+          progressCallback({
+            current: processedBatchCount + 1,
+            total: maxBatches,
+            itemsFound: completeItems.length,
+            message: `Processing batch ${
+              processedBatchCount + 1
+            }/${maxBatches}...`,
+            batchesCompleted: processedBatchCount,
+            totalBatches: maxBatches,
+            newItems: batchItems,
+          });
+        }
       }
-    });
+    }
+
+    // All batches are complete
+    if (isDevelopment()) {
+      console.log(
+        `All batches complete. Found ${completeItems.length} total items with images`
+      );
+    }
+
+    // Call completion callback with the full results
+    if (completionCallback) {
+      completionCallback(completeItems, completeItems.length, query);
+    }
+  } catch (error) {
+    if (isDevelopment()) {
+      console.error(`Error processing remaining batches: ${error.message}`);
+    }
+
+    // Call completion callback with partial results
+    if (completionCallback) {
+      completionCallback(completeItems, completeItems.length, query);
+    }
+  }
 }
 
 /**

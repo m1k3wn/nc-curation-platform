@@ -45,6 +45,9 @@ export function SearchProvider({ children }) {
   const [pageSize] = useState(25);
   const [hasFullResults, setHasFullResults] = useState(false);
   const [itemsWithImagesCount, setItemsWithImagesCount] = useState(0);
+  //  Track batch loading progress and prevent refresh on final return
+  const [batchCount, setBatchCount] = useState(0);
+  const [totalBatchCount, setTotalBatchCount] = useState(0);
 
   // Item detail state
   const [currentItem, setCurrentItem] = useState(null);
@@ -129,6 +132,7 @@ export function SearchProvider({ children }) {
   /**
    * Handle progress updates from the API
    */
+
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
 
@@ -136,8 +140,28 @@ export function SearchProvider({ children }) {
     if (progressData?.itemsFound) {
       setItemsWithImagesCount(progressData.itemsFound);
     }
-  }, []);
 
+    // Simply append new items to results without any tracking or filtering
+    if (progressData?.newItems && progressData.newItems.length > 0) {
+      setResults((current) => [...current, ...progressData.newItems]);
+    }
+
+    // Track batch progress
+    if (progressData?.batchesCompleted !== undefined) {
+      setBatchCount(progressData.batchesCompleted);
+    } else if (progressData?.current !== undefined) {
+      setBatchCount(progressData.current);
+    }
+
+    if (progressData?.totalBatches !== undefined) {
+      setTotalBatchCount(progressData.totalBatches);
+    } else if (progressData?.total !== undefined) {
+      setTotalBatchCount(progressData.total);
+    }
+  }, []);
+  /**
+   * Handle search completion with all results
+   */
   /**
    * Handle search completion with all results
    */
@@ -159,14 +183,19 @@ export function SearchProvider({ children }) {
       );
 
       // Replace current results with the complete set for the current page
-      setResults(currentPageItems);
+      // setResults(currentPageItems);
       setHasMore(page * pageSize < allItems.length);
 
       // Update loading states
       setLoading(false);
       setSearchInProgress(false);
+
+      // Update batch counts to show completion
+      if (totalBatchCount > 0) {
+        setBatchCount(totalBatchCount);
+      }
     },
-    [page, pageSize]
+    [page, pageSize, totalBatchCount]
   );
 
   /**
@@ -193,6 +222,8 @@ export function SearchProvider({ children }) {
           setHasFullResults(false);
           setIsFromCache(false);
           setItemsWithImagesCount(0);
+          setBatchCount(0);
+          setTotalBatchCount(0);
         }
 
         // Check cache first
@@ -405,6 +436,8 @@ export function SearchProvider({ children }) {
     itemError,
     fetchItemDetails,
     clearItemCache,
+    batchCount,
+    totalBatchCount,
   };
 
   return (
