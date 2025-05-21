@@ -7,6 +7,7 @@ import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import CollectionsPage from "./pages/CollectionsPage";
+import CollectionView from "./pages/CollectionView";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import ExplorePage from "./pages/ExplorePage";
 import ItemPage from "./pages/ItemPage";
@@ -34,6 +35,10 @@ export default function App() {
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/user/:username" element={<UserProfilePage />} />
                   <Route path="/collections" element={<CollectionsPage />} />
+                  <Route
+                    path="/collections/:collectionId"
+                    element={<CollectionView />}
+                  />
                   <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/search" element={<SearchResultsPage />} />
                   <Route path="/item/:id" element={<ItemPage />} />
