@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AddToCollectionButton from "../collections/AddToCollectionButton";
 
 /**
  * Card component for displaying a museum item in search results
@@ -130,15 +131,7 @@ export default function ItemCard({ item }) {
           </div>
 
           {/* Action Button */}
-          <button
-            className="w-full bg-gray-100 text-gray-800 py-1.5 rounded hover:bg-gray-200 transition-colors text-sm font-medium"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent card click when button is clicked
-            }}
-            aria-label={`Add ${item.title} to collection`}
-          >
-            Add to Collection
-          </button>
+          <AddToCollectionButton item={item} />
         </div>
       </div>
     </div>

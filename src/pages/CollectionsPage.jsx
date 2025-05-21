@@ -1,89 +1,54 @@
 import { useCollections } from "../context/CollectionsContext";
-import { useAuth } from "../context/AuthContext";
+import CollectionCard from "../components/collections/CollectionCard";
+import EmptyCollectionsList from "../components/collections/EmptyCollectionsList";
 
 export default function CollectionsPage() {
-  const { collections, togglePublished, addCollection } = useCollections();
-  const { currentUser } = useAuth();
+  const { collections, loading, error, openCreateModal } = useCollections();
 
-  const handleCreateCollection = () => {
-    // In a real app, this would open a modal or form
-    const title = prompt("Enter collection name:");
-    if (title) {
-      addCollection({ title, itemCount: 0 });
-    }
-  };
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">My Collections</h1>
+        <div className="flex justify-center items-center py-12">
+          <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
+          <span className="ml-2 text-gray-600">Loading collections...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">My Collections</h1>
+        <div className="bg-red-50 text-red-700 p-4 rounded-md">{error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="py-12">
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Page Header */}
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">My Collections</h1>
-            <button
-              className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              onClick={handleCreateCollection}
-            >
-              New Collection
-            </button>
-          </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">My Collections</h1>
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          onClick={openCreateModal}
+        >
+          + New Collection
+        </button>
+      </div>
 
-          {/* Collections Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {collections.map((collection) => (
-              <div
-                key={collection.id}
-                className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h2 className="text-xl font-semibold">{collection.title}</h2>
-                  <div className="flex items-center">
-                    {collection.isPublished ? (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                        Published
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                        Private
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600 mb-4">
-                  <span>{collection.itemCount} items</span>
-                  <span>Updated {collection.lastUpdated}</span>
-                </div>
-                <div className="flex justify-between">
-                  <button className="text-sm text-gray-600 hover:text-black">
-                    Edit
-                  </button>
-                  <button
-                    className="text-sm text-gray-600 hover:text-black"
-                    onClick={() => togglePublished(collection.id)}
-                  >
-                    {collection.isPublished ? "Unpublish" : "Publish"}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Empty State (hidden when collections exist) */}
-          {collections.length === 0 && (
-            <div className="text-center py-16 bg-gray-50 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">No Collections Yet</h2>
-              <p className="text-gray-600 mb-6">
-                Create your first collection to organize your content.
-              </p>
-              <button
-                className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-                onClick={handleCreateCollection}
-              >
-                Create Collection
-              </button>
-            </div>
-          )}
-        </div>
+      {/* Collections List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {collections.length === 0 ? (
+          <EmptyCollectionsList />
+        ) : (
+          collections.map((collection) => (
+            <CollectionCard key={collection.id} collection={collection} />
+          ))
+        )}
       </div>
     </div>
   );
