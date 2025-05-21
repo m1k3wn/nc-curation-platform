@@ -74,9 +74,10 @@ export default function SearchResultsGrid() {
     totalPages,
     changePage,
     refreshSearch,
+    batchCount,
+    totalBatchCount,
   } = useSearch();
 
-  // If there's an error, show the error message
   if (error) {
     return <ErrorMessage message={error} />;
   }
@@ -85,15 +86,21 @@ export default function SearchResultsGrid() {
   if (searchInProgress && results.length > 0) {
     return (
       <div>
-        <SearchProgress progress={progress} />
+        <SearchProgress
+          progress={progress}
+          batchCount={batchCount} // Add these
+          totalBatchCount={totalBatchCount}
+        />
 
         {/* Results Grid */}
         <div
           className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0"
           aria-live="polite"
         >
-          {results.map((item) => (
-            <ItemCard key={item.id} item={item} />
+          {results.map((item, itemIndex) => (
+            <div key={`${item.id}-${itemIndex}`} role="listitem">
+              <ItemCard item={item} />
+            </div>
           ))}
         </div>
 
@@ -101,7 +108,8 @@ export default function SearchResultsGrid() {
           className="mt-4 bg-yellow-50 p-3 rounded text-yellow-700"
           aria-live="polite"
         >
-          Loading more results in the background...
+          Loading more results in the background...{batchCount} of{" "}
+          {totalBatchCount}
         </div>
       </div>
     );
@@ -129,7 +137,13 @@ export default function SearchResultsGrid() {
       )}
 
       {/* Progress indicator */}
-      {searchInProgress && <SearchProgress progress={progress} />}
+      {searchInProgress && (
+        <SearchProgress
+          progress={progress}
+          batchCount={batchCount}
+          totalBatchCount={totalBatchCount}
+        />
+      )}
 
       {/* Results count */}
       <div className="mb-4 text-gray-600">

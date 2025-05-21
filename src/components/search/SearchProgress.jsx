@@ -7,11 +7,21 @@
  * @param {number} progress.itemsFound - Number of items found so far
  * @param {string} progress.message - Status message
  */
-export default function SearchProgress({ progress }) {
+export default function SearchProgress({
+  progress,
+  batchCount,
+  totalBatchCount,
+}) {
   // Don't render anything if no progress data is available
-  if (!progress) return null;
+  if (!progress && !totalBatchCount) return null;
 
-  const { current, total, itemsFound, message } = progress;
+  // Use explicit batch counts if available, otherwise fall back to progress data
+  const current =
+    batchCount !== undefined ? batchCount : progress?.current || 0;
+  const total =
+    totalBatchCount !== undefined ? totalBatchCount : progress?.total || 1;
+  const itemsFound = progress?.itemsFound || 0;
+  const message = progress?.message || "Searching...";
 
   // Calculate completion percentage
   const percentage = Math.min(Math.floor((current / total) * 100), 100);

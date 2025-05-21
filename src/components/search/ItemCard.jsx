@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
  */
 export default function ItemCard({ item }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
 
   /**
@@ -64,30 +65,40 @@ export default function ItemCard({ item }) {
         {/* Image Container with fixed aspect ratio */}
         <div className="relative bg-gray-100 aspect-[4/3]">
           {/* Loading spinner shown until image loads */}
-          {!imageLoaded && (
+          {!imageLoaded && !imageError && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div
                 className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"
-                aria-hidden="true"
-              ></div>
+                role="status"
+              >
+                <span className="sr-only">Loading image...</span>
+              </div>
             </div>
           )}
 
-          {/* Item image */}
+          {/* Item image with lazy loading */}
           <img
             src={imgSrc}
             alt={item.title || "Museum item"}
-            className={`w-full h-full object-cover ${
+            loading="lazy" // Add native lazy loading
+            className={`w-full h-full object-cover transition-opacity duration-500 ease-in ${
               imageLoaded ? "opacity-100" : "opacity-0"
-            } transition-opacity duration-300`}
+            }`} // Update the transition duration and add ease-in
             onLoad={() => setImageLoaded(true)}
             onError={() => {
+              setImageError(true); // Set error state when image fails to load
               // If image fails to load, skip loading animation
               if (imgSrc !== defaultImage) {
                 setImageLoaded(true);
               }
             }}
           />
+          {/*  Displays error if image fails to load */}
+          {imageError && imgSrc !== defaultImage && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-sm text-gray-500">Image unavailable</span>
+            </div>
+          )}
         </div>
 
         {/* Content section */}
