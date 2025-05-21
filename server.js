@@ -1,4 +1,3 @@
-// server.js - Final production-ready version
 import express from "express";
 import cors from "cors";
 import axios from "axios";
@@ -25,6 +24,8 @@ if (!SMITHSONIAN_API_KEY) {
   );
   process.exit(1);
 }
+
+//  Add in Europeana check
 
 // Create Express app
 const app = express();

@@ -37,7 +37,7 @@ export default function App() {
                   <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/search" element={<SearchResultsPage />} />
                   <Route path="/item/:id" element={<ItemPage />} />
-                  {/* Add a catch-all route for 404 errors */}
+                  {/* Catch-all route for 404 errors */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
