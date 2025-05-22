@@ -73,7 +73,14 @@ export default function CollectionCard({ collection }) {
   const hasPreviewItems = previewItems.length > 0;
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+    <div
+      className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+      onClick={handleViewCollection}
+      role="button"
+      tabIndex="0"
+      aria-label={`View collection ${collection.name}`}
+      onKeyDown={(e) => e.key === "Enter" && handleViewCollection()}
+    >
       {/* Preview images section - show up to 4 items */}
       {hasPreviewItems ? (
         <div className="grid grid-cols-2 gap-px bg-gray-200">
@@ -163,17 +170,16 @@ export default function CollectionCard({ collection }) {
             </button>
           </div>
 
-          <button
-            className="px-3 py-1.5 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 transition-colors text-sm font-medium"
-            onClick={handleViewCollection}
-          >
-            View
-          </button>
+          {/* Keep the View button for visual clarity, but it's now redundant */}
+          <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded text-sm font-medium">
+            {collection.items.length}{" "}
+            {collection.items.length === 1 ? "item" : "items"}
+          </span>
         </div>
 
         {/* Delete confirmation */}
         {isConfirmingDelete && (
-          <div className="mt-3">
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
             <DeleteConfirmation
               onCancel={cancelDelete}
               onConfirm={confirmDelete}

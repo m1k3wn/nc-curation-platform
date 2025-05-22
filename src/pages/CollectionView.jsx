@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useCollections } from "../context/CollectionsContext";
-import ItemCard from "../components/search/ItemCard"; // Adjust path as needed
+import ItemCard from "../components/search/ItemCard";
+import RemoveFromCollectionButton from "../components/collections/RemoveFromCollectionButton";
 
 export default function CollectionView() {
   const { collectionId } = useParams();
@@ -246,7 +247,15 @@ export default function CollectionView() {
       <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0">
         {sortedItems.map((item) => (
           <div key={item.id}>
-            <ItemCard item={item} />
+            <ItemCard
+              item={item}
+              actionButtons={
+                <RemoveFromCollectionButton
+                  item={item}
+                  collectionId={collectionId}
+                />
+              }
+            />
           </div>
         ))}
       </div>
