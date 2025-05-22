@@ -51,9 +51,6 @@ export const adaptSmithsonianSearchResults = (
 export const adaptSmithsonianItemDetails = (apiData) => {
   if (!apiData) return null;
 
-  // Store the raw API response
-  const rawApiResponse = apiData._rawApiResponse || apiData;
-
   try {
     // Get the base processed item
     const baseItem = processItemDetails(apiData);
@@ -61,21 +58,15 @@ export const adaptSmithsonianItemDetails = (apiData) => {
     // Further organize data into clear categories for UI
     const organizedItem = organizeItemForDisplay(baseItem);
 
-    // Add raw API response
-    return {
-      ...organizedItem,
-      _rawApiResponse: rawApiResponse,
-    };
+    // organizedItem already contains _rawApiResponse, no need to add it again
+    return organizedItem;
   } catch (error) {
     console.error("Error adapting item details:", error.message);
 
     // Fall back to the basic processed item if organization fails
     try {
       const processedItem = processItemDetails(apiData);
-      return {
-        ...processedItem,
-        _rawApiResponse: rawApiResponse,
-      };
+      return processedItem; // processedItem already has _rawApiResponse
     } catch (fallbackError) {
       console.error("Error in fallback processing:", fallbackError.message);
 
@@ -83,8 +74,7 @@ export const adaptSmithsonianItemDetails = (apiData) => {
       return {
         id: apiData.id || "unknown",
         title: apiData.title || "Unknown Item",
-        rawData: apiData.response || apiData,
-        _rawApiResponse: rawApiResponse,
+        _rawApiResponse: apiData,
       };
     }
   }
@@ -400,8 +390,8 @@ function processItemDetails(rawItemData) {
       // Notes and additional information
       notes: combineNotesByLabel(getFreetextContent(freetext, "notes")) || [],
 
-      // Raw data (for debugging)
-      rawData: data,
+      // Raw API response (for debugging) - using consistent naming
+      _rawApiResponse: rawItemData,
     };
   } catch (error) {
     if (isDevelopment()) {
@@ -413,7 +403,7 @@ function processItemDetails(rawItemData) {
       id: rawItemData.id || rawItemData.response?.id || "",
       title:
         rawItemData.title || rawItemData.response?.title || "Untitled Item",
-      rawData: rawItemData.response || rawItemData,
+      _rawApiResponse: rawItemData,
     };
   }
 }
@@ -548,8 +538,8 @@ function organizeItemForDisplay(item) {
 
       descriptions: organizeDescriptions(item.notes),
 
-      // Raw data (for debugging)
-      rawData: item.rawData || item,
+      // Raw API response is preserved from the spread above
+      // No need to add it again since ...item already includes _rawApiResponse
     };
   } catch {
     // Return the original item to avoid breaking the UI
