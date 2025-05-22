@@ -62,9 +62,6 @@ const safeLocalStorage = {
 const searchResultsManager = {
   /**
    * Store search results in localStorage
-   * @param {string} query - The search query
-   * @param {Array} items - The items with images
-   * @param {number} totalResults - Total results from API
    */
   storeResults(query, items, totalResults) {
     const normalizedQuery = normalizeQuery(query);
@@ -93,8 +90,6 @@ const searchResultsManager = {
 
   /**
    * Get cached results for a query
-   * @param {string} query - Search query
-   * @returns {Object|null} - Cached data or null if not found/expired
    */
   getCachedResults(query) {
     const normalizedQuery = normalizeQuery(query);
@@ -127,21 +122,8 @@ const searchResultsManager = {
   },
 
   /**
-   * Get a page of results from an array
-   * @param {Array} items - Full array of items
-   * @param {number} page - Page number (1-based)
-   * @param {number} pageSize - Items per page
-   * @returns {Array} - Items for that page
+   * Clear cache for a specific query
    */
-  getPage(items, page, pageSize) {
-    if (!Array.isArray(items)) return [];
-
-    const startIndex = Math.max(0, (page - 1) * pageSize);
-    const endIndex = startIndex + pageSize;
-    return items.slice(startIndex, endIndex);
-  },
-
-  // Clear cache for a specific query
   clearCacheItem(query) {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery);
@@ -152,7 +134,9 @@ const searchResultsManager = {
     }
   },
 
-  // Clear all caches
+  /**
+   * Clear all caches
+   */
   clearAllCaches() {
     const keysToRemove = safeLocalStorage
       .keys()
@@ -165,7 +149,9 @@ const searchResultsManager = {
     }
   },
 
-  // Clear old caches to free up space
+  /**
+   * Clear old caches to free up space
+   */
   clearOldCaches() {
     const cacheEntries = [];
 

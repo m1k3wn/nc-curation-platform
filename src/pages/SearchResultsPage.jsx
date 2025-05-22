@@ -15,11 +15,11 @@ export default function SearchResultsPage() {
   const {
     query,
     performSearch,
+    allResults,
     totalResults,
-    itemsWithImagesCount,
     loading,
     error,
-    searchInProgress,
+    clearSearch,
   } = useSearch();
 
   // Perform search when query param changes
@@ -29,36 +29,37 @@ export default function SearchResultsPage() {
     }
   }, [queryParam, query, performSearch]);
 
+  // Cleanup when navigating away from search results page
+  useEffect(() => {
+    return () => {
+      // Only clear if there's an ongoing search when user navigates away
+      if (loading) {
+        clearSearch();
+      }
+    };
+  }, [loading, clearSearch]);
+
   /**
-   * Get appropriate results message based on current state
-   * @returns {string} - Formatted results message
+   * Get appropriate results message
    */
   const getResultsMessage = () => {
-    if (loading && !itemsWithImagesCount) {
+    if (loading) {
       return "Searching...";
     }
 
-    // No results found
     if (totalResults === 0) {
       return "No results found";
     }
 
-    // We have results but no images
-    if (totalResults > 0 && itemsWithImagesCount === 0) {
-      if (searchInProgress) {
-        return "Searching for items with images...";
-      }
+    const itemsWithImages = allResults?.length || 0;
+
+    if (itemsWithImages === 0) {
       return "No items with images found";
     }
 
-    // Format for displaying both counts
-    const imageCount = searchInProgress
-      ? `${itemsWithImagesCount}+ items with images`
-      : `${itemsWithImagesCount} ${
-          itemsWithImagesCount === 1 ? "item" : "items"
-        } with images`;
-
-    return `Found ${imageCount} (from ${totalResults} total results)`;
+    return `Found ${itemsWithImages.toLocaleString()} ${
+      itemsWithImages === 1 ? "item" : "items"
+    } with images (from ${totalResults.toLocaleString()} total results)`;
   };
 
   return (

@@ -1,3 +1,4 @@
+// src/api/museumService.js
 import axios from "axios";
 import { smithsonianConfig } from "./config";
 import * as smithsonianRepository from "./repositories/smithsonianRepository";
@@ -32,8 +33,6 @@ const isSourceSupported = (source) => {
 export const searchItems = async (
   source = "smithsonian",
   query,
-  page = 1,
-  pageSize = smithsonianConfig.defaultPageSize,
   progressCallback = null
 ) => {
   if (!query) {

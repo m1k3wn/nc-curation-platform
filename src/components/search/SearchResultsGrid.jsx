@@ -17,18 +17,6 @@ const ErrorMessage = ({ message }) => (
 );
 
 /**
- * Loading indicator component
- */
-const LoadingIndicator = () => (
-  <div className="text-center py-16" role="status" aria-live="polite">
-    <div className="inline-block w-12 h-12 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin mb-4">
-      <span className="sr-only">Loading...</span>
-    </div>
-    <p className="text-gray-500">Searching...</p>
-  </div>
-);
-
-/**
  * Empty results message component
  */
 const EmptyResults = () => (
@@ -59,95 +47,56 @@ const CacheIndicator = ({ itemCount, onRefresh }) => (
 );
 
 /**
- * Component to display search results in a grid layout
+ * Component to display search results in a grid layout - SIMPLIFIED
  */
 export default function SearchResultsGrid() {
   const {
     results,
-    allItems,
+    allResults,
     loading,
     error,
-    searchInProgress,
     progress,
     isFromCache,
     page,
     totalPages,
     changePage,
     refreshSearch,
-    batchCount,
-    totalBatchCount,
   } = useSearch();
 
+  // Error state
   if (error) {
     return <ErrorMessage message={error} />;
   }
 
-  // If there are initial results, but more are loading in the background
-  if (searchInProgress && results.length > 0) {
-    return (
-      <div>
-        <SearchProgress
-          progress={progress}
-          batchCount={batchCount} // Add these
-          totalBatchCount={totalBatchCount}
-        />
-
-        {/* Results Grid */}
-        <div
-          className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0"
-          aria-live="polite"
-        >
-          {results.map((item, itemIndex) => (
-            <div key={`${item.id}-${itemIndex}`} role="listitem">
-              <ItemCard item={item} />
-            </div>
-          ))}
-        </div>
-
-        <div
-          className="mt-4 bg-yellow-50 p-3 rounded text-yellow-700"
-          aria-live="polite"
-        >
-          Loading more results in the background...{batchCount} of{" "}
-          {totalBatchCount}
-        </div>
-      </div>
-    );
+  // Loading state - show progress
+  if (loading) {
+    return <SearchProgress progress={progress} />;
   }
 
-  // If there are no results with images, show a message
-  if (!loading && (!results || results.length === 0)) {
+  // Empty results state
+  if (!results || results.length === 0) {
     return <EmptyResults />;
   }
 
-  // If loading initial results, show a loading placeholder
-  if (loading && !searchInProgress) {
-    return <LoadingIndicator />;
-  }
-
-  // Main view - search results grid with pagination
+  // Results state - show grid with pagination
   return (
     <div>
       {/* Cache indicator and refresh button */}
       {isFromCache && (
         <CacheIndicator
-          itemCount={allItems?.length || 0}
+          itemCount={allResults?.length || 0}
           onRefresh={refreshSearch}
-        />
-      )}
-
-      {/* Progress indicator */}
-      {searchInProgress && (
-        <SearchProgress
-          progress={progress}
-          batchCount={batchCount}
-          totalBatchCount={totalBatchCount}
         />
       )}
 
       {/* Results count */}
       <div className="mb-4 text-gray-600">
         Showing {results.length} {results.length === 1 ? "item" : "items"}
+        {allResults?.length > results.length && (
+          <span className="text-gray-500 ml-1">
+            (page {page} of {totalPages})
+          </span>
+        )}
       </div>
 
       {/* Results Grid */}
@@ -164,7 +113,7 @@ export default function SearchResultsGrid() {
       </div>
 
       {/* Pagination */}
-      {results.length > 0 && totalPages > 1 && (
+      {totalPages > 1 && (
         <Pagination
           currentPage={page}
           totalPages={totalPages}

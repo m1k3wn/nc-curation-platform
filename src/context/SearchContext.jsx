@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useRef,
+  useEffect,
 } from "react";
 import axios from "axios";
 import { searchItems, getItemDetails } from "../api/museumService";
@@ -29,46 +30,57 @@ export function useSearch() {
  * Provider component for search functionality - SIMPLIFIED
  */
 export function SearchProvider({ children }) {
-  // SIMPLIFIED Search state
+  // Search state
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [totalResults, setTotalResults] = useState(0);
   const [isFromCache, setIsFromCache] = useState(false);
-
-  // Simple progress state
   const [progress, setProgress] = useState(null);
 
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize] = useState(25);
 
-  // Item detail state (unchanged)
+  // Item detail state
   const [currentItem, setCurrentItem] = useState(null);
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState(null);
 
-  // Reference to current request cancelation token
-  const cancelTokenRef = useRef(null);
-  const searchCancelTokenRef = useRef(null); // Add separate cancel token for search
-
-  // Simple cache for item details
+  // Cancel tokens for requests
+  const itemCancelTokenRef = useRef(null);
+  const searchCancelTokenRef = useRef(null); // Add search cancellation
   const itemDetailsCache = useRef(new Map());
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any ongoing searches when component unmounts
+      if (searchCancelTokenRef.current) {
+        searchCancelTokenRef.current.cancel("Component unmounted");
+      }
+      if (itemCancelTokenRef.current) {
+        itemCancelTokenRef.current.cancel("Component unmounted");
+      }
+    };
+  }, []);
+
   /**
-   * Fetch details for a specific item (unchanged)
+   * Fetch details for a specific item
    */
   const fetchItemDetails = useCallback(async (itemId) => {
     if (!itemId) return;
 
     // Cancel previous request if exists
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel("Operation canceled due to new request.");
+    if (itemCancelTokenRef.current) {
+      itemCancelTokenRef.current.cancel(
+        "Operation canceled due to new request."
+      );
     }
 
     // Create a new cancellation token
-    cancelTokenRef.current = axios.CancelToken.source();
+    itemCancelTokenRef.current = axios.CancelToken.source();
 
     try {
       setItemLoading(true);
@@ -87,7 +99,7 @@ export function SearchProvider({ children }) {
       const detailedItem = await getItemDetails(
         "smithsonian",
         itemId,
-        cancelTokenRef.current.token
+        itemCancelTokenRef.current.token
       );
 
       // Cache the result
@@ -111,14 +123,14 @@ export function SearchProvider({ children }) {
   }, []);
 
   /**
-   * Simple progress callback
+   * Progress callback for search updates
    */
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
   }, []);
 
   /**
-   * SIMPLIFIED: Perform a search - loads ALL results at once
+   * Perform a search - loads ALL results at once
    */
   const performSearch = useCallback(
     async (searchQuery, reset = true) => {
@@ -129,6 +141,14 @@ export function SearchProvider({ children }) {
       const normalizedQuery = searchQuery.trim();
 
       try {
+        // Cancel previous search if exists
+        if (searchCancelTokenRef.current) {
+          searchCancelTokenRef.current.cancel("New search started");
+        }
+
+        // Create new cancel token for this search
+        searchCancelTokenRef.current = axios.CancelToken.source();
+
         setLoading(true);
         setError(null);
         setProgress(null);
@@ -159,10 +179,13 @@ export function SearchProvider({ children }) {
         const response = await searchItems(
           "smithsonian",
           normalizedQuery,
-          1, // page not used in new system
-          pageSize, // pageSize not used in new system
-          handleSearchProgress // Simple progress callback
+          handleSearchProgress
         );
+
+        // Check if request was cancelled during the search
+        if (searchCancelTokenRef.current?.token.reason) {
+          return; // Don't update state if cancelled
+        }
 
         // Set complete results
         setResults(response.items || []);
@@ -177,22 +200,23 @@ export function SearchProvider({ children }) {
           );
         }
       } catch (error) {
+        // Ignore canceled requests
+        if (axios.isCancel(error)) {
+          return;
+        }
+
         setError("Failed to search collections. Please try again.");
         console.error("Search error:", error.message);
       } finally {
-        setLoading(false);
-        setProgress(null);
+        // Only clear loading if this request wasn't cancelled
+        if (!searchCancelTokenRef.current?.token.reason) {
+          setLoading(false);
+          setProgress(null);
+        }
       }
     },
-    [pageSize, handleSearchProgress]
+    [handleSearchProgress]
   );
-
-  /**
-   * Clear the item details cache
-   */
-  const clearItemCache = useCallback(() => {
-    itemDetailsCache.current.clear();
-  }, []);
 
   /**
    * Go to a specific page (for pagination display)
@@ -200,7 +224,6 @@ export function SearchProvider({ children }) {
   const changePage = useCallback((pageNumber) => {
     if (pageNumber < 1) return;
     setPage(pageNumber);
-    // Scroll to top
     window.scrollTo(0, 0);
   }, []);
 
@@ -229,13 +252,17 @@ export function SearchProvider({ children }) {
   const refreshSearch = useCallback(() => {
     if (!query) return;
 
-    // Clear cached results for this query
     searchResultsManager.clearCacheItem(query);
     setIsFromCache(false);
-
-    // Perform fresh search
     performSearch(query, true);
   }, [query, performSearch]);
+
+  /**
+   * Clear the item details cache
+   */
+  const clearItemCache = useCallback(() => {
+    itemDetailsCache.current.clear();
+  }, []);
 
   // Calculate pagination for display
   const totalPages = Math.ceil(results.length / pageSize);
@@ -243,12 +270,12 @@ export function SearchProvider({ children }) {
   const endIdx = startIdx + pageSize;
   const pageResults = results.slice(startIdx, endIdx);
 
-  // Context value - SIMPLIFIED
+  // Context value
   const value = {
     // Search state
     query,
-    results: pageResults, // Show current page only
-    allResults: results, // All results for components that need them
+    results: pageResults,
+    allResults: results,
     loading,
     error,
     totalResults,
@@ -272,13 +299,6 @@ export function SearchProvider({ children }) {
     itemError,
     fetchItemDetails,
     clearItemCache,
-
-    // Legacy props for compatibility (can remove later)
-    hasMore: false,
-    searchInProgress: loading,
-    itemsWithImagesCount: results.length,
-    batchCount: 0,
-    totalBatchCount: 0,
   };
 
   return (
