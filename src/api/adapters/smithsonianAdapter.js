@@ -140,7 +140,7 @@ function processItems(items) {
         return {
           id: id,
           recordId: item.content?.descriptiveNonRepeating?.record_ID || "",
-          title: item.title || "Untitled",
+          title: cleanHtmlTags(item.title) || "Untitled",
           description:
             cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
             "",
@@ -297,10 +297,11 @@ function processItemDetails(rawItemData) {
     return {
       // Basic identification
       id: data.id || "",
-      title:
+      title: cleanHtmlTags(
         data.title ||
-        data.content?.descriptiveNonRepeating?.title?.content ||
-        "Untitled",
+          data.content?.descriptiveNonRepeating?.title?.content ||
+          "Untitled"
+      ),
       url: data.content?.descriptiveNonRepeating?.record_link || "",
 
       // Source information

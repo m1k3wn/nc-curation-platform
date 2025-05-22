@@ -1,0 +1,66 @@
+.
+├── README.md
+├── eslint.config.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── project-tree.txt
+├── public
+├── server.js
+├── src
+│   ├── App.jsx
+│   ├── api
+│   │   ├── adapters
+│   │   │   └── smithsonianAdapter.js
+│   │   ├── cache.js
+│   │   ├── config.js
+│   │   ├── index.js
+│   │   ├── museumService.js
+│   │   └── repositories
+│   │       └── smithsonianRepository.js
+│   ├── assets
+│   ├── components
+│   │   ├── artefact
+│   │   ├── collections
+│   │   │   ├── AddToCollectionButton.jsx
+│   │   │   ├── CollectionCard.jsx
+│   │   │   ├── CollectionModal.jsx
+│   │   │   └── EmptyCollectionsList.jsx
+│   │   ├── common
+│   │   │   └── DeleteConfirmation.jsx
+│   │   ├── layout
+│   │   │   ├── Footer.jsx
+│   │   │   ├── Header.jsx
+│   │   │   └── Layout.jsx
+│   │   └── search
+│   │       ├── ItemCard.jsx
+│   │       ├── Pagination.jsx
+│   │       ├── SearchBar.jsx
+│   │       ├── SearchProgress.jsx
+│   │       ├── SearchResultsGrid.jsx
+│   │       └── SingleItemCard.jsx
+│   ├── context
+│   │   ├── AuthContext.jsx
+│   │   ├── CollectionsContext.jsx
+│   │   └── SearchContext.jsx
+│   ├── hooks
+│   ├── main.jsx
+│   ├── pages
+│   │   ├── AboutPage.jsx
+│   │   ├── CollectionView.jsx
+│   │   ├── CollectionsPage.jsx
+│   │   ├── ExplorePage.jsx
+│   │   ├── HomePage.jsx
+│   │   ├── ItemPage.jsx
+│   │   ├── SearchResultsPage.jsx
+│   │   └── UserProfilePage.jsx
+│   ├── styles
+│   │   ├── App.css
+│   │   └── index.css
+│   └── utils
+│       └── searchResultsManager.js
+├── tailwind.config.js
+└── vite.config.js
+
+18 directories, 46 files
