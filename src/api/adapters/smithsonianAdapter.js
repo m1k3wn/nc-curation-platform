@@ -170,6 +170,7 @@ function processItems(items) {
             cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
             "",
           imageUrl: imageData.fullImage,
+          screenImageUrl: imageData.screenImage,
           thumbnailUrl: imageData.thumbnail,
           source: item.unitCode || "Smithsonian", // Code for internal use
           museum: getMuseumName(item.unitCode) || "Smithsonian Institution", // Readable name for display
@@ -192,10 +193,11 @@ function processItems(items) {
 /**
  * Extract the best available images from an item
  * @param {Object} item - Item from search results
- * @returns {Object} - Object with fullImage and thumbnail URLs
+ * @returns {Object} - Object with fullImage, screenImage, and thumbnail URLs
  */
 function extractBestImages(item) {
   let fullImage = "";
+  let screenImage = "";
   let thumbnail = "";
 
   try {
@@ -204,24 +206,33 @@ function extractBestImages(item) {
       item.content?.descriptiveNonRepeating?.online_media?.media;
 
     if (!mediaContent || mediaContent.length === 0) {
-      return { thumbnail, fullImage };
+      return { thumbnail, screenImage, fullImage };
     }
 
     // Use the first media item
     const media = mediaContent[0];
 
-    // For the full image
+    // For the full resolution image
     if (media.idsId) {
       fullImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
     } else if (media.content) {
       fullImage = media.content;
     }
 
-    // For the thumbnail, try multiple sources in order of preference
-    if (media.thumbnail) {
-      thumbnail = media.thumbnail;
-    } else if (media.resources && media.resources.length > 0) {
-      // Look for thumbnail resource
+    // Extract different image sizes from resources
+    if (media.resources && media.resources.length > 0) {
+      // Look for screen image (medium resolution)
+      const screenResource = media.resources.find(
+        (res) =>
+          res.label === "Screen Image" ||
+          (res.url && res.url.includes("_screen"))
+      );
+
+      if (screenResource && screenResource.url) {
+        screenImage = screenResource.url;
+      }
+
+      // Look for actual thumbnail resource
       const thumbResource = media.resources.find(
         (res) =>
           res.label === "Thumbnail Image" ||
@@ -230,33 +241,38 @@ function extractBestImages(item) {
 
       if (thumbResource && thumbResource.url) {
         thumbnail = thumbResource.url;
-      } else {
-        const screenResource = media.resources.find(
-          (res) =>
-            res.label === "Screen Image" ||
-            (res.url && res.url.includes("_screen"))
-        );
-
-        if (screenResource && screenResource.url) {
-          thumbnail = screenResource.url;
-        }
       }
     }
 
-    // Construct thumbnail URL from IDS ID if nothing else is available
+    // Fallback: Construct URLs from IDS ID if resources not found
+    if (!screenImage && media.idsId) {
+      screenImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_screen`;
+    }
+
     if (!thumbnail && media.idsId) {
       thumbnail = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
     }
 
-    // Use full image as fallback for thumbnail
-    if (!thumbnail && fullImage) {
-      thumbnail = fullImage;
+    // Use media.thumbnail if it's different from fullImage and we don't have a proper thumbnail
+    if (!thumbnail && media.thumbnail && media.thumbnail !== fullImage) {
+      thumbnail = media.thumbnail;
+    }
+
+    // Final fallbacks
+    if (!screenImage && fullImage) {
+      screenImage = fullImage; // Use full image as screen fallback
+    }
+
+    if (!thumbnail && screenImage) {
+      thumbnail = screenImage; // Use screen as thumbnail fallback
+    } else if (!thumbnail && fullImage) {
+      thumbnail = fullImage; // Use full image as last resort
     }
   } catch {
     // Silent fail - return empty strings
   }
 
-  return { thumbnail, fullImage };
+  return { thumbnail, screenImage, fullImage };
 }
 
 /**
@@ -292,16 +308,8 @@ function processItemDetails(rawItemData) {
     // Extract the item from response
     const data = rawItemData.response || rawItemData;
 
-    // Process image data
-    const mediaContent =
-      data.content?.descriptiveNonRepeating?.online_media?.media;
-    const imageData =
-      mediaContent && mediaContent.length > 0
-        ? {
-            fullImage: mediaContent[0].content,
-            thumbnail: mediaContent[0].thumbnail,
-          }
-        : { fullImage: "", thumbnail: "" };
+    // Process image data using the same improved logic
+    const imageData = extractBestImages(data);
 
     // Extract free text fields by label
     const freetext = data.content?.freetext || {};
@@ -346,8 +354,9 @@ function processItemDetails(rawItemData) {
         getFreetextContent(freetext, "dataSource")?.[0]?.content || "",
       recordId: data.content?.descriptiveNonRepeating?.record_ID || "",
 
-      // Images
+      // Images - now using improved extraction with multiple sizes
       imageUrl: imageData.fullImage || "",
+      screenImageUrl: imageData.screenImage || "",
       thumbnailUrl: imageData.thumbnail || "",
 
       // Dates
@@ -509,7 +518,8 @@ function organizeItemForDisplay(item) {
 
       // Enhanced organized data
       media: {
-        primaryImage: item.imageUrl || "",
+        primaryImage: item.screenImageUrl || item.imageUrl || "", // Use screen image for main display
+        fullImage: item.imageUrl || "", // Keep full-res for zoom
         thumbnail: item.thumbnailUrl || "",
       },
 

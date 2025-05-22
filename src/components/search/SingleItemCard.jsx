@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AddToCollectionButton from "../collections/AddToCollectionButton";
+import ImageZoomModal from "../common/ImageZoomModal";
 
 /**
  * Displays detailed information about a museum item
@@ -45,13 +46,19 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   }
 
-  // Use the full image for detailed view - with fallbacks for different structures
-  const imgSrc =
-    (item.media && item.media.primaryImage) || // New structure
-    item.imageUrl || // Original structure
-    (item.media && item.media.thumbnail) || // New structure fallback
-    item.thumbnailUrl || // Original structure fallback
-    defaultImage; // Default fallback
+  // Image selection logic - prefer screen image for main display, full-res for zoom
+  const screenImage =
+    item.media?.primaryImage || // New structure (already prioritises screen)
+    item.screenImageUrl || // Fallback to direct property
+    item.imageUrl; // Final fallback to full image
+
+  const fullResImage =
+    item.media?.fullImage || // New structure
+    item.imageUrl || // Fallback
+    screenImage; // Use screen image if no full-res available
+
+  const displayImage = screenImage || defaultImage;
+  const zoomImage = fullResImage || screenImage || defaultImage;
 
   /**
    * Display a field with its label if the value exists
@@ -91,44 +98,13 @@ export default function SingleItemCard({ item, isLoading, error }) {
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Full-size image modal */}
-      {showFullImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowFullImage(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Fullsize image view"
-        >
-          <div className="relative max-w-5xl max-h-screen">
-            <button
-              className="absolute top-2 right-2 bg-white rounded-full p-2"
-              onClick={() => setShowFullImage(false)}
-              aria-label="Close fullsize image"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-            <img
-              src={imgSrc}
-              alt={item.title || "Item image"}
-              className="max-w-full max-h-screen object-contain"
-            />
-          </div>
-        </div>
-      )}
+      {/* Image Zoom Modal */}
+      <ImageZoomModal
+        isOpen={showFullImage}
+        onClose={() => setShowFullImage(false)}
+        imageUrl={zoomImage}
+        alt={item.title || "Item image"}
+      />
 
       <div className="md:flex">
         {/* Image Section */}
@@ -148,14 +124,14 @@ export default function SingleItemCard({ item, isLoading, error }) {
 
             {/* Item image */}
             <img
-              src={imgSrc}
+              src={displayImage}
               alt={item.title || "Item image"}
               className={`w-full h-full object-contain ${
                 imageLoaded ? "opacity-100" : "opacity-0"
               } transition-opacity duration-300`}
               onLoad={() => setImageLoaded(true)}
               onError={() => {
-                if (imgSrc !== defaultImage) {
+                if (displayImage !== defaultImage) {
                   setImageLoaded(true);
                 }
               }}
