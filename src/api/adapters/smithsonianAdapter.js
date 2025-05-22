@@ -32,11 +32,6 @@ export const adaptSmithsonianSearchResults = (
   // Process items to extract only those with images and in a clean format
   const processedItems = processItems(items);
 
-  //  Dev fetch log
-  // if (isDevelopment()) {
-  //   console.log(`Processed ${processedItems.length} items with images`);
-  // }
-
   return {
     total: totalResults,
     items: processedItems,
@@ -118,6 +113,33 @@ function cleanHtmlTags(text) {
   } catch {
     return String(text || "");
   }
+}
+
+/**
+ * Format dates for display
+ * @param {string} dateStr - Raw date string
+ * @returns {string} - Formatted date
+ */
+function formatDateForDisplay(dateStr) {
+  if (!dateStr) return "";
+  const dateString = String(dateStr);
+
+  // Extract date ranges for decades
+  if (dateString.includes("s")) {
+    const decadePattern = /\d+s/g;
+    const decades = dateString.match(decadePattern);
+
+    // If multiple decades, show range
+    if (decades && decades.length > 1) {
+      return `${decades[0]}–${decades[decades.length - 1]}`;
+    }
+  }
+
+  // Truncate long dates
+  if (dateString.length > 12) {
+    return dateString.substring(0, 12) + "...";
+  }
+  return dateString;
 }
 
 /**
@@ -234,18 +256,21 @@ function extractBestImages(item) {
 }
 
 /**
- * Extract publication date from item
+ * Extract publication date from item and format for display
  * @param {Object} item - Item from search results
  * @returns {string} - Formatted date or empty string
  */
 function getDate(item) {
   try {
+    let dateStr = "";
+
     if (item.content?.indexedStructured?.date) {
-      return Array.isArray(item.content.indexedStructured.date)
+      dateStr = Array.isArray(item.content.indexedStructured.date)
         ? item.content.indexedStructured.date[0]
         : item.content.indexedStructured.date;
     }
-    return "";
+
+    return formatDateForDisplay(dateStr);
   } catch {
     return "";
   }
@@ -320,13 +345,16 @@ function processItemDetails(rawItemData) {
 
       // Dates
       dateCollected:
-        getFreetextContent(freetext, "date", "Collection Date")?.[0] || "",
+        formatDateForDisplay(
+          getFreetextContent(freetext, "date", "Collection Date")?.[0]
+        ) || "",
       datePublished:
-        (Array.isArray(data.content?.indexedStructured?.date)
-          ? data.content?.indexedStructured?.date[0]
-          : data.content?.indexedStructured?.date) ||
-        getFreetextContent(freetext, "date")?.[0]?.content ||
-        "",
+        formatDateForDisplay(
+          (Array.isArray(data.content?.indexedStructured?.date)
+            ? data.content?.indexedStructured?.date[0]
+            : data.content?.indexedStructured?.date) ||
+            getFreetextContent(freetext, "date")?.[0]?.content
+        ) || "",
 
       // Location information
       place:

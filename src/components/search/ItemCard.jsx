@@ -4,8 +4,6 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 
 /**
  * Card component for displaying a museum item in search results
- *
- * @param {Object} item - The item data to display
  */
 export default function ItemCard({ item }) {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -18,33 +16,6 @@ export default function ItemCard({ item }) {
   const handleCardClick = () => {
     navigate(`/item/${item.id}`);
   };
-
-  /**
-   * Format dates for display in the card
-   * @param {string} dateStr - Raw date string
-   * @returns {string} - Formatted date
-   */
-  function formatDateDisplay(dateStr) {
-    if (!dateStr) return "";
-    const dateString = String(dateStr);
-
-    // Extract date ranges for decades
-    if (dateString.includes("s")) {
-      const decadePattern = /\d+s/g;
-      const decades = dateString.match(decadePattern);
-
-      // If multiple decades, show range
-      if (decades && decades.length > 1) {
-        return `${decades[0]}–${decades[decades.length - 1]}`;
-      }
-    }
-
-    // Truncate long dates
-    if (dateString.length > 12) {
-      return dateString.substring(0, 12) + "...";
-    }
-    return dateString;
-  }
 
   // Default placeholder image
   const defaultImage =
@@ -81,20 +52,20 @@ export default function ItemCard({ item }) {
           <img
             src={imgSrc}
             alt={item.title || "Museum item"}
-            loading="lazy" // Add native lazy loading
+            loading="lazy"
             className={`w-full h-full object-cover transition-opacity duration-500 ease-in ${
               imageLoaded ? "opacity-100" : "opacity-0"
-            }`} // Update the transition duration and add ease-in
+            }`}
             onLoad={() => setImageLoaded(true)}
             onError={() => {
-              setImageError(true); // Set error state when image fails to load
-              // If image fails to load, skip loading animation
+              setImageError(true);
               if (imgSrc !== defaultImage) {
                 setImageLoaded(true);
               }
             }}
           />
-          {/*  Displays error if image fails to load */}
+
+          {/* Display error if image fails to load */}
           {imageError && imgSrc !== defaultImage && (
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-sm text-gray-500">Image unavailable</span>
@@ -126,10 +97,8 @@ export default function ItemCard({ item }) {
           <div className="flex justify-between text-xs text-gray-500 mb-3">
             <span>
               {item.source?.name || item.source?.institution || "Smithsonian"}
-            </span>{" "}
-            <span>
-              {item.datePublished ? formatDateDisplay(item.datePublished) : ""}
             </span>
+            <span>{item.datePublished || ""}</span>
           </div>
 
           {/* Action Button */}
