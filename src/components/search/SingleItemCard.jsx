@@ -13,7 +13,6 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
-  const [debugTab, setDebugTab] = useState("formatted");
 
   // Check if in development mode
   const isDev =
@@ -140,7 +139,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
             {/* Zoom indicator */}
             {imageLoaded && (
               <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white p-1 rounded text-xs">
-                Click to zoom
+                View Fullsize Image
               </div>
             )}
           </div>
@@ -364,22 +363,11 @@ export default function SingleItemCard({ item, isLoading, error }) {
           {showDebug && (
             <div className="mt-4">
               <div className="mb-2 flex gap-2">
-                <button
-                  onClick={() => setDebugTab("formatted")}
-                  className={`px-3 py-1 ${
-                    debugTab === "formatted"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200"
-                  } rounded`}
-                >
-                  Formatted Data
-                </button>
-              </div>
-
-              <div className="border border-gray-300 rounded">
-                <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
-                  {JSON.stringify(item, null, 2)}
-                </pre>
+                <div className="border border-gray-300 rounded">
+                  <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
+                    {JSON.stringify(item, null, 2)}
+                  </pre>
+                </div>
               </div>
             </div>
           )}

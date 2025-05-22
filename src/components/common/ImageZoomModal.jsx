@@ -18,11 +18,11 @@ export default function ImageZoomModal({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [lastPan, setLastPan] = useState({ x: 0, y: 0 });
 
   const imageRef = useRef(null);
   const containerRef = useRef(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   // Reset zoom and pan when modal opens/closes
   useEffect(() => {
@@ -30,8 +30,8 @@ export default function ImageZoomModal({
       setZoomLevel(1);
       setImageLoaded(false);
       setPan({ x: 0, y: 0 });
-      setLastPan({ x: 0, y: 0 });
       setIsDragging(false);
+      panStartRef.current = { x: 0, y: 0 };
     }
   }, [isOpen]);
 
@@ -55,30 +55,36 @@ export default function ImageZoomModal({
 
     e.preventDefault();
     setIsDragging(true);
-    setDragStart({
-      x: e.clientX - pan.x,
-      y: e.clientY - pan.y,
-    });
+
+    // Store the starting positions using refs for immediate access
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+    panStartRef.current = { ...pan };
   };
 
   const handleMouseMove = (e) => {
     if (!isDragging || zoomLevel <= 1) return;
 
     e.preventDefault();
-    const sensitivity = 1.5; // Increase sensitivity for more responsive dragging
+    const sensitivity = 1.5;
+
+    // Calculate movement from the original click position
+    const deltaX = (e.clientX - dragStartRef.current.x) * sensitivity;
+    const deltaY = (e.clientY - dragStartRef.current.y) * sensitivity;
+
+    // Add movement to the original pan position
     const newPan = {
-      x: (e.clientX - dragStart.x) * sensitivity,
-      y: (e.clientY - dragStart.y) * sensitivity,
+      x: panStartRef.current.x + deltaX,
+      y: panStartRef.current.y + deltaY,
     };
 
     setPan(newPan);
   };
 
   const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      setLastPan(pan);
-    }
+    setIsDragging(false);
   };
 
   // Touch event handlers for mobile drag functionality
@@ -88,10 +94,13 @@ export default function ImageZoomModal({
     e.preventDefault();
     const touch = e.touches[0];
     setIsDragging(true);
-    setDragStart({
-      x: touch.clientX - pan.x,
-      y: touch.clientY - pan.y,
-    });
+
+    // Store the starting positions using refs for immediate access
+    dragStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+    panStartRef.current = { ...pan };
   };
 
   const handleTouchMove = (e) => {
@@ -99,20 +108,23 @@ export default function ImageZoomModal({
 
     e.preventDefault();
     const touch = e.touches[0];
-    const sensitivity = 1.5; // Same increased sensitivity for touch
+    const sensitivity = 1.5;
+
+    // Calculate movement from the original touch position
+    const deltaX = (touch.clientX - dragStartRef.current.x) * sensitivity;
+    const deltaY = (touch.clientY - dragStartRef.current.y) * sensitivity;
+
+    // Add movement to the original pan position
     const newPan = {
-      x: (touch.clientX - dragStart.x) * sensitivity,
-      y: (touch.clientY - dragStart.y) * sensitivity,
+      x: panStartRef.current.x + deltaX,
+      y: panStartRef.current.y + deltaY,
     };
 
     setPan(newPan);
   };
 
   const handleTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      setLastPan(pan);
-    }
+    setIsDragging(false);
   };
 
   // Add global mouse event listeners
@@ -129,7 +141,7 @@ export default function ImageZoomModal({
         document.removeEventListener("mouseup", handleGlobalMouseUp);
       };
     }
-  }, [isDragging, dragStart, pan]);
+  }, [isDragging]);
 
   // Zoom functions
   const zoomIn = () => {
@@ -143,14 +155,14 @@ export default function ImageZoomModal({
     // Reset pan if zooming out to 1x or less
     if (newZoom <= 1) {
       setPan({ x: 0, y: 0 });
-      setLastPan({ x: 0, y: 0 });
+      panStartRef.current = { x: 0, y: 0 };
     }
   };
 
   const resetZoom = () => {
     setZoomLevel(1);
     setPan({ x: 0, y: 0 });
-    setLastPan({ x: 0, y: 0 });
+    panStartRef.current = { x: 0, y: 0 };
   };
 
   // Determine cursor style
@@ -302,13 +314,6 @@ export default function ImageZoomModal({
             draggable={false}
           />
         </div>
-
-        {/* Resolution indicator */}
-        {imageLoaded && (
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">
-            Full Resolution
-          </div>
-        )}
 
         {/* Instructions */}
         {imageLoaded && (

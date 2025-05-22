@@ -1,4 +1,7 @@
 .
+├── .DS_Store
+├── .env
+├── .gitignore
 ├── README.md
 ├── eslint.config.js
 ├── index.html
@@ -9,10 +12,13 @@
 ├── public
 ├── server.js
 ├── src
+│   ├── .DS_Store
 │   ├── App.jsx
 │   ├── api
+│   │   ├── .gitkeep
 │   │   ├── adapters
-│   │   │   └── smithsonianAdapter.js
+│   │   │   ├── smithsonianAdapter.js
+│   │   │   └── smithsonianMuseumCodes.js
 │   │   ├── cache.js
 │   │   ├── config.js
 │   │   ├── index.js
@@ -20,15 +26,20 @@
 │   │   └── repositories
 │   │       └── smithsonianRepository.js
 │   ├── assets
+│   │   ├── .gitkeep
+│   │   └── load-spinner-green.lottie
 │   ├── components
+│   │   ├── .gitkeep
 │   │   ├── artefact
 │   │   ├── collections
 │   │   │   ├── AddToCollectionButton.jsx
 │   │   │   ├── CollectionCard.jsx
 │   │   │   ├── CollectionModal.jsx
-│   │   │   └── EmptyCollectionsList.jsx
+│   │   │   ├── EmptyCollectionsList.jsx
+│   │   │   └── RemoveFromCollectionButton.jsx
 │   │   ├── common
-│   │   │   └── DeleteConfirmation.jsx
+│   │   │   ├── DeleteConfirmation.jsx
+│   │   │   └── ImageZoomModal.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
 │   │   │   ├── Header.jsx
@@ -41,12 +52,15 @@
 │   │       ├── SearchResultsGrid.jsx
 │   │       └── SingleItemCard.jsx
 │   ├── context
+│   │   ├── .gitkeep
 │   │   ├── AuthContext.jsx
 │   │   ├── CollectionsContext.jsx
 │   │   └── SearchContext.jsx
 │   ├── hooks
+│   │   └── .gitkeep
 │   ├── main.jsx
 │   ├── pages
+│   │   ├── .gitkeep
 │   │   ├── AboutPage.jsx
 │   │   ├── CollectionView.jsx
 │   │   ├── CollectionsPage.jsx
@@ -56,11 +70,13 @@
 │   │   ├── SearchResultsPage.jsx
 │   │   └── UserProfilePage.jsx
 │   ├── styles
+│   │   ├── .gitkeep
 │   │   ├── App.css
 │   │   └── index.css
 │   └── utils
+│       ├── .gitkeep
 │       └── searchResultsManager.js
 ├── tailwind.config.js
 └── vite.config.js
 
-18 directories, 46 files
+18 directories, 62 files
