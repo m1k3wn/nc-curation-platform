@@ -124,7 +124,9 @@ export default function ItemCard({ item }) {
 
           {/* Source & Date */}
           <div className="flex justify-between text-xs text-gray-500 mb-3">
-            <span>{item.source || "Smithsonian"}</span>
+            <span>
+              {item.source?.name || item.source?.institution || "Smithsonian"}
+            </span>{" "}
             <span>
               {item.datePublished ? formatDateDisplay(item.datePublished) : ""}
             </span>

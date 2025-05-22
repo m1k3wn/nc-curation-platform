@@ -1,63 +1,46 @@
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import loadSpinnerGreen from "../../assets/load-spinner-green.lottie";
+
 /**
- * Component to display search progress information
- *
- * @param {Object} progress - Progress data object
- * @param {number} progress.current - Current batch being processed
- * @param {number} progress.total - Total number of batches
- * @param {number} progress.itemsFound - Number of items found so far
- * @param {string} progress.message - Status message
+ * Component to display search progress with Lottie animation
  */
-export default function SearchProgress({
-  progress,
-  batchCount,
-  totalBatchCount,
-}) {
+export default function SearchProgress({ progress }) {
   // Don't render anything if no progress data is available
-  if (!progress && !totalBatchCount) return null;
+  if (!progress) return null;
 
-  // Use explicit batch counts if available, otherwise fall back to progress data
-  const current =
-    batchCount !== undefined ? batchCount : progress?.current || 0;
-  const total =
-    totalBatchCount !== undefined ? totalBatchCount : progress?.total || 1;
   const itemsFound = progress?.itemsFound || 0;
+  const totalResults = progress?.totalResults || 0;
   const message = progress?.message || "Searching...";
-
-  // Calculate completion percentage
-  const percentage = Math.min(Math.floor((current / total) * 100), 100);
 
   return (
     <div
-      className="bg-blue-50 p-4 rounded-lg mb-6"
+      className="bg-blue-50 p-6 rounded-lg mb-6 text-center"
       role="status"
       aria-live="polite"
     >
-      <div className="flex justify-between mb-2">
-        <div className="text-blue-800 font-medium">
-          {message || "Searching..."}
-        </div>
-        <div className="text-blue-700">
-          {current}/{total} batches
-        </div>
+      {/* Lottie Spinner */}
+      <div className="flex justify-center mb-4">
+        <DotLottieReact
+          src={loadSpinnerGreen}
+          loop
+          autoplay
+          className="w-32 h-32"
+        />
       </div>
 
-      {/* Progress bar */}
-      <div
-        className="h-2 bg-blue-100 rounded-full overflow-hidden"
-        role="progressbar"
-        aria-valuenow={percentage}
-        aria-valuemin="0"
-        aria-valuemax="100"
-      >
-        <div
-          className="h-full bg-blue-500 transition-all duration-300"
-          style={{ width: `${percentage}%` }}
-        ></div>
-      </div>
+      {/* Search Status */}
+      <div className="text-blue-800 font-medium text-lg mb-2">{message}</div>
 
-      <div className="mt-2 text-sm text-blue-700">
-        Found {itemsFound} {itemsFound === 1 ? "item" : "items"} with images so
-        far
+      {/* Results Found */}
+      <div className="text-blue-700 text-base">
+        Found{" "}
+        <span className="font-semibold">{itemsFound.toLocaleString()}</span>{" "}
+        items with images
+        {totalResults > 0 && (
+          <span className="text-blue-600 ml-1">
+            (from {totalResults.toLocaleString()} total)
+          </span>
+        )}
       </div>
     </div>
   );
