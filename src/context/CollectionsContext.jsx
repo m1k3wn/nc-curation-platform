@@ -33,9 +33,13 @@ export function CollectionsProvider({ children }) {
   const [activeCollection, setActiveCollection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  //  Modal popup state manager
+
+  // Modal popup state manager
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
+
+  // Pending item for new collections
+  const [pendingItem, setPendingItem] = useState(null);
 
   // Load collections from localStorage on initial mount
   useEffect(() => {
@@ -68,58 +72,92 @@ export function CollectionsProvider({ children }) {
 
   // Save collections to localStorage whenever they change
   useEffect(() => {
-    if (collections.length > 0) {
-      localStorage.setItem("collections", JSON.stringify(collections));
-    }
+    try {
+      if (collections.length > 0) {
+        localStorage.setItem("collections", JSON.stringify(collections));
+      }
 
-    if (activeCollection) {
-      localStorage.setItem("activeCollection", activeCollection.id);
+      if (activeCollection) {
+        localStorage.setItem("activeCollection", activeCollection.id);
+      }
+    } catch (err) {
+      console.error("Error saving collections to localStorage:", err);
+      // Don't set error state here as it's not critical
     }
   }, [collections, activeCollection]);
 
   // Modal methods
-  const openCreateModal = useCallback(() => {
+  const openCreateModal = useCallback((item = null) => {
+    setPendingItem(item);
     setEditingCollection(null);
     setIsModalOpen(true);
   }, []);
 
   const openEditModal = useCallback((collection) => {
+    setPendingItem(null); // Clear pending item when editing
     setEditingCollection(collection);
     setIsModalOpen(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    // Clear editing collection after animation completes
+    // Clear editing collection and pending item after animation completes
     setTimeout(() => {
       setEditingCollection(null);
+      setPendingItem(null);
     }, 300);
   }, []);
 
   /**
-   * Collections Methods
+   * Create a new collection
    * @param {string} name - Name of the collection
    * @param {string} description - Description of the collection (optional)
    */
-  const createCollection = useCallback((name, description = "") => {
-    if (!name.trim()) {
-      setError("Collection name cannot be empty");
-      return null;
-    }
+  const createCollection = useCallback(
+    (name, description = "") => {
+      if (!name.trim()) {
+        setError("Collection name cannot be empty");
+        return null;
+      }
 
-    const newCollection = {
-      id: `collection-${Date.now()}`,
-      name: name.trim(),
-      description: description.trim(),
-      items: [],
-      dateCreated: new Date().toISOString(),
-      dateModified: new Date().toISOString(),
-    };
+      const newCollection = {
+        id: `collection-${Date.now()}`,
+        name: name.trim(),
+        description: description.trim(),
+        items: [],
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+      };
 
-    setCollections((prev) => [...prev, newCollection]);
-    setActiveCollection(newCollection);
-    return newCollection;
-  }, []);
+      // If there's a pending item, add it to the new collection
+      if (pendingItem && pendingItem.id) {
+        // Clean the item to avoid circular references in localStorage
+        const cleanItem = {
+          id: pendingItem.id,
+          title: pendingItem.title,
+          description: pendingItem.description,
+          thumbnailUrl: pendingItem.thumbnailUrl,
+          imageUrl: pendingItem.imageUrl,
+          museum: pendingItem.museum,
+          datePublished: pendingItem.datePublished,
+          url: pendingItem.url,
+          // Add any other specific fields you need, but avoid complex objects
+          dateAdded: new Date().toISOString(),
+        };
+
+        newCollection.items = [cleanItem];
+      }
+
+      setCollections((prev) => [...prev, newCollection]);
+      setActiveCollection(newCollection);
+
+      // Clear pending item after use
+      setPendingItem(null);
+
+      return newCollection;
+    },
+    [pendingItem]
+  );
 
   /**
    * Update an existing collection
@@ -194,16 +232,22 @@ export function CollectionsProvider({ children }) {
         );
         if (itemExists) return prev;
 
-        // Add item to collection
+        // Add item to collection (clean it to avoid circular references)
+        const cleanItem = {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          thumbnailUrl: item.thumbnailUrl,
+          imageUrl: item.imageUrl,
+          museum: item.museum,
+          datePublished: item.datePublished,
+          url: item.url,
+          dateAdded: new Date().toISOString(),
+        };
+
         const updatedCollection = {
           ...prev[index],
-          items: [
-            ...prev[index].items,
-            {
-              ...item,
-              dateAdded: new Date().toISOString(),
-            },
-          ],
+          items: [...prev[index].items, cleanItem],
           dateModified: new Date().toISOString(),
         };
 
@@ -314,6 +358,7 @@ export function CollectionsProvider({ children }) {
     getCollectionsWithItem,
     isModalOpen,
     editingCollection,
+    pendingItem,
     openCreateModal,
     openEditModal,
     closeModal,

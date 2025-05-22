@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCollections } from "../../context/CollectionsContext";
 
@@ -8,15 +8,12 @@ import { useCollections } from "../../context/CollectionsContext";
  * @param {Object} item - The item to add to a collection
  */
 export default function AddToCollectionButton({ item }) {
-  const [showMenu, setShowMenu] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [showModal, setShowModal] = useState(false);
   const [feedback, setFeedback] = useState({
     show: false,
     message: "",
     collectionId: null,
   });
-  const menuRef = useRef(null);
-  const buttonRef = useRef(null);
   const navigate = useNavigate();
 
   const {
@@ -27,52 +24,45 @@ export default function AddToCollectionButton({ item }) {
     openCreateModal,
   } = useCollections();
 
-  // Update menu position when toggling
-  useEffect(() => {
-    if (showMenu && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-      });
-    }
-  }, [showMenu]);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
-        setShowMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   // Clear feedback message after timeout
   useEffect(() => {
     if (feedback.show) {
       const timer = setTimeout(() => {
         setFeedback({ show: false, message: "", collectionId: null });
-      }, 3000); // Hide after 3 seconds
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [feedback]);
 
+  // Close modal on escape key press
+  useEffect(() => {
+    if (showModal) {
+      const handleEscape = (e) => {
+        if (e.key === "Escape") {
+          setShowModal(false);
+        }
+      };
+
+      window.addEventListener("keydown", handleEscape);
+      return () => {
+        window.removeEventListener("keydown", handleEscape);
+      };
+    }
+  }, [showModal]);
+
   /**
-   * Toggle collection menu
+   * Open the collection selection modal
    */
-  const handleToggleMenu = (e) => {
+  const handleOpenModal = (e) => {
     e.stopPropagation();
-    setShowMenu(!showMenu);
+    setShowModal(true);
+  };
+
+  /**
+   * Close the collection selection modal
+   */
+  const handleCloseModal = () => {
+    setShowModal(false);
   };
 
   /**
@@ -97,7 +87,10 @@ export default function AddToCollectionButton({ item }) {
       });
     }
 
-    setShowMenu(false); // Close the dropdown after action
+    // Close modal after a short delay to show feedback
+    setTimeout(() => {
+      setShowModal(false);
+    }, 2500);
   };
 
   /**
@@ -110,35 +103,20 @@ export default function AddToCollectionButton({ item }) {
 
   /**
    * Handle create collection click
-   * Opens the modal and closes the dropdown
+   * Opens the create modal with the current item
    */
   const handleCreateCollectionClick = (e) => {
     e.stopPropagation();
-    setShowMenu(false); // Close the dropdown menu
-    openCreateModal(item); // Open the create collection modal with item to add
+    setShowModal(false);
+    openCreateModal(item);
   };
 
   return (
     <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
-      {/* Feedback message */}
-      {feedback.show && (
-        <div className="absolute -top-10 right-0 bg-gray-800 text-white px-3 py-1 rounded text-sm shadow-lg whitespace-nowrap z-50">
-          {feedback.message}
-          {feedback.collectionId && (
-            <button
-              className="ml-2 text-blue-300 hover:text-blue-200 underline"
-              onClick={(e) => handleViewCollection(e, feedback.collectionId)}
-            >
-              View
-            </button>
-          )}
-        </div>
-      )}
-
+      {/* Add to collection button */}
       <button
-        ref={buttonRef}
         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-        onClick={handleToggleMenu}
+        onClick={handleOpenModal}
         aria-label="Add to collection"
         title="Add to collection"
       >
@@ -158,90 +136,126 @@ export default function AddToCollectionButton({ item }) {
         </svg>
       </button>
 
-      {/* Collection menu dropdown - render with fixed positioning */}
-      {showMenu && (
-        <div
-          ref={menuRef}
-          className="fixed bg-white rounded-md shadow-lg z-50 border border-gray-200 w-48"
-          style={{
-            top: `${menuPosition.top}px`,
-            left: `${menuPosition.left}px`,
-          }}
-        >
-          <div className="px-3 py-2 text-xs text-gray-500 border-b">
-            Add to collection:
-          </div>
-
-          {/* List of collections */}
-          <div className="max-h-48 overflow-y-auto">
-            {collections.length > 0 ? (
-              collections.map((collection) => (
-                <div
-                  key={collection.id}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center justify-between"
-                >
-                  {itemExistsInCollection(collection.id, item.id) ? (
-                    <>
-                      <span className="truncate text-gray-600">
-                        {collection.name}
-                      </span>
-                      <div className="flex items-center">
-                        <span className="text-green-600 text-xs mr-2">✓</span>
-                        <button
-                          className="text-blue-600 text-xs hover:underline"
-                          onClick={(e) =>
-                            handleViewCollection(e, collection.id)
-                          }
-                        >
-                          View
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <button
-                      className="w-full text-left"
-                      onClick={(e) =>
-                        handleCollectionAction(
-                          e,
-                          collection.id,
-                          collection.name
-                        )
-                      }
-                    >
-                      <span className="truncate">{collection.name}</span>
-                    </button>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-xs text-gray-500">
-                No collections yet
-              </div>
-            )}
-          </div>
-
-          {/* Create new collection button */}
-          <div className="border-t">
-            <button
-              className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center"
-              onClick={handleCreateCollectionClick}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+      {/* Collection selection modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold">Add to Collection</h2>
+              <button
+                className="text-gray-400 hover:text-gray-600"
+                onClick={handleCloseModal}
+                aria-label="Close"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Create new collection
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Collections list */}
+            <div className="max-h-64 overflow-y-auto">
+              {collections.length > 0 ? (
+                collections.map((collection) => (
+                  <div
+                    key={collection.id}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 flex items-center justify-between border-b border-gray-100 last:border-b-0"
+                  >
+                    {itemExistsInCollection(collection.id, item.id) ? (
+                      <>
+                        <span className="truncate text-gray-600">
+                          {collection.name}
+                        </span>
+                        <div className="flex items-center">
+                          <span className="text-green-600 text-sm mr-3">
+                            ✓ Added
+                          </span>
+                          <button
+                            className="text-blue-600 text-sm hover:underline mr-2"
+                            onClick={(e) =>
+                              handleViewCollection(e, collection.id)
+                            }
+                          >
+                            View
+                          </button>
+                          <button
+                            className="text-red-600 text-sm hover:underline"
+                            onClick={(e) =>
+                              handleCollectionAction(
+                                e,
+                                collection.id,
+                                collection.name
+                              )
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        className="w-full text-left flex items-center justify-between"
+                        onClick={(e) =>
+                          handleCollectionAction(
+                            e,
+                            collection.id,
+                            collection.name
+                          )
+                        }
+                      >
+                        <span className="truncate">{collection.name}</span>
+                        <span className="text-gray-400 text-sm ml-2">
+                          Add →
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-6 text-center text-gray-500">
+                  No collections yet
+                </div>
+              )}
+            </div>
+
+            {/* Create new collection button */}
+            <div className="border-t p-4">
+              <button
+                className="w-full text-left px-3 py-2 text-blue-600 hover:bg-blue-50 rounded flex items-center justify-center"
+                onClick={handleCreateCollectionClick}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Create New Collection
+              </button>
+            </div>
           </div>
         </div>
       )}

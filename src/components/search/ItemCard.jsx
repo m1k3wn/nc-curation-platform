@@ -4,8 +4,11 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 
 /**
  * Card component for displaying a museum item in search results
+ *
+ * @param {Object} item - The item to display
+ * @param {React.ReactNode} actionButtons - Optional additional action buttons to render
  */
-export default function ItemCard({ item }) {
+export default function ItemCard({ item, actionButtons }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
@@ -27,7 +30,7 @@ export default function ItemCard({ item }) {
   return (
     <div className="break-inside-avoid mb-4">
       <div
-        className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+        className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
         onClick={handleCardClick}
         tabIndex="0"
         role="button"
@@ -103,8 +106,15 @@ export default function ItemCard({ item }) {
             <span>{item.datePublished || ""}</span>
           </div>
 
-          {/* Action Button */}
-          <AddToCollectionButton item={item} />
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center">
+            <AddToCollectionButton item={item} />
+
+            {/* Additional action buttons (like remove from collection) */}
+            {actionButtons && (
+              <div className="flex items-center space-x-1">{actionButtons}</div>
+            )}
+          </div>
         </div>
       </div>
     </div>
