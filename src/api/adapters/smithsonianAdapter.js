@@ -9,6 +9,9 @@ const isDevelopment = () => {
   );
 };
 
+// Import museum code mappings
+import { getMuseumName } from "./smithsonianMuseumCodes";
+
 /**
  * Adapt search results from Smithsonian API to common format
  *
@@ -168,10 +171,11 @@ function processItems(items) {
             "",
           imageUrl: imageData.fullImage,
           thumbnailUrl: imageData.thumbnail,
-          source: item.unitCode || "Smithsonian",
+          source: item.unitCode || "Smithsonian", // Code for internal use
+          museum: getMuseumName(item.unitCode) || "Smithsonian Institution", // Readable name for display
           datePublished: getDate(item),
           url: item.content?.descriptiveNonRepeating?.record_link || "",
-          museum: item.unitCode || "Smithsonian",
+          dataSource: "", // Not available in search results
         };
       } catch {
         // Return minimal data on error
@@ -333,10 +337,13 @@ function processItemDetails(rawItemData) {
       source:
         data.unitCode ||
         data.content?.descriptiveNonRepeating?.unit_code ||
-        "Smithsonian",
+        "Smithsonian", // Code for internal use
+      museum:
+        getMuseumName(
+          data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
+        ) || "Smithsonian Institution", // Readable name for display
       dataSource:
         getFreetextContent(freetext, "dataSource")?.[0]?.content || "",
-      museum: data.unitCode || "Smithsonian",
       recordId: data.content?.descriptiveNonRepeating?.record_ID || "",
 
       // Images
@@ -504,13 +511,6 @@ function organizeItemForDisplay(item) {
       media: {
         primaryImage: item.imageUrl || "",
         thumbnail: item.thumbnailUrl || "",
-      },
-
-      source: {
-        name: item.source || item.museum || "Smithsonian",
-        url: item.url || "",
-        dataSource: item.dataSource || "",
-        institution: item.museum || item.source || "Smithsonian",
       },
 
       dates: {

@@ -96,7 +96,9 @@ export default function ItemCard({ item }) {
           {/* Source & Date */}
           <div className="flex justify-between text-xs text-gray-500 mb-3">
             <span>
-              {item.source?.name || item.source?.institution || "Smithsonian"}
+              {item.museum ||
+                item.source?.institution ||
+                "Smithsonian Institution"}
             </span>
             <span>{item.datePublished || ""}</span>
           </div>
