@@ -1,5 +1,5 @@
-/* Handles all caching of stored search results */
-const CACHE_PREFIX = "smithsonian_search_";
+/* Handles all caching of stored search results for multiple sources */
+const CACHE_PREFIX = "museum_search_";
 const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
 // Check if Dev mode
@@ -13,8 +13,9 @@ const isDevelopment = () => {
 // Normalizes a search query
 const normalizeQuery = (query) => query?.trim().toLowerCase() || "";
 
-// Generates a cache key for a query
-const getCacheKey = (query) => `${CACHE_PREFIX}${normalizeQuery(query)}`;
+// Generates a cache key for a query and source
+const getCacheKey = (query, source = "smithsonian") =>
+  `${CACHE_PREFIX}${source}_${normalizeQuery(query)}`;
 
 //Safely access localStorage with fallbacks
 const safeLocalStorage = {
@@ -63,15 +64,16 @@ const searchResultsManager = {
   /**
    * Store search results in localStorage
    */
-  storeResults(query, items, totalResults) {
+  storeResults(query, items, totalResults, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
-    const cacheKey = getCacheKey(normalizedQuery);
+    const cacheKey = getCacheKey(normalizedQuery, source);
 
     const cacheData = {
       items,
       totalResults,
       timestamp: Date.now(),
       query: normalizedQuery,
+      source,
     };
 
     // Try to store in localStorage
@@ -84,16 +86,18 @@ const searchResultsManager = {
     }
 
     if (isDevelopment()) {
-      console.log(`Cached ${items.length} items for "${normalizedQuery}"`);
+      console.log(
+        `Cached ${items.length} ${source} items for "${normalizedQuery}"`
+      );
     }
   },
 
   /**
    * Get cached results for a query
    */
-  getCachedResults(query) {
+  getCachedResults(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
-    const cacheKey = getCacheKey(normalizedQuery);
+    const cacheKey = getCacheKey(normalizedQuery, source);
 
     const cachedData = safeLocalStorage.get(cacheKey);
 
@@ -107,7 +111,7 @@ const searchResultsManager = {
       // Check for expiration
       if (Date.now() - parsedData.timestamp > CACHE_EXPIRY) {
         if (isDevelopment()) {
-          console.log(`Cache expired for "${normalizedQuery}"`);
+          console.log(`Cache expired for ${source} "${normalizedQuery}"`);
         }
         safeLocalStorage.remove(cacheKey);
         return null;
@@ -122,20 +126,36 @@ const searchResultsManager = {
   },
 
   /**
-   * Clear cache for a specific query
+   * Clear cache for a specific query and source
    */
-  clearCacheItem(query) {
+  clearCacheItem(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
-    const cacheKey = getCacheKey(normalizedQuery);
+    const cacheKey = getCacheKey(normalizedQuery, source);
     safeLocalStorage.remove(cacheKey);
 
     if (isDevelopment()) {
-      console.log(`Cleared cache for "${normalizedQuery}"`);
+      console.log(`Cleared ${source} cache for "${normalizedQuery}"`);
     }
   },
 
   /**
-   * Clear all caches
+   * Clear all caches for a specific source
+   */
+  clearSourceCaches(source) {
+    const sourcePrefix = `${CACHE_PREFIX}${source}_`;
+    const keysToRemove = safeLocalStorage
+      .keys()
+      .filter((key) => key.startsWith(sourcePrefix));
+
+    keysToRemove.forEach((key) => safeLocalStorage.remove(key));
+
+    if (isDevelopment()) {
+      console.log(`Cleared ${keysToRemove.length} cached ${source} searches`);
+    }
+  },
+
+  /**
+   * Clear all caches for all sources
    */
   clearAllCaches() {
     const keysToRemove = safeLocalStorage
@@ -165,12 +185,14 @@ const searchResultsManager = {
           cacheEntries.push({
             key,
             timestamp: data.timestamp || 0,
+            source: data.source || "unknown",
           });
         } catch (e) {
           // If entry is corrupted, mark it for removal
           cacheEntries.push({
             key,
             timestamp: 0,
+            source: "corrupted",
           });
         }
       });
@@ -189,6 +211,37 @@ const searchResultsManager = {
     if (isDevelopment()) {
       console.log(`Cleared ${entriesToRemove.length} old cache entries`);
     }
+  },
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    const stats = {
+      smithsonian: 0,
+      europeana: 0,
+      total: 0,
+      corrupted: 0,
+    };
+
+    safeLocalStorage
+      .keys()
+      .filter((key) => key.startsWith(CACHE_PREFIX))
+      .forEach((key) => {
+        try {
+          const data = JSON.parse(safeLocalStorage.get(key));
+          const source = data.source || "smithsonian"; // Default to smithsonian for backward compatibility
+          if (stats.hasOwnProperty(source)) {
+            stats[source]++;
+          }
+          stats.total++;
+        } catch (e) {
+          stats.corrupted++;
+          stats.total++;
+        }
+      });
+
+    return stats;
   },
 };
 

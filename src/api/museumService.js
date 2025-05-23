@@ -1,8 +1,9 @@
-// src/api/museumService.js
 import axios from "axios";
 import { smithsonianConfig } from "./config";
 import * as smithsonianRepository from "./repositories/smithsonianRepository";
 import * as smithsonianAdapter from "./adapters/smithsonianAdapter";
+import { europeanaRepository } from "./repositories/europeanaRepository";
+import { adaptEuropeanaItemDetails } from "./adapters/europeanaAdapter";
 
 /**
  * Check if application is running in development mode
@@ -17,13 +18,63 @@ const isDevelopment = () => {
 /**
  * Supported API sources
  */
-const SUPPORTED_SOURCES = ["smithsonian"];
+const SUPPORTED_SOURCES = ["smithsonian", "europeana"];
 
 /**
  * Validates if a source is supported
  */
 const isSourceSupported = (source) => {
   return SUPPORTED_SOURCES.includes(source);
+};
+
+/**
+ * Generic error handler for API operations
+ * @param {Error} error - The error object
+ * @param {string} source - The API source ("smithsonian" or "europeana")
+ * @param {string} operation - The operation being performed ("fetching", "searching", etc.)
+ * @param {string|null} id - Optional ID for item-specific operations
+ * @returns {Object} - Standardised error response object
+ */
+const handleApiError = (error, source, operation, id = null) => {
+  // Handle cancelled requests
+  if (axios.isCancel(error)) {
+    if (isDevelopment()) {
+      console.log(
+        `${source} ${operation} request cancelled${id ? ` for ${id}` : ""}`
+      );
+    }
+    throw error;
+  }
+
+  // Log error in development
+  if (isDevelopment()) {
+    console.error(
+      `Error ${operation} ${source}${id ? ` item ${id}` : ""}: ${error.message}`
+    );
+  }
+
+  // Return standardised error object
+  const baseErrorObj = {
+    error: error.message,
+    source,
+    _rawApiResponse: {
+      error: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    },
+  };
+
+  // Add item-specific fields if ID provided
+  if (id) {
+    return {
+      id,
+      title: `Item ${id}`,
+      ...baseErrorObj,
+      rawData: baseErrorObj._rawApiResponse, // Smithsonian compatibility
+    };
+  }
+
+  return baseErrorObj;
 };
 
 /**
@@ -47,6 +98,8 @@ export const searchItems = async (
     switch (source) {
       case "smithsonian":
         return await searchSmithsonianComplete(query, progressCallback);
+      case "europeana":
+        return await searchEuropeanaComplete(query, progressCallback);
       default:
         throw new Error(`Source implementation not found: ${source}`);
     }
@@ -59,9 +112,56 @@ export const searchItems = async (
 };
 
 /**
- * Get detailed information for a specific item
+ * Determine the source from item ID
+ * @param {string} itemId - The item ID
+ * @returns {string} - The source ("smithsonian" or "europeana")
  */
-export const getItemDetails = async (
+const determineSource = (itemId) => {
+  if (!itemId) return "smithsonian";
+
+  const europeanaPatterns = [
+    /^\d+\/.*/, // digits/path pattern
+    /^\/\d+\/.*/, // leading slash + digits/path
+  ];
+
+  return europeanaPatterns.some((pattern) => pattern.test(itemId))
+    ? "europeana"
+    : "smithsonian";
+};
+
+/**
+ * Get detailed information for a specific item (automatically detects source)
+ */
+export const getItemDetails = async (id, cancelToken = null) => {
+  if (!id) {
+    throw new Error("Item ID is required");
+  }
+
+  // Automatically determine source from ID format
+  const source = determineSource(id);
+
+  if (isDevelopment()) {
+    console.log(`Auto-detected source "${source}" for item ID: ${id}`);
+  }
+
+  try {
+    switch (source) {
+      case "smithsonian":
+        return await getSmithsonianItemDetails(id, cancelToken);
+      case "europeana":
+        return await getEuropeanaItemDetails(id, cancelToken);
+      default:
+        throw new Error(`Source implementation not found: ${source}`);
+    }
+  } catch (error) {
+    return handleApiError(error, source, "fetching", id);
+  }
+};
+
+/**
+ * Get detailed information for a specific item (with explicit source - for legacy/specific use)
+ */
+export const getItemDetailsBySource = async (
   source = "smithsonian",
   id,
   cancelToken = null
@@ -78,18 +178,13 @@ export const getItemDetails = async (
     switch (source) {
       case "smithsonian":
         return await getSmithsonianItemDetails(id, cancelToken);
+      case "europeana":
+        return await getEuropeanaItemDetails(id, cancelToken);
       default:
         throw new Error(`Source implementation not found: ${source}`);
     }
   } catch (error) {
-    if (!axios.isCancel(error)) {
-      if (isDevelopment()) {
-        console.error(
-          `Error fetching item details from ${source}: ${error.message}`
-        );
-      }
-    }
-    throw error;
+    return handleApiError(error, source, "fetching", id);
   }
 };
 
@@ -97,53 +192,72 @@ export const getItemDetails = async (
  * Get item details from Smithsonian API
  */
 async function getSmithsonianItemDetails(id, cancelToken = null) {
+  if (isDevelopment()) {
+    console.log(`Fetching Smithsonian item details for ID: ${id}`);
+  }
+
+  const rawData = await smithsonianRepository.getSmithsonianItemDetails(
+    id,
+    cancelToken
+  );
+  const adaptedData = smithsonianAdapter.adaptSmithsonianItemDetails(rawData);
+
+  // Ensure backward compatibility fields
+  if (!adaptedData.rawData) {
+    adaptedData.rawData = rawData;
+  }
+  if (!adaptedData._rawApiResponse) {
+    adaptedData._rawApiResponse = rawData;
+  }
+
+  return adaptedData;
+}
+
+/**
+ * Get item details from Europeana API
+ */
+async function getEuropeanaItemDetails(id, cancelToken = null) {
+  if (isDevelopment()) {
+    console.log(`Fetching Europeana item details for ID: ${id}`);
+  }
+
+  // Always use 'rich' profile for detailed item views
+  const rawData = await europeanaRepository.getRecord(id, {
+    profile: "rich",
+  });
+  const adaptedData = adaptEuropeanaItemDetails(rawData);
+
+  return adaptedData;
+}
+
+/**
+ * Search Europeana API (simplified for now)
+ */
+async function searchEuropeanaComplete(query, progressCallback = null) {
   try {
-    if (isDevelopment()) {
-      console.log(`Fetching Smithsonian item details for ID: ${id}`);
-    }
+    // For now, just do a basic search - can be enhanced later
+    const response = await europeanaRepository.search(query, {
+      rows: 50, // Get a decent number of results
+    });
 
-    const rawData = await smithsonianRepository.getSmithsonianItemDetails(
-      id,
-      cancelToken
-    );
-    const adaptedData = smithsonianAdapter.adaptSmithsonianItemDetails(rawData);
-
-    if (!adaptedData.rawData) {
-      adaptedData.rawData = rawData;
-    }
-    if (!adaptedData._rawApiResponse) {
-      adaptedData._rawApiResponse = rawData;
-    }
-
-    return adaptedData;
-  } catch (error) {
-    if (axios.isCancel(error)) {
-      if (isDevelopment()) {
-        console.log(`Request for Smithsonian item ${id} was cancelled`);
-      }
-      throw error;
-    }
-
-    if (isDevelopment()) {
-      console.error(`Error fetching Smithsonian item ${id}: ${error.message}`);
+    if (progressCallback) {
+      progressCallback({
+        message: `Found ${response.totalResults} Europeana results`,
+        itemsFound: response.itemsCount || 0,
+        totalResults: response.totalResults || 0,
+      });
     }
 
     return {
-      id: id,
-      title: `Item ${id}`,
-      error: error.message,
-      source: "smithsonian",
-      rawData: {
-        error: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      },
-      _rawApiResponse: {
-        error: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      },
+      total: response.totalResults || 0,
+      items: response.items || [],
+      source: "europeana",
     };
+  } catch (error) {
+    if (isDevelopment()) {
+      console.error(`Error searching Europeana API: ${error.message}`);
+    }
+    throw error;
   }
 }
 
