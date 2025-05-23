@@ -1,6 +1,6 @@
 import { useCollections } from "../context/CollectionsContext";
 
-function ExplorePage() {
+export default function ExplorePage() {
   const { publicCollections } = useCollections();
 
   return (
@@ -51,5 +51,3 @@ function ExplorePage() {
     </div>
   );
 }
-
-export default ExplorePage;

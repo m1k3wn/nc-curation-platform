@@ -27,7 +27,7 @@ export function useSearch() {
 }
 
 /**
- * Provider component for search functionality - SIMPLIFIED
+ * Provider component for search functionality - SIMPLIFIED with multi-source support
  */
 export function SearchProvider({ children }) {
   // Search state
@@ -38,6 +38,7 @@ export function SearchProvider({ children }) {
   const [totalResults, setTotalResults] = useState(0);
   const [isFromCache, setIsFromCache] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [currentSource, setCurrentSource] = useState("smithsonian"); // Track current source
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -50,7 +51,7 @@ export function SearchProvider({ children }) {
 
   // Cancel tokens for requests
   const itemCancelTokenRef = useRef(null);
-  const searchCancelTokenRef = useRef(null); // Add search cancellation
+  const searchCancelTokenRef = useRef(null);
   const itemDetailsCache = useRef(new Map());
 
   // Cleanup on unmount
@@ -67,7 +68,7 @@ export function SearchProvider({ children }) {
   }, []);
 
   /**
-   * Fetch details for a specific item
+   * Fetch details for a specific item (source auto-detected by museumService)
    */
   const fetchItemDetails = useCallback(async (itemId) => {
     if (!itemId) return;
@@ -87,17 +88,16 @@ export function SearchProvider({ children }) {
       setItemError(null);
       setCurrentItem(null);
 
-      // Check cache first
-      const cacheKey = `smithsonian:${itemId}`;
+      // Use simple cache key (museumService will determine source)
+      const cacheKey = itemId;
       if (itemDetailsCache.current.has(cacheKey)) {
         setCurrentItem(itemDetailsCache.current.get(cacheKey));
         setItemLoading(false);
         return itemDetailsCache.current.get(cacheKey);
       }
 
-      // Fetch detailed information
+      // Let museumService determine source and fetch details
       const detailedItem = await getItemDetails(
-        "smithsonian",
         itemId,
         itemCancelTokenRef.current.token
       );
@@ -130,10 +130,13 @@ export function SearchProvider({ children }) {
   }, []);
 
   /**
-   * Perform a search - loads ALL results at once
+   * Perform a search - loads ALL results at once with configurable source
+   * @param {string} searchQuery - The search term
+   * @param {string} source - API source ("smithsonian" or "europeana")
+   * @param {boolean} reset - Whether to reset pagination and state
    */
   const performSearch = useCallback(
-    async (searchQuery, reset = true) => {
+    async (searchQuery, source = "smithsonian", reset = true) => {
       if (!searchQuery?.trim()) {
         return;
       }
@@ -155,14 +158,17 @@ export function SearchProvider({ children }) {
 
         if (reset) {
           setQuery(normalizedQuery);
+          setCurrentSource(source); // Track the source being used
           setPage(1);
           setResults([]);
           setIsFromCache(false);
         }
 
-        // Check cache first
-        const cachedResults =
-          searchResultsManager.getCachedResults(normalizedQuery);
+        // Check cache first (now source-aware)
+        const cachedResults = searchResultsManager.getCachedResults(
+          normalizedQuery,
+          source
+        );
 
         if (cachedResults?.items?.length > 0) {
           // Use cached results
@@ -173,11 +179,11 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        // Not in cache, perform search
+        // Not in cache, perform search with specified source
         setIsFromCache(false);
 
         const response = await searchItems(
-          "smithsonian",
+          source, // Use the source parameter instead of hardcoded "smithsonian"
           normalizedQuery,
           handleSearchProgress
         );
@@ -191,12 +197,13 @@ export function SearchProvider({ children }) {
         setResults(response.items || []);
         setTotalResults(response.total || 0);
 
-        // Cache the complete results
+        // Cache the complete results with source
         if (response.items?.length > 0) {
           searchResultsManager.storeResults(
             normalizedQuery,
             response.items,
-            response.total
+            response.total,
+            source // Include source in cache storage
           );
         }
       } catch (error) {
@@ -238,12 +245,13 @@ export function SearchProvider({ children }) {
 
     setQuery("");
     setResults([]);
+    setCurrentSource("smithsonian"); // Reset to default source
     setPage(1);
     setError(null);
     setTotalResults(0);
     setIsFromCache(false);
     setProgress(null);
-    setLoading(false); // Explicitly clear loading state
+    setLoading(false);
   }, []);
 
   /**
@@ -252,10 +260,10 @@ export function SearchProvider({ children }) {
   const refreshSearch = useCallback(() => {
     if (!query) return;
 
-    searchResultsManager.clearCacheItem(query);
+    searchResultsManager.clearCacheItem(query, currentSource); // Clear cache for current source
     setIsFromCache(false);
-    performSearch(query, true);
-  }, [query, performSearch]);
+    performSearch(query, currentSource, true); // Use current source
+  }, [query, currentSource, performSearch]);
 
   /**
    * Clear the item details cache
@@ -281,6 +289,7 @@ export function SearchProvider({ children }) {
     totalResults,
     isFromCache,
     progress,
+    currentSource, // Expose current source to components
 
     // Pagination
     page,
@@ -289,7 +298,7 @@ export function SearchProvider({ children }) {
     changePage,
 
     // Actions
-    performSearch,
+    performSearch, // Now accepts source parameter
     clearSearch,
     refreshSearch,
 
