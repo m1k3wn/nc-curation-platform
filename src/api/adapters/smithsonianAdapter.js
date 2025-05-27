@@ -1,7 +1,3 @@
-/**
- * Check if application is running in development mode
- * @returns {boolean} True if in development mode
- */
 const isDevelopment = () => {
   return (
     import.meta.env?.DEV === true ||
@@ -9,7 +5,6 @@ const isDevelopment = () => {
   );
 };
 
-// Import museum code mappings
 import { getMuseumName } from "./smithsonianMuseumCodes";
 
 /**
@@ -31,14 +26,12 @@ export const adaptSmithsonianSearchResults = (
 
   const totalResults = apiData.response.rowCount || 0;
   const items = apiData.response.rows || [];
-
-  // Process items to extract only those with images and in a clean format
   const processedItems = processItems(items);
 
   return {
     total: totalResults,
     items: processedItems,
-    allItems: processedItems, // Initially the same as items
+    allItems: processedItems, 
   };
 };
 
@@ -52,25 +45,21 @@ export const adaptSmithsonianItemDetails = (apiData) => {
   if (!apiData) return null;
 
   try {
-    // Get the base processed item
+
     const baseItem = processItemDetails(apiData);
+    const organisedItem = organisItemForDisplay(baseItem);
 
-    // Further organize data into clear categories for UI
-    const organizedItem = organizeItemForDisplay(baseItem);
-
-    // organizedItem already contains _rawApiResponse, no need to add it again
-    return organizedItem;
+    return organisedItem;
   } catch (error) {
     console.error("Error adapting item details:", error.message);
 
-    // Fall back to the basic processed item if organization fails
+    // Fall back 
     try {
       const processedItem = processItemDetails(apiData);
-      return processedItem; // processedItem already has _rawApiResponse
+      return processedItem;
     } catch (fallbackError) {
       console.error("Error in fallback processing:", fallbackError.message);
 
-      // Return a minimal valid object as last resort
       return {
         id: apiData.id || "unknown",
         title: apiData.title || "Unknown Item",
@@ -91,17 +80,13 @@ function cleanHtmlTags(text) {
   if (!text) return "";
 
   try {
-    // Convert to string
-    const str = String(text);
 
+    const str = String(text);
     // Remove common HTML tags: <I>, </I>, <em>, </em>
     let cleanedText = str.replace(/<\/?[^>]+(>|$)/g, "");
-
     // Handle parentheses that might remain after tag removal
-    cleanedText = cleanedText.replace(/\(\s*\)/g, ""); // Empty parentheses
-    cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1"); // Text entirely in parentheses
-
-    // Trim excess whitespace
+    cleanedText = cleanedText.replace(/\(\s*\)/g, "");
+    cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1");
     return cleanedText.trim();
   } catch {
     return String(text || "");
@@ -117,18 +102,15 @@ function formatDateForDisplay(dateStr) {
   if (!dateStr) return "";
   const dateString = String(dateStr);
 
-  // Extract date ranges for decades
   if (dateString.includes("s")) {
     const decadePattern = /\d+s/g;
     const decades = dateString.match(decadePattern);
 
-    // If multiple decades, show range
     if (decades && decades.length > 1) {
       return `${decades[0]}–${decades[decades.length - 1]}`;
     }
   }
 
-  // Truncate long dates
   if (dateString.length > 12) {
     return dateString.substring(0, 12) + "...";
   }
@@ -146,15 +128,13 @@ function processItems(items) {
   return items
     .map((item) => {
       try {
-        // Extract image URLs
+      
         const imageData = extractBestImages(item);
-
-        // We prioritize item.id and item.url as they work with the content endpoint
         const id = item.id || item.url || "";
 
         return {
           id: id,
-          recordId: item.content?.descriptiveNonRepeating?.record_ID || "",
+          recordId: id,
           title: cleanHtmlTags(item.title) || "Untitled",
           description:
             cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
@@ -162,18 +142,17 @@ function processItems(items) {
           imageUrl: imageData.fullImage,
           screenImageUrl: imageData.screenImage,
           thumbnailUrl: imageData.thumbnail,
-          source: item.unitCode || "Smithsonian", // Code for internal use
-          museum: getMuseumName(item.unitCode) || "Smithsonian Institution", // Readable name for display
+          source: "smithsonian", 
+          museum: getMuseumName(item.unitCode) || "Smithsonian Institution", 
           datePublished: getDate(item),
           url: item.content?.descriptiveNonRepeating?.record_link || "",
-          dataSource: "", // Not available in search results
+          dataSource: "",
         };
       } catch {
-        // Return minimal data on error
         return {
           id: item.id || "",
           title: item.title || "Untitled Item",
-          thumbnailUrl: "", // Will be filtered out due to empty thumbnail
+          thumbnailUrl: "",
         };
       }
     })
@@ -191,18 +170,16 @@ function extractBestImages(item) {
   let thumbnail = "";
 
   try {
-    // Extract image URL from the media content
     const mediaContent =
       item.content?.descriptiveNonRepeating?.online_media?.media;
 
     if (!mediaContent || mediaContent.length === 0) {
       return { thumbnail, screenImage, fullImage };
     }
-
-    // Use the first media item
+    
     const media = mediaContent[0];
 
-    // For the full resolution image
+    // For the full res image
     if (media.idsId) {
       fullImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
     } else if (media.content) {
@@ -211,7 +188,7 @@ function extractBestImages(item) {
 
     // Extract different image sizes from resources
     if (media.resources && media.resources.length > 0) {
-      // Look for screen image (medium resolution)
+
       const screenResource = media.resources.find(
         (res) =>
           res.label === "Screen Image" ||
@@ -222,7 +199,6 @@ function extractBestImages(item) {
         screenImage = screenResource.url;
       }
 
-      // Look for actual thumbnail resource
       const thumbResource = media.resources.find(
         (res) =>
           res.label === "Thumbnail Image" ||
@@ -234,7 +210,7 @@ function extractBestImages(item) {
       }
     }
 
-    // Fallback: Construct URLs from IDS ID if resources not found
+
     if (!screenImage && media.idsId) {
       screenImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_screen`;
     }
@@ -243,23 +219,20 @@ function extractBestImages(item) {
       thumbnail = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
     }
 
-    // Use media.thumbnail if it's different from fullImage and we don't have a proper thumbnail
     if (!thumbnail && media.thumbnail && media.thumbnail !== fullImage) {
       thumbnail = media.thumbnail;
     }
 
-    // Final fallbacks
     if (!screenImage && fullImage) {
-      screenImage = fullImage; // Use full image as screen fallback
+      screenImage = fullImage; 
     }
 
     if (!thumbnail && screenImage) {
-      thumbnail = screenImage; // Use screen as thumbnail fallback
+      thumbnail = screenImage; 
     } else if (!thumbnail && fullImage) {
-      thumbnail = fullImage; // Use full image as last resort
+      thumbnail = fullImage; 
     }
   } catch {
-    // Silent fail - return empty strings
   }
 
   return { thumbnail, screenImage, fullImage };
@@ -295,16 +268,11 @@ function processItemDetails(rawItemData) {
   if (!rawItemData) return null;
 
   try {
-    // Extract the item from response
+
     const data = rawItemData.response || rawItemData;
-
-    // Process image data using the same improved logic
     const imageData = extractBestImages(data);
-
-    // Extract free text fields by label
     const freetext = data.content?.freetext || {};
 
-    // Extract creator information
     const creatorInfo = freetext.name
       ? freetext.name.map((item) => ({
           label: item.label,
@@ -312,17 +280,13 @@ function processItemDetails(rawItemData) {
         }))
       : [];
 
-    // Institution and collection sorting
     const rawSetNames = getFreetextContent(freetext, "setName").map(
       (item) => item.content
     );
 
-    // Extract collection types with error handling
     const collectionTypes = extractCollectionTypes(rawSetNames);
 
-    // Build the processed item
     return {
-      // Basic identification
       id: data.id || "",
       title: cleanHtmlTags(
         data.title ||
@@ -330,21 +294,16 @@ function processItemDetails(rawItemData) {
           "Untitled"
       ),
       url: data.content?.descriptiveNonRepeating?.record_link || "",
-
-      // Source information
-      source:
-        data.unitCode ||
-        data.content?.descriptiveNonRepeating?.unit_code ||
-        "Smithsonian", // Code for internal use
+      source: "smithsonian", 
       museum:
         getMuseumName(
           data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
-        ) || "Smithsonian Institution", // Readable name for display
+        ) || "Smithsonian Institution", 
       dataSource:
         getFreetextContent(freetext, "dataSource")?.[0]?.content || "",
       recordId: data.content?.descriptiveNonRepeating?.record_ID || "",
 
-      // Images - now using improved extraction with multiple sizes
+      // Images
       imageUrl: imageData.fullImage || "",
       screenImageUrl: imageData.screenImage || "",
       thumbnailUrl: imageData.thumbnail || "",
@@ -362,7 +321,7 @@ function processItemDetails(rawItemData) {
             getFreetextContent(freetext, "date")?.[0]?.content
         ) || "",
 
-      // Location information
+      // Location 
       place:
         getFreetextContent(freetext, "place")?.[0]?.content ||
         (Array.isArray(data.content?.indexedStructured?.place)
@@ -374,31 +333,29 @@ function processItemDetails(rawItemData) {
       // Maker
       creatorInfo: creatorInfo || [],
 
-      // People and organizations
+      // People
       collectors: getFreetextContent(freetext, "name", "Collector") || [],
       curatorName: getFreetextContent(freetext, "name", "Curator") || [],
       bioRegion:
         getFreetextContent(freetext, "name", "Biogeographical Region") || [],
 
-      // Collection information
+      // Collection 
       setNames: rawSetNames || [],
       collectionTypes: collectionTypes || [],
 
       // Identifiers
       identifiers: getFreetextContent(freetext, "identifier") || [],
 
-      // Notes and additional information
+      // Notes
       notes: combineNotesByLabel(getFreetextContent(freetext, "notes")) || [],
 
-      // Raw API response (for debugging) - using consistent naming
+      // Raw API response (for debugging)
       _rawApiResponse: rawItemData,
     };
   } catch (error) {
     if (isDevelopment()) {
       console.error("Error processing item details:", error.message);
     }
-
-    // Return minimal information if processing fails
     return {
       id: rawItemData.id || rawItemData.response?.id || "",
       title:
@@ -444,7 +401,6 @@ function extractCollectionTypes(rawSetNames) {
     return rawSetNames.map((str) => {
       if (!str) return "";
       const parts = str.split(",");
-      // If there's a comma, return ONLY the first part after the comma
       return parts.length > 1 ? parts[1].trim() : str;
     });
   } catch {
@@ -461,10 +417,7 @@ function combineNotesByLabel(notes) {
   try {
     if (!notes || !Array.isArray(notes) || notes.length === 0) return [];
 
-    // Create an object to group notes by label
     const groupedNotes = {};
-
-    // Group all notes with the same label
     notes.forEach((note) => {
       if (!note || !note.label) return;
 
@@ -477,10 +430,10 @@ function combineNotesByLabel(notes) {
       }
     });
 
-    // Convert back to array format but combine multiple contents into paragraphs
+    // Convert back to array format in paragraphs
     return Object.entries(groupedNotes).map(([label, contents]) => ({
       label,
-      content: contents.join("\n\n"), // Join with double newlines for paragraph separation
+      content: contents.join("\n\n"), 
     }));
   } catch {
     return [];
@@ -488,28 +441,25 @@ function combineNotesByLabel(notes) {
 }
 
 /**
- * Organize item data into clear categories for UI display
+ * Organise item data into clear categories for UI display
  * @param {Object} item - Processed item data
- * @returns {Object} - Organized item data for UI
+ * @returns {Object} - Organised item data for UI
  */
-function organizeItemForDisplay(item) {
+function organiseItemForDisplay(item) {
   if (!item) return null;
 
   try {
-    // Create sections that will be easy to render in the UI
+  
     return {
-      // Basic info - always needed
       id: item.id || "",
       title: item.title || "Untitled",
       recordId: item.recordId || item.id || "",
 
-      // Preserve original format keys for backward compatibility
       ...item,
 
-      // Enhanced organized data
       media: {
-        primaryImage: item.screenImageUrl || item.imageUrl || "", // Use screen image for main display
-        fullImage: item.imageUrl || "", // Keep full-res for zoom
+        primaryImage: item.screenImageUrl || item.imageUrl || "",
+        fullImage: item.imageUrl || "", 
         thumbnail: item.thumbnailUrl || "",
       },
 
@@ -525,7 +475,7 @@ function organizeItemForDisplay(item) {
         geoLocation: item.geoLocation || null,
       },
 
-      creators: organizeCreatorInfo(item.creatorInfo),
+      creators: organiseCreatorInfo(item.creatorInfo),
 
       collection: {
         name: getMainCollection(item.setNames),
@@ -536,13 +486,9 @@ function organizeItemForDisplay(item) {
         allCollections: item.setNames || [],
       },
 
-      descriptions: organizeDescriptions(item.notes),
-
-      // Raw API response is preserved from the spread above
-      // No need to add it again since ...item already includes _rawApiResponse
+      descriptions: organiseDescriptions(item.notes),
     };
   } catch {
-    // Return the original item to avoid breaking the UI
     return item;
   }
 }
@@ -583,11 +529,11 @@ function getMainCollection(setNames) {
 }
 
 /**
- * Organize creator information into a structured format
+ * Organise creator information into a structured format
  * @param {Array} creatorInfo - Creator information from the API
  * @returns {Array} - Structured creator information
  */
-function organizeCreatorInfo(creatorInfo) {
+function organiseCreatorInfo(creatorInfo) {
   try {
     if (
       !creatorInfo ||
@@ -597,7 +543,6 @@ function organizeCreatorInfo(creatorInfo) {
       return [];
     }
 
-    // Group creators by role/label
     const groupedCreators = {};
 
     creatorInfo.forEach((creator) => {
@@ -613,7 +558,6 @@ function organizeCreatorInfo(creatorInfo) {
       }
     });
 
-    // Convert back to array format for UI
     return Object.entries(groupedCreators).map(([role, names]) => ({
       role,
       names: Array.isArray(names) ? names : [names],
@@ -625,17 +569,17 @@ function organizeCreatorInfo(creatorInfo) {
 }
 
 /**
- * Organize descriptions into a more UI-friendly format
+ * Organise descriptions into a more UI-friendly format
  * @param {Array} notes - Notes from the API
  * @returns {Array} - Structured descriptions
  */
-function organizeDescriptions(notes) {
+function organiseDescriptions(notes) {
   try {
     if (!notes || !Array.isArray(notes) || notes.length === 0) {
       return [];
     }
 
-    // Process notes into a more UI-friendly format
+
     return notes
       .map((note) => {
         if (!note) return null;
@@ -646,7 +590,7 @@ function organizeDescriptions(notes) {
           paragraphs: note.content ? note.content.split("\n\n") : [],
         };
       })
-      .filter(Boolean); // Remove null entries
+      .filter(Boolean); 
   } catch {
     return [];
   }

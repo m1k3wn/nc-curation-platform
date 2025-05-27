@@ -29,7 +29,6 @@ export function SearchProvider({ children }) {
   const [totalResults, setTotalResults] = useState(0);
   const [isFromCache, setIsFromCache] = useState(false);
   const [progress, setProgress] = useState(null);
-  const [currentSource, setCurrentSource] = useState("smithsonian"); // Track current source
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -78,21 +77,17 @@ export function SearchProvider({ children }) {
         return itemDetailsCache.current.get(cacheKey);
       }
 
-      // Let museumService determine source and fetch details
       const detailedItem = await getItemDetails(
         source,
         itemId,
         itemCancelTokenRef.current.token
       );
 
-      // Cache the result
       itemDetailsCache.current.set(cacheKey, detailedItem);
 
-      // Update with full details
       setCurrentItem(detailedItem);
       return detailedItem;
     } catch (error) {
-      // Ignore canceled requests
       if (axios.isCancel(error)) {
         return;
       }
@@ -135,7 +130,6 @@ export function SearchProvider({ children }) {
 
         if (reset) {
           setQuery(normalizedQuery);
-          setCurrentSource(source); // Track the source being used
           setPage(1);
           setResults([]);
           setIsFromCache(false);
@@ -196,27 +190,22 @@ export function SearchProvider({ children }) {
     [handleSearchProgress]
   );
 
-  /**
-   * Go to a specific page (for pagination display)
-   */
+
   const changePage = useCallback((pageNumber) => {
     if (pageNumber < 1) return;
     setPage(pageNumber);
     window.scrollTo(0, 0);
   }, []);
 
-  /**
-   * Clear search and results
-   */
+
   const clearSearch = useCallback(() => {
-    // Cancel any ongoing search
+
     if (searchCancelTokenRef.current) {
       searchCancelTokenRef.current.cancel("Search cleared");
     }
 
     setQuery("");
     setResults([]);
-    setCurrentSource("smithsonian"); // Reset to default source
     setPage(1);
     setError(null);
     setTotalResults(0);
@@ -228,28 +217,32 @@ export function SearchProvider({ children }) {
   /**
    * Refresh search (clear cache and search again)
    */
-  const refreshSearch = useCallback(() => {
-    if (!query) return;
+const refreshSearch = useCallback(() => {
+  if (!query || results.length === 0) return;
 
-    searchResultsManager.clearCacheItem(query, currentSource); // Clear cache for current source
-    setIsFromCache(false);
-    performSearch(query, currentSource, true); // Use current source
-  }, [query, currentSource, performSearch]);
+  // Get unique sources from current results and clear their caches
+  const sources = [...new Set(results.map(r => r.source))];
+  sources.forEach(source => searchResultsManager.clearCacheItem(query, source));
+  
+  setIsFromCache(false);
+  
+  // TODO: Re-implement search call when multi-source search is ready
+  console.log("Refresh requested - cache cleared for sources:", sources);
+}, [query, results]);
 
-  /**
-   * Clear the item details cache
-   */
-  const clearItemCache = useCallback(() => {
-    itemDetailsCache.current.clear();
-  }, []);
+/**
+ * Clear the item details cache
+ */
+const clearItemCache = useCallback(() => {
+  itemDetailsCache.current.clear();
+}, []);
 
-  // Calculate pagination for display
+  // Calculate pagination
   const totalPages = Math.ceil(results.length / pageSize);
   const startIdx = (page - 1) * pageSize;
   const endIdx = startIdx + pageSize;
   const pageResults = results.slice(startIdx, endIdx);
 
-  // Context value
   const value = {
     // Search state
     query,
@@ -260,7 +253,6 @@ export function SearchProvider({ children }) {
     totalResults,
     isFromCache,
     progress,
-    currentSource, // Expose current source to components
 
     // Pagination
     page,
@@ -269,7 +261,7 @@ export function SearchProvider({ children }) {
     changePage,
 
     // Actions
-    performSearch, // Now accepts source parameter
+    performSearch, 
     clearSearch,
     refreshSearch,
 
