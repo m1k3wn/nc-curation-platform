@@ -11,11 +11,9 @@ import { getMuseumName } from "./smithsonianMuseumCodes";
  * @param {Object} apiData - Raw API response
  * @returns {Object} - Adapted search results
  */
-export const adaptSmithsonianSearchResults = (
-  apiData,
-) => {
+export const adaptSmithsonianSearchResults = (apiData) => {
   if (!apiData || !apiData.response) {
-    return { total: 0, items: []};
+    return { total: 0, items: [] };
   }
 
   const totalResults = apiData.response.rowCount || 0;
@@ -36,7 +34,6 @@ export const adaptSmithsonianItemDetails = (apiData) => {
   if (!apiData) return null;
 
   try {
-
     const baseItem = processItemDetails(apiData);
     const organisedItem = organiseItemForDisplay(baseItem);
 
@@ -53,7 +50,6 @@ export const adaptSmithsonianItemDetails = (apiData) => {
       return {
         id: apiData.id || "unknown",
         title: apiData.title || "Unknown Item",
-        _rawApiResponse: apiData,
       };
     }
   }
@@ -70,7 +66,7 @@ function cleanHtmlTags(text) {
 
   try {
     const str = String(text);
- 
+
     let cleanedText = str.replace(/<\/?[^>]+(>|$)/g, "");
     cleanedText = cleanedText.replace(/\(\s*\)/g, "");
     cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1");
@@ -114,7 +110,6 @@ function processItems(items) {
   return items
     .map((item) => {
       try {
-      
         const imageData = extractBestImages(item);
         const id = item.id || item.url || "";
 
@@ -128,8 +123,8 @@ function processItems(items) {
           imageUrl: imageData.fullImage,
           screenImageUrl: imageData.screenImage,
           thumbnailUrl: imageData.thumbnail,
-          source: "smithsonian", 
-          museum: getMuseumName(item.unitCode) || "Smithsonian Institution", 
+          source: "smithsonian",
+          museum: getMuseumName(item.unitCode) || "Smithsonian Institution",
           datePublished: getDate(item),
           url: item.content?.descriptiveNonRepeating?.record_link || "",
         };
@@ -150,14 +145,15 @@ function processItems(items) {
  */
 function extractBestImages(item) {
   try {
-    const mediaContent = item.content?.descriptiveNonRepeating?.online_media?.media;
-    
+    const mediaContent =
+      item.content?.descriptiveNonRepeating?.online_media?.media;
+
     if (!mediaContent || mediaContent.length === 0) {
       return { thumbnail: "", screenImage: "", fullImage: "" };
     }
-    
+
     const media = mediaContent[0];
-    
+
     // Build URLs from idsId
     if (media.idsId) {
       return {
@@ -166,7 +162,7 @@ function extractBestImages(item) {
         thumbnail: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`,
       };
     }
-    
+
     // Fallback to direct content URLs
     return {
       fullImage: media.content || "",
@@ -206,7 +202,6 @@ function processItemDetails(rawItemData) {
   if (!rawItemData) return null;
 
   try {
-
     const data = rawItemData.response || rawItemData;
     const imageData = extractBestImages(data);
     const freetext = data.content?.freetext || {};
@@ -224,6 +219,9 @@ function processItemDetails(rawItemData) {
 
     const collectionTypes = extractCollectionTypes(rawSetNames);
 
+    // Extract only descriptive notes (not all notes)
+    const descriptiveNotes = extractDescriptiveNotes(freetext);
+
     return {
       id: data.id || "",
       title: cleanHtmlTags(
@@ -231,12 +229,14 @@ function processItemDetails(rawItemData) {
           data.content?.descriptiveNonRepeating?.title?.content ||
           "Untitled"
       ),
+      description:
+        cleanHtmlTags(data.content?.descriptiveNonRepeating?.description) || "",
       url: data.content?.descriptiveNonRepeating?.record_link || "",
-      source: "smithsonian", 
+      source: "smithsonian",
       museum:
         getMuseumName(
           data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
-        ) || "Smithsonian Institution", 
+        ) || "Smithsonian Institution",
       recordId: data.id || "",
 
       imageUrl: imageData.fullImage || "",
@@ -275,8 +275,8 @@ function processItemDetails(rawItemData) {
 
       identifiers: getFreetextContent(freetext, "identifier") || [],
 
-      // Raw API response (for debugging) - will remove in production
-      _rawApiResponse: rawItemData,
+      // Include only descriptive notes for descriptions
+      notes: descriptiveNotes || [],
     };
   } catch (error) {
     if (isDevelopment()) {
@@ -286,7 +286,6 @@ function processItemDetails(rawItemData) {
       id: rawItemData.id || rawItemData.response?.id || "",
       title:
         rawItemData.title || rawItemData.response?.title || "Untitled Item",
-      _rawApiResponse: rawItemData,
     };
   }
 }
@@ -332,35 +331,41 @@ function extractCollectionTypes(rawSetNames) {
   }
 }
 
-// /**
-//  * @param {Array} notes - Array of note objects
-//  * @returns {Array} - Array of combined notes
-//  */
-// function combineNotesByLabel(notes) {
-//   try {
-//     if (!notes || !Array.isArray(notes) || notes.length === 0) return [];
+/**
+ * Extract meaningful description content from freetext notes
+ * @param {Object} freetext - The freetext object from API response
+ * @returns {Array} - Array of filtered description notes
+ */
+function extractDescriptiveNotes(freetext) {
+  try {
+    if (!freetext || !freetext.notes) return [];
 
-//     const groupedNotes = {};
-//     notes.forEach((note) => {
-//       if (!note || !note.label) return;
+    // Labels that contain actual descriptive content we want to display
+    const descriptiveLabels = [
+      "Label",
+      "Luce Center Label", 
+      "Museum Label",
+      "Description",
+      "Summary",
+      "About",
+      "Exhibition Label"
+    ];
 
-//       if (!groupedNotes[note.label]) {
-//         groupedNotes[note.label] = [];
-//       }
-
-//       if (note.content) {
-//         groupedNotes[note.label].push(note.content);
-//       }
-//     });
-
-//     return Object.entries(groupedNotes).map(([label, contents]) => ({
-//       label,
-//       content: contents.join("\n\n"), 
-//     }));
-//   } catch {
-//     return [];
-//   }
-// }
+    return freetext.notes
+      .filter((note) => {
+        if (!note || !note.label || !note.content) return false;
+        return descriptiveLabels.some(label => 
+          note.label.includes(label) || label.includes(note.label)
+        );
+      })
+      .map((note) => ({
+        label: note.label,
+        content: note.content,
+      }));
+  } catch {
+    return [];
+  }
+}
 
 /**
  * @param {Object} item - Processed item data
@@ -370,17 +375,17 @@ function organiseItemForDisplay(item) {
   if (!item) return null;
 
   try {
-  
     return {
       id: item.id || "",
       title: item.title || "Untitled",
       recordId: item.recordId || item.id || "",
+      description: item.description || "",
 
       ...item,
 
       media: {
         primaryImage: item.screenImageUrl || item.imageUrl || "",
-        fullImage: item.imageUrl || "", 
+        fullImage: item.imageUrl || "",
         thumbnail: item.thumbnailUrl || "",
       },
 
@@ -407,7 +412,7 @@ function organiseItemForDisplay(item) {
         allCollections: item.setNames || [],
       },
 
-      // descriptions: organiseDescriptions(item.notes),
+      descriptions: organiseDescriptions(item.notes),
     };
   } catch {
     return item;
@@ -486,29 +491,28 @@ function organiseCreatorInfo(creatorInfo) {
   }
 }
 
-// /**
-//  * @param {Array} notes - Notes from the API
-//  * @returns {Array} - Structured descriptions
-//  */
-// function organiseDescriptions(notes) {
-//   try {
-//     if (!notes || !Array.isArray(notes) || notes.length === 0) {
-//       return [];
-//     }
+/**
+ * @param {Array} notes - Notes from the API
+ * @returns {Array} - Structured descriptions
+ */
+function organiseDescriptions(notes) {
+  try {
+    if (!notes || !Array.isArray(notes) || notes.length === 0) {
+      return [];
+    }
 
+    return notes
+      .map((note) => {
+        if (!note) return null;
 
-//     return notes
-//       .map((note) => {
-//         if (!note) return null;
-
-//         return {
-//           title: note.label || "Description",
-//           content: note.content || "",
-//           paragraphs: note.content ? note.content.split("\n\n") : [],
-//         };
-//       })
-//       .filter(Boolean); 
-//   } catch {
-//     return [];
-//   }
-// }
+        return {
+          title: note.label || "Description",
+          content: note.content || "",
+          paragraphs: note.content ? note.content.split("\n\n") : [],
+        };
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}

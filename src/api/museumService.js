@@ -15,7 +15,6 @@ const isDevelopment = () => {
   );
 };
 
-
 const SUPPORTED_SOURCES = ["smithsonian", "europeana"];
 
 const isSourceSupported = (source) => {
@@ -31,7 +30,6 @@ const isSourceSupported = (source) => {
  * @returns {Object} - Standardised error response object
  */
 const handleApiError = (error, source, operation, id = null) => {
-  
   if (axios.isCancel(error)) {
     if (isDevelopment()) {
       console.log(
@@ -48,7 +46,7 @@ const handleApiError = (error, source, operation, id = null) => {
   const baseErrorObj = {
     error: error.message,
     source,
-    _rawApiResponse: {
+    rawData: {
       error: error.message,
       status: error.response?.status,
       data: error.response?.data,
@@ -60,10 +58,9 @@ const handleApiError = (error, source, operation, id = null) => {
       id,
       title: `Item ${id}`,
       ...baseErrorObj,
-      rawData: baseErrorObj._rawApiResponse, // Smithsonian compatibility
     };
   }
-  
+
   return baseErrorObj;
 };
 
@@ -140,10 +137,9 @@ async function getSmithsonianItemDetails(id, cancelToken = null) {
   );
   const adaptedData = smithsonianAdapter.adaptSmithsonianItemDetails(rawData);
 
-  // Ensure backward compatibility fields
-  if (!adaptedData.rawData) {
-    adaptedData.rawData = rawData;
-  }
+  // Attach raw data for debugging and compatibility
+  adaptedData.rawData = rawData;
+
   return adaptedData;
 }
 
@@ -159,10 +155,9 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
     profile: "rich",
   });
   const adaptedData = adaptEuropeanaItemDetails(rawData);
-  // Ensure backward compatibility fields
-  if (!adaptedData.rawData) {
+
+  // Attach raw data for debugging and compatibility
   adaptedData.rawData = rawData;
-  }
 
   return adaptedData;
 }
@@ -208,9 +203,7 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
     );
 
     const adaptedBatch = smithsonianAdapter.adaptSmithsonianSearchResults(
-      batchResponse,
-      // batchNum + 1,
-      // batchSize
+      batchResponse
     );
 
     return adaptedBatch.items || [];
@@ -227,7 +220,6 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
  */
 async function searchSmithsonianComplete(query, progressCallback = null) {
   try {
-
     const initialResponse = await smithsonianRepository.searchSmithsonianItems(
       query,
       0,
@@ -257,7 +249,7 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
     }
 
     let allItemsWithImages = [];
-    const maxConcurrent = smithsonianConfig.maxParallelRequests; 
+    const maxConcurrent = smithsonianConfig.maxParallelRequests;
 
     for (
       let groupStart = 0;
