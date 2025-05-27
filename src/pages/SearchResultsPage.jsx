@@ -4,16 +4,20 @@ import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import { useSearch } from "../context/SearchContext";
 
+/**
+ * Page component for displaying search results
+ */
 export default function SearchResultsPage() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
   
+  // Use ref to track if we've already performed this search
   const lastSearchedQuery = useRef("");
 
   const {
     query,
-    performSearch,
+    performUnifiedSearch, // Use unified search as default
     allResults,
     totalResults,
     loading,
@@ -21,23 +25,27 @@ export default function SearchResultsPage() {
     clearSearch,
   } = useSearch();
 
-
+  // Perform search when query param changes
   useEffect(() => {
     if (queryParam && queryParam !== lastSearchedQuery.current) {
       lastSearchedQuery.current = queryParam;
-      performSearch(queryParam);
+      performUnifiedSearch(queryParam);
     }
-  }, [queryParam]);
+  }, [queryParam]); // Remove performUnifiedSearch from dependencies
 
-
+  // Cleanup when component unmounts (navigating away from search results page)
   useEffect(() => {
     return () => {
+      // Only clear if there's an ongoing search when user navigates away
       if (loading) {
         clearSearch();
       }
     };
-  }, []); 
+  }, []); // Empty dependency array - only run on mount/unmount
 
+  /**
+   * Get appropriate results message
+   */
   const getResultsMessage = () => {
     if (loading) {
       return "Searching...";
