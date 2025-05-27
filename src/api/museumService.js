@@ -15,20 +15,15 @@ const isDevelopment = () => {
   );
 };
 
-/**
- * Supported API sources
- */
+
 const SUPPORTED_SOURCES = ["smithsonian", "europeana"];
 
-/**
- * Validates if a source is supported
- */
 const isSourceSupported = (source) => {
   return SUPPORTED_SOURCES.includes(source);
 };
 
 /**
- * Generic error handler for API operations
+ * Error Handling
  * @param {Error} error - The error object
  * @param {string} source - The API source ("smithsonian" or "europeana")
  * @param {string} operation - The operation being performed ("fetching", "searching", etc.)
@@ -36,7 +31,7 @@ const isSourceSupported = (source) => {
  * @returns {Object} - Standardised error response object
  */
 const handleApiError = (error, source, operation, id = null) => {
-  // Handle cancelled requests
+  
   if (axios.isCancel(error)) {
     if (isDevelopment()) {
       console.log(
@@ -45,15 +40,11 @@ const handleApiError = (error, source, operation, id = null) => {
     }
     throw error;
   }
-
-  // Log error in development
   if (isDevelopment()) {
     console.error(
       `Error ${operation} ${source}${id ? ` item ${id}` : ""}: ${error.message}`
     );
   }
-
-  // Return standardised error object
   const baseErrorObj = {
     error: error.message,
     source,
@@ -64,7 +55,6 @@ const handleApiError = (error, source, operation, id = null) => {
     },
   };
 
-  // Add item-specific fields if ID provided
   if (id) {
     return {
       id,
@@ -73,13 +63,12 @@ const handleApiError = (error, source, operation, id = null) => {
       rawData: baseErrorObj._rawApiResponse, // Smithsonian compatibility
     };
   }
-
+  
   return baseErrorObj;
 };
 
 /**
- * Search for museum items - SIMPLIFIED VERSION
- * Searches through ALL batches and returns complete results
+ Search for museum items 
  */
 export const searchItems = async (
   source = "smithsonian",
@@ -112,60 +101,9 @@ export const searchItems = async (
 };
 
 /**
- * Determine the source from item ID
- * @param {string} itemId - The item ID
- * @returns {string} - The source ("smithsonian" or "europeana")
+ * Routing and orchestration - determines which API to call based on source
  */
-const determineSource = (itemId) => {
-  if (!itemId) return "smithsonian";
-
-  const europeanaPatterns = [
-    /^\d+\/.*/, // digits/path pattern
-    /^\/\d+\/.*/, // leading slash + digits/path
-  ];
-
-  return europeanaPatterns.some((pattern) => pattern.test(itemId))
-    ? "europeana"
-    : "smithsonian";
-};
-
-/**
- * Get detailed information for a specific item (automatically detects source)
- */
-export const getItemDetails = async (id, cancelToken = null) => {
-  if (!id) {
-    throw new Error("Item ID is required");
-  }
-
-  // Automatically determine source from ID format
-  const source = determineSource(id);
-
-  if (isDevelopment()) {
-    console.log(`Auto-detected source "${source}" for item ID: ${id}`);
-  }
-
-  try {
-    switch (source) {
-      case "smithsonian":
-        return await getSmithsonianItemDetails(id, cancelToken);
-      case "europeana":
-        return await getEuropeanaItemDetails(id, cancelToken);
-      default:
-        throw new Error(`Source implementation not found: ${source}`);
-    }
-  } catch (error) {
-    return handleApiError(error, source, "fetching", id);
-  }
-};
-
-/**
- * Get detailed information for a specific item (with explicit source - for legacy/specific use)
- */
-export const getItemDetailsBySource = async (
-  source = "smithsonian",
-  id,
-  cancelToken = null
-) => {
+export const getItemDetails = async (source, id, cancelToken = null) => {
   if (!id) {
     throw new Error("Item ID is required");
   }
@@ -221,7 +159,7 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
     console.log(`Fetching Europeana item details for ID: ${id}`);
   }
 
-  // Always use 'rich' profile for detailed item views
+  // Using rich profile for detailed informatio
   const rawData = await europeanaRepository.getRecord(id, {
     profile: "rich",
   });
@@ -231,7 +169,7 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
 }
 
 /**
- * Search Europeana API (simplified for now)
+ * Search Europeana API 
  */
 async function searchEuropeanaComplete(query, progressCallback = null) {
   try {
@@ -292,7 +230,7 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
  */
 async function searchSmithsonianComplete(query, progressCallback = null) {
   try {
-    // Step 1: Get total count
+
     const initialResponse = await smithsonianRepository.searchSmithsonianItems(
       query,
       0,

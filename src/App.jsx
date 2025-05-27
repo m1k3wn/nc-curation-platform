@@ -43,7 +43,7 @@ export default function App() {
                   />
                   <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/search" element={<SearchResultsPage />} />
-                  <Route path="/item/:id" element={<ItemPage />} />
+                  <Route path="/item/:source/:id" element={<ItemPage />} />
                   {/* For testing */}
                   <Route
                     path="/europeana-test"

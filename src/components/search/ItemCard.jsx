@@ -16,10 +16,15 @@ export default function ItemCard({ item, actionButtons }) {
   /**
    * Navigate to item details page
    */
-  const handleCardClick = () => {
-    navigate(`/item/${item.id}`);
-  };
-
+const handleCardClick = () => {
+  // Europeana
+  if (item.source === 'europeana') {
+    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}?recordId=${encodeURIComponent(item.recordId)}`);
+  } else {
+    // Smithsonian 
+    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
+  }
+};
   // Default placeholder image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";

@@ -1,35 +1,37 @@
 import { useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import SingleItemCard from "../components/search/SingleItemCard";
 import { useSearch } from "../context/SearchContext";
 
 /**
- * Displays detailed information about a single museum item
+ * Displays detailed information about a single item
  */
 export default function ItemPage() {
-  const { id } = useParams();
+//  Source from URL parameters
+  const { source, id } = useParams();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+const recordId = searchParams.get('recordId') || id; // Fallback to id if no recordId
+
   const navigate = useNavigate();
+
   const { currentItem, itemLoading, itemError, fetchItemDetails } = useSearch();
 
-  // Check if in development mode
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  // Fetch item details when ID changes
   useEffect(() => {
     if (id) {
-      fetchItemDetails(id);
+      fetchItemDetails(source, recordId);
     }
   }, [id, fetchItemDetails]);
 
-  // Navigate back to previous page
   const handleBackClick = () => {
     navigate(-1);
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Back button */}
       <button
         onClick={handleBackClick}
         className="mb-4 flex items-center text-blue-600 hover:text-blue-800"
@@ -49,16 +51,6 @@ export default function ItemPage() {
         </svg>
         Back to results
       </button>
-
-      {/* Development-only debug panel */}
-      {/* {isDev && (
-        <div className="mb-4 p-3 bg-gray-100 rounded text-sm">
-          <h3 className="font-bold">Debug Info:</h3>
-          <div>Item ID: {id}</div>
-          <div>Has currentItem: {currentItem ? "Yes" : "No"}</div>
-          <div>Error: {itemError || "None"}</div>
-        </div>
-      )} */}
 
       {/* Error message */}
       {itemError && (
@@ -86,7 +78,6 @@ export default function ItemPage() {
         </div>
       )}
 
-      {/* Item details card */}
       {currentItem && (
         <SingleItemCard
           item={currentItem}
