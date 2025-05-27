@@ -47,7 +47,7 @@ const CacheIndicator = ({ itemCount, onRefresh }) => (
 );
 
 /**
- * Component to display search results in a grid layout - SIMPLIFIED
+ * Component to display search results in a grid layout
  */
 export default function SearchResultsGrid() {
   const {

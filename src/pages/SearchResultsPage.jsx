@@ -1,16 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import { useSearch } from "../context/SearchContext";
 
-/**
- * Page component for displaying search results
- */
 export default function SearchResultsPage() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
+  
+  const lastSearchedQuery = useRef("");
 
   const {
     query,
@@ -22,26 +21,23 @@ export default function SearchResultsPage() {
     clearSearch,
   } = useSearch();
 
-  // Perform search when query param changes
+
   useEffect(() => {
-    if (queryParam && queryParam !== query) {
+    if (queryParam && queryParam !== lastSearchedQuery.current) {
+      lastSearchedQuery.current = queryParam;
       performSearch(queryParam);
     }
-  }, [queryParam, query, performSearch]);
+  }, [queryParam]);
 
-  // Cleanup when navigating away from search results page
+
   useEffect(() => {
     return () => {
-      // Only clear if there's an ongoing search when user navigates away
       if (loading) {
         clearSearch();
       }
     };
-  }, [loading, clearSearch]);
+  }, []); 
 
-  /**
-   * Get appropriate results message
-   */
   const getResultsMessage = () => {
     if (loading) {
       return "Searching...";

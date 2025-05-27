@@ -3,8 +3,6 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
 
 /**
- * Displays detailed information about a museum item
- *
  * @param {Object} item - The item data to display
  * @param {boolean} isLoading - Whether additional item details are being loaded
  * @param {string} error - Error message, if any
@@ -14,15 +12,13 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const [showFullImage, setShowFullImage] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
 
-  // Check if in development mode
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  // Default placeholder image for missing or failed images
+  // Default placeholder image 
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  // If no item is provided, show a loading state
   if (!item) {
     return (
       <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -31,7 +27,6 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   }
 
-  // If we have an error but no item, show error state
   if (!item && error) {
     return (
       <div
@@ -45,30 +40,26 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   }
 
-  // Image selection logic - prefer screen image for main display, full-res for zoom
+  // Image selection-  prefer screen image for main display, full-res for zoom
   const screenImage =
-    item.media?.primaryImage || // New structure (already prioritises screen)
-    item.screenImageUrl || // Fallback to direct property
-    item.imageUrl; // Final fallback to full image
+    item.media?.primaryImage || 
+    item.screenImageUrl || 
+    item.imageUrl; 
 
   const fullResImage =
-    item.media?.fullImage || // New structure
-    item.imageUrl || // Fallback
-    screenImage; // Use screen image if no full-res available
+    item.media?.fullImage || 
+    item.imageUrl || 
+    screenImage; 
 
   const displayImage = screenImage || defaultImage;
   const zoomImage = fullResImage || screenImage || defaultImage;
 
-  /**
-   * Display a field with its label if the value exists
-   */
+
   const DisplayField = ({ label, value, className = "" }) => {
-    // Skip empty values
     if (value === undefined || value === null) return null;
     if (Array.isArray(value) && value.length === 0) return null;
     if (value === "") return null;
 
-    // Format the display value
     let displayValue;
     try {
       displayValue = Array.isArray(value) ? value.join(", ") : String(value);

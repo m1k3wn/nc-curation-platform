@@ -14,7 +14,7 @@ export const API_CONFIG = {
 export const smithsonianConfig = {
   batchSize: 300,
   maxBatches: 50,
-  defaultPageSize: 24, // results per page
+  defaultPageSize: 24, 
   requestTimeout: 30000,
   maxParallelRequests: 50,
 };
@@ -23,9 +23,9 @@ export const smithsonianConfig = {
 export const europeanaConfig = {
   batchSize: 100, // Europeana max is 100 per request
   maxBatches: 20, // Since results are faster, don't need as many
-  defaultPageSize: 24, // results per page (match Smithsonian)
-  requestTimeout: 15000, // Shorter timeout since API is faster
-  maxParallelRequests: 10, // Conservative since we have CORS (no proxy)
+  defaultPageSize: 24, // results per page 
+  requestTimeout: 15000, 
+  maxParallelRequests: 10, 
   defaultSearchRows: 50, // Default number of items to fetch
   maxSearchRows: 1000, // Max items for comprehensive search
 

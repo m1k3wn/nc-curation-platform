@@ -160,11 +160,9 @@ export function SearchProvider({ children }) {
           return; 
         }
 
-
         setResults(response.items || []);
         setTotalResults(response.total || 0);
 
-      
         if (response.items?.length > 0) {
           searchResultsManager.storeResults(
             normalizedQuery,
@@ -190,16 +188,13 @@ export function SearchProvider({ children }) {
     [handleSearchProgress]
   );
 
-
   const changePage = useCallback((pageNumber) => {
     if (pageNumber < 1) return;
     setPage(pageNumber);
     window.scrollTo(0, 0);
   }, []);
 
-
   const clearSearch = useCallback(() => {
-
     if (searchCancelTokenRef.current) {
       searchCancelTokenRef.current.cancel("Search cleared");
     }
@@ -217,25 +212,25 @@ export function SearchProvider({ children }) {
   /**
    * Refresh search (clear cache and search again)
    */
-const refreshSearch = useCallback(() => {
-  if (!query || results.length === 0) return;
+  const refreshSearch = useCallback(() => {
+    if (!query || results.length === 0) return;
 
-  // Get unique sources from current results and clear their caches
-  const sources = [...new Set(results.map(r => r.source))];
-  sources.forEach(source => searchResultsManager.clearCacheItem(query, source));
-  
-  setIsFromCache(false);
-  
-  // TODO: Re-implement search call when multi-source search is ready
-  console.log("Refresh requested - cache cleared for sources:", sources);
-}, [query, results]);
+    // Get unique sources from current results and clear their caches
+    const sources = [...new Set(results.map(r => r.source))];
+    sources.forEach(source => searchResultsManager.clearCacheItem(query, source));
+    
+    setIsFromCache(false);
+    
+    // TODO: Re-implement search call when multi-source search is ready
+    console.log("Refresh requested - cache cleared for sources:", sources);
+  }, [query, results]);
 
-/**
- * Clear the item details cache
- */
-const clearItemCache = useCallback(() => {
-  itemDetailsCache.current.clear();
-}, []);
+  /**
+   * Clear the item details cache
+   */
+  const clearItemCache = useCallback(() => {
+    itemDetailsCache.current.clear();
+  }, []);
 
   // Calculate pagination
   const totalPages = Math.ceil(results.length / pageSize);

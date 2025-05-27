@@ -8,20 +8,14 @@ const isDevelopment = () => {
 import { getMuseumName } from "./smithsonianMuseumCodes";
 
 /**
- * Adapt search results from Smithsonian API to common format
- *
  * @param {Object} apiData - Raw API response
- * @param {number} page - Current page number
- * @param {number} pageSize - Items per page
  * @returns {Object} - Adapted search results
  */
 export const adaptSmithsonianSearchResults = (
   apiData,
-  page = 1,
-  pageSize = 25
 ) => {
   if (!apiData || !apiData.response) {
-    return { total: 0, items: [], allItems: [] };
+    return { total: 0, items: []};
   }
 
   const totalResults = apiData.response.rowCount || 0;
@@ -31,13 +25,10 @@ export const adaptSmithsonianSearchResults = (
   return {
     total: totalResults,
     items: processedItems,
-    allItems: processedItems, 
   };
 };
 
 /**
- * Adapt single item details from Smithsonian API to common format
- *
  * @param {Object} apiData - Raw API response
  * @returns {Object} - Adapted item details
  */
@@ -47,13 +38,12 @@ export const adaptSmithsonianItemDetails = (apiData) => {
   try {
 
     const baseItem = processItemDetails(apiData);
-    const organisedItem = organisItemForDisplay(baseItem);
+    const organisedItem = organiseItemForDisplay(baseItem);
 
     return organisedItem;
   } catch (error) {
     console.error("Error adapting item details:", error.message);
 
-    // Fall back 
     try {
       const processedItem = processItemDetails(apiData);
       return processedItem;
@@ -72,7 +62,6 @@ export const adaptSmithsonianItemDetails = (apiData) => {
 /* ----------------------- HELPER FUNCTIONS ----------------------- */
 
 /**
- * Clean HTML tags from text
  * @param {string} text - Text to clean
  * @returns {string} - Cleaned text
  */
@@ -80,11 +69,9 @@ function cleanHtmlTags(text) {
   if (!text) return "";
 
   try {
-
     const str = String(text);
-    // Remove common HTML tags: <I>, </I>, <em>, </em>
+ 
     let cleanedText = str.replace(/<\/?[^>]+(>|$)/g, "");
-    // Handle parentheses that might remain after tag removal
     cleanedText = cleanedText.replace(/\(\s*\)/g, "");
     cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1");
     return cleanedText.trim();
@@ -94,7 +81,6 @@ function cleanHtmlTags(text) {
 }
 
 /**
- * Format dates for display
  * @param {string} dateStr - Raw date string
  * @returns {string} - Formatted date
  */
@@ -118,7 +104,7 @@ function formatDateForDisplay(dateStr) {
 }
 
 /**
- * Process items from search results and extract only those with images
+ * Process items from search results and extract those with images
  * @param {Array} items - Raw item array from search results
  * @returns {Array} - Processed items with consistent structure
  */
@@ -146,7 +132,6 @@ function processItems(items) {
           museum: getMuseumName(item.unitCode) || "Smithsonian Institution", 
           datePublished: getDate(item),
           url: item.content?.descriptiveNonRepeating?.record_link || "",
-          dataSource: "",
         };
       } catch {
         return {
@@ -160,86 +145,40 @@ function processItems(items) {
 }
 
 /**
- * Extract the best available images from an item
  * @param {Object} item - Item from search results
  * @returns {Object} - Object with fullImage, screenImage, and thumbnail URLs
  */
 function extractBestImages(item) {
-  let fullImage = "";
-  let screenImage = "";
-  let thumbnail = "";
-
   try {
-    const mediaContent =
-      item.content?.descriptiveNonRepeating?.online_media?.media;
-
+    const mediaContent = item.content?.descriptiveNonRepeating?.online_media?.media;
+    
     if (!mediaContent || mediaContent.length === 0) {
-      return { thumbnail, screenImage, fullImage };
+      return { thumbnail: "", screenImage: "", fullImage: "" };
     }
     
     const media = mediaContent[0];
-
-    // For the full res image
+    
+    // Build URLs from idsId
     if (media.idsId) {
-      fullImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`;
-    } else if (media.content) {
-      fullImage = media.content;
+      return {
+        fullImage: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`,
+        screenImage: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_screen`,
+        thumbnail: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`,
+      };
     }
-
-    // Extract different image sizes from resources
-    if (media.resources && media.resources.length > 0) {
-
-      const screenResource = media.resources.find(
-        (res) =>
-          res.label === "Screen Image" ||
-          (res.url && res.url.includes("_screen"))
-      );
-
-      if (screenResource && screenResource.url) {
-        screenImage = screenResource.url;
-      }
-
-      const thumbResource = media.resources.find(
-        (res) =>
-          res.label === "Thumbnail Image" ||
-          (res.url && res.url.includes("_thumb"))
-      );
-
-      if (thumbResource && thumbResource.url) {
-        thumbnail = thumbResource.url;
-      }
-    }
-
-
-    if (!screenImage && media.idsId) {
-      screenImage = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_screen`;
-    }
-
-    if (!thumbnail && media.idsId) {
-      thumbnail = `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`;
-    }
-
-    if (!thumbnail && media.thumbnail && media.thumbnail !== fullImage) {
-      thumbnail = media.thumbnail;
-    }
-
-    if (!screenImage && fullImage) {
-      screenImage = fullImage; 
-    }
-
-    if (!thumbnail && screenImage) {
-      thumbnail = screenImage; 
-    } else if (!thumbnail && fullImage) {
-      thumbnail = fullImage; 
-    }
+    
+    // Fallback to direct content URLs
+    return {
+      fullImage: media.content || "",
+      screenImage: media.content || "",
+      thumbnail: media.thumbnail || media.content || "",
+    };
   } catch {
+    return { thumbnail: "", screenImage: "", fullImage: "" };
   }
-
-  return { thumbnail, screenImage, fullImage };
 }
 
 /**
- * Extract publication date from item and format for display
  * @param {Object} item - Item from search results
  * @returns {string} - Formatted date or empty string
  */
@@ -260,7 +199,6 @@ function getDate(item) {
 }
 
 /**
- * Process detailed information for a single item
  * @param {Object} rawItemData - Raw item data from API
  * @returns {Object} - Processed item with consistent structure
  */
@@ -299,16 +237,12 @@ function processItemDetails(rawItemData) {
         getMuseumName(
           data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
         ) || "Smithsonian Institution", 
-      dataSource:
-        getFreetextContent(freetext, "dataSource")?.[0]?.content || "",
-      recordId: data.content?.descriptiveNonRepeating?.record_ID || "",
+      recordId: data.id || "",
 
-      // Images
       imageUrl: imageData.fullImage || "",
       screenImageUrl: imageData.screenImage || "",
       thumbnailUrl: imageData.thumbnail || "",
 
-      // Dates
       dateCollected:
         formatDateForDisplay(
           getFreetextContent(freetext, "date", "Collection Date")?.[0]
@@ -321,7 +255,6 @@ function processItemDetails(rawItemData) {
             getFreetextContent(freetext, "date")?.[0]?.content
         ) || "",
 
-      // Location 
       place:
         getFreetextContent(freetext, "place")?.[0]?.content ||
         (Array.isArray(data.content?.indexedStructured?.place)
@@ -330,26 +263,19 @@ function processItemDetails(rawItemData) {
         "",
       geoLocation: data.content?.indexedStructured?.geoLocation || null,
 
-      // Maker
       creatorInfo: creatorInfo || [],
 
-      // People
       collectors: getFreetextContent(freetext, "name", "Collector") || [],
       curatorName: getFreetextContent(freetext, "name", "Curator") || [],
       bioRegion:
         getFreetextContent(freetext, "name", "Biogeographical Region") || [],
 
-      // Collection 
       setNames: rawSetNames || [],
       collectionTypes: collectionTypes || [],
 
-      // Identifiers
       identifiers: getFreetextContent(freetext, "identifier") || [],
 
-      // Notes
-      notes: combineNotesByLabel(getFreetextContent(freetext, "notes")) || [],
-
-      // Raw API response (for debugging)
+      // Raw API response (for debugging) - will remove in production
       _rawApiResponse: rawItemData,
     };
   } catch (error) {
@@ -366,7 +292,6 @@ function processItemDetails(rawItemData) {
 }
 
 /**
- * Get content from a freetext field by label
  * @param {Object} freetext - The freetext object from API response
  * @param {string} field - Field name to extract
  * @param {string|null} label - Optional label to filter by
@@ -392,7 +317,6 @@ function getFreetextContent(freetext, field, label = null) {
 }
 
 /**
- * Extract collection types from set names
  * @param {Array} rawSetNames - Array of set names
  * @returns {Array} - Array of collection types
  */
@@ -408,40 +332,37 @@ function extractCollectionTypes(rawSetNames) {
   }
 }
 
-/**
- * Combine multiple notes with the same label
- * @param {Array} notes - Array of note objects
- * @returns {Array} - Array of combined notes
- */
-function combineNotesByLabel(notes) {
-  try {
-    if (!notes || !Array.isArray(notes) || notes.length === 0) return [];
+// /**
+//  * @param {Array} notes - Array of note objects
+//  * @returns {Array} - Array of combined notes
+//  */
+// function combineNotesByLabel(notes) {
+//   try {
+//     if (!notes || !Array.isArray(notes) || notes.length === 0) return [];
 
-    const groupedNotes = {};
-    notes.forEach((note) => {
-      if (!note || !note.label) return;
+//     const groupedNotes = {};
+//     notes.forEach((note) => {
+//       if (!note || !note.label) return;
 
-      if (!groupedNotes[note.label]) {
-        groupedNotes[note.label] = [];
-      }
+//       if (!groupedNotes[note.label]) {
+//         groupedNotes[note.label] = [];
+//       }
 
-      if (note.content) {
-        groupedNotes[note.label].push(note.content);
-      }
-    });
+//       if (note.content) {
+//         groupedNotes[note.label].push(note.content);
+//       }
+//     });
 
-    // Convert back to array format in paragraphs
-    return Object.entries(groupedNotes).map(([label, contents]) => ({
-      label,
-      content: contents.join("\n\n"), 
-    }));
-  } catch {
-    return [];
-  }
-}
+//     return Object.entries(groupedNotes).map(([label, contents]) => ({
+//       label,
+//       content: contents.join("\n\n"), 
+//     }));
+//   } catch {
+//     return [];
+//   }
+// }
 
 /**
- * Organise item data into clear categories for UI display
  * @param {Object} item - Processed item data
  * @returns {Object} - Organised item data for UI
  */
@@ -486,7 +407,7 @@ function organiseItemForDisplay(item) {
         allCollections: item.setNames || [],
       },
 
-      descriptions: organiseDescriptions(item.notes),
+      // descriptions: organiseDescriptions(item.notes),
     };
   } catch {
     return item;
@@ -494,7 +415,6 @@ function organiseItemForDisplay(item) {
 }
 
 /**
- * Format a list of names into a comma-separated string
  * @param {Array|string} names - List of names
  * @returns {string} - Formatted name list
  */
@@ -511,7 +431,6 @@ function formatNameList(names) {
 }
 
 /**
- * Get the main collection from a list of set names
  * @param {Array} setNames - List of collection set names
  * @returns {string} - Main collection name
  */
@@ -529,7 +448,6 @@ function getMainCollection(setNames) {
 }
 
 /**
- * Organise creator information into a structured format
  * @param {Array} creatorInfo - Creator information from the API
  * @returns {Array} - Structured creator information
  */
@@ -568,30 +486,29 @@ function organiseCreatorInfo(creatorInfo) {
   }
 }
 
-/**
- * Organise descriptions into a more UI-friendly format
- * @param {Array} notes - Notes from the API
- * @returns {Array} - Structured descriptions
- */
-function organiseDescriptions(notes) {
-  try {
-    if (!notes || !Array.isArray(notes) || notes.length === 0) {
-      return [];
-    }
+// /**
+//  * @param {Array} notes - Notes from the API
+//  * @returns {Array} - Structured descriptions
+//  */
+// function organiseDescriptions(notes) {
+//   try {
+//     if (!notes || !Array.isArray(notes) || notes.length === 0) {
+//       return [];
+//     }
 
 
-    return notes
-      .map((note) => {
-        if (!note) return null;
+//     return notes
+//       .map((note) => {
+//         if (!note) return null;
 
-        return {
-          title: note.label || "Description",
-          content: note.content || "",
-          paragraphs: note.content ? note.content.split("\n\n") : [],
-        };
-      })
-      .filter(Boolean); 
-  } catch {
-    return [];
-  }
-}
+//         return {
+//           title: note.label || "Description",
+//           content: note.content || "",
+//           paragraphs: note.content ? note.content.split("\n\n") : [],
+//         };
+//       })
+//       .filter(Boolean); 
+//   } catch {
+//     return [];
+//   }
+// }
