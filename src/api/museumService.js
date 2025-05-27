@@ -1,5 +1,5 @@
 import axios from "axios";
-import { smithsonianConfig } from "./config";
+import { smithsonianConfig, europeanaConfig } from "./config";
 import * as smithsonianRepository from "./repositories/smithsonianRepository";
 import * as smithsonianAdapter from "./adapters/smithsonianAdapter";
 import { europeanaRepository } from "./repositories/europeanaRepository";
@@ -68,10 +68,10 @@ const handleApiError = (error, source, operation, id = null) => {
 };
 
 /**
- Search for museum items 
+ Search for museum items from specified source
  */
 export const searchItems = async (
-  source = "smithsonian",
+  source,
   query,
   progressCallback = null
 ) => {
@@ -144,10 +144,6 @@ async function getSmithsonianItemDetails(id, cancelToken = null) {
   if (!adaptedData.rawData) {
     adaptedData.rawData = rawData;
   }
-  if (!adaptedData._rawApiResponse) {
-    adaptedData._rawApiResponse = rawData;
-  }
-
   return adaptedData;
 }
 
@@ -159,11 +155,14 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
     console.log(`Fetching Europeana item details for ID: ${id}`);
   }
 
-  // Using rich profile for detailed informatio
   const rawData = await europeanaRepository.getRecord(id, {
     profile: "rich",
   });
   const adaptedData = adaptEuropeanaItemDetails(rawData);
+  // Ensure backward compatibility fields
+  if (!adaptedData.rawData) {
+  adaptedData.rawData = rawData;
+  }
 
   return adaptedData;
 }
@@ -173,9 +172,8 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
  */
 async function searchEuropeanaComplete(query, progressCallback = null) {
   try {
-    // For now, just do a basic search - can be enhanced later
     const response = await europeanaRepository.search(query, {
-      rows: 50, // Get a decent number of results
+      rows: europeanaConfig.defaultSearchRows,
     });
 
     if (progressCallback) {
@@ -189,7 +187,6 @@ async function searchEuropeanaComplete(query, progressCallback = null) {
     return {
       total: response.totalResults || 0,
       items: response.items || [],
-      source: "europeana",
     };
   } catch (error) {
     if (isDevelopment()) {
@@ -212,8 +209,8 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
 
     const adaptedBatch = smithsonianAdapter.adaptSmithsonianSearchResults(
       batchResponse,
-      batchNum + 1,
-      batchSize
+      // batchNum + 1,
+      // batchSize
     );
 
     return adaptedBatch.items || [];
@@ -226,7 +223,7 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
 }
 
 /**
- * SIMPLIFIED: Search Smithsonian API and return ALL results with images
+ * Search Smithsonian API and return ALL results with images
  */
 async function searchSmithsonianComplete(query, progressCallback = null) {
   try {
@@ -251,7 +248,6 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
       );
     }
 
-    // Update progress
     if (progressCallback) {
       progressCallback({
         message: `Searching through ${totalResults} results for items with images...`,
@@ -260,9 +256,8 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
       });
     }
 
-    // Step 2: Search through ALL batches in parallel (with concurrency limit)
     let allItemsWithImages = [];
-    const maxConcurrent = smithsonianConfig.maxParallelRequests; // Use config value
+    const maxConcurrent = smithsonianConfig.maxParallelRequests; 
 
     for (
       let groupStart = 0;
@@ -271,24 +266,20 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
     ) {
       const groupEnd = Math.min(groupStart + maxConcurrent, totalBatches);
 
-      // Create promises for this group of batches
       const batchPromises = [];
       for (let batchNum = groupStart; batchNum < groupEnd; batchNum++) {
         const offset = batchNum * batchSize;
         batchPromises.push(fetchBatch(query, offset, batchSize, batchNum));
       }
 
-      // Process this group in parallel
       const batchResults = await Promise.all(batchPromises);
 
-      // Add all items from this group and update progress after each batch
       for (let i = 0; i < batchResults.length; i++) {
         const batchItems = batchResults[i];
         if (batchItems.length > 0) {
           allItemsWithImages = [...allItemsWithImages, ...batchItems];
         }
 
-        // Update progress after each batch for more responsive UX
         if (progressCallback) {
           const currentBatch = groupStart + i + 1;
           progressCallback({
@@ -302,7 +293,6 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
       }
     }
 
-    // Step 3: Return complete results
     if (isDevelopment()) {
       console.log(
         `Search complete. Found ${allItemsWithImages.length} items with images`
@@ -312,7 +302,6 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
     return {
       total: totalResults,
       items: allItemsWithImages,
-      source: "smithsonian",
     };
   } catch (error) {
     if (isDevelopment()) {
