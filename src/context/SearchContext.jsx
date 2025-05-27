@@ -10,14 +10,8 @@ import axios from "axios";
 import { searchItems, getItemDetails } from "../api/museumService";
 import searchResultsManager from "../utils/searchResultsManager";
 
-/**
- * Context for managing search state and operations across the application
- */
 const SearchContext = createContext();
 
-/**
- * Hook to access the search context
- */
 export function useSearch() {
   const context = useContext(SearchContext);
   if (!context) {
@@ -26,9 +20,6 @@ export function useSearch() {
   return context;
 }
 
-/**
- * Provider component for search functionality - SIMPLIFIED with multi-source support
- */
 export function SearchProvider({ children }) {
   // Search state
   const [query, setQuery] = useState("");
@@ -49,15 +40,12 @@ export function SearchProvider({ children }) {
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState(null);
 
-  // Cancel tokens for requests
   const itemCancelTokenRef = useRef(null);
   const searchCancelTokenRef = useRef(null);
   const itemDetailsCache = useRef(new Map());
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      // Cancel any ongoing searches when component unmounts
       if (searchCancelTokenRef.current) {
         searchCancelTokenRef.current.cancel("Component unmounted");
       }
@@ -67,20 +55,14 @@ export function SearchProvider({ children }) {
     };
   }, []);
 
-  /**
-   * Fetch details for a specific item (source auto-detected by museumService)
-   */
-  const fetchItemDetails = useCallback(async (itemId) => {
+  const fetchItemDetails = useCallback(async (source, itemId) => {
     if (!itemId) return;
 
-    // Cancel previous request if exists
     if (itemCancelTokenRef.current) {
       itemCancelTokenRef.current.cancel(
         "Operation canceled due to new request."
       );
     }
-
-    // Create a new cancellation token
     itemCancelTokenRef.current = axios.CancelToken.source();
 
     try {
@@ -88,8 +70,8 @@ export function SearchProvider({ children }) {
       setItemError(null);
       setCurrentItem(null);
 
-      // Use simple cache key (museumService will determine source)
-      const cacheKey = itemId;
+      const cacheKey = `${source}_${itemId}`;
+      
       if (itemDetailsCache.current.has(cacheKey)) {
         setCurrentItem(itemDetailsCache.current.get(cacheKey));
         setItemLoading(false);
@@ -98,6 +80,7 @@ export function SearchProvider({ children }) {
 
       // Let museumService determine source and fetch details
       const detailedItem = await getItemDetails(
+        source,
         itemId,
         itemCancelTokenRef.current.token
       );
@@ -122,15 +105,12 @@ export function SearchProvider({ children }) {
     }
   }, []);
 
-  /**
-   * Progress callback for search updates
-   */
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
   }, []);
 
   /**
-   * Perform a search - loads ALL results at once with configurable source
+   * Perform a search 
    * @param {string} searchQuery - The search term
    * @param {string} source - API source ("smithsonian" or "europeana")
    * @param {boolean} reset - Whether to reset pagination and state
@@ -144,12 +124,9 @@ export function SearchProvider({ children }) {
       const normalizedQuery = searchQuery.trim();
 
       try {
-        // Cancel previous search if exists
         if (searchCancelTokenRef.current) {
           searchCancelTokenRef.current.cancel("New search started");
         }
-
-        // Create new cancel token for this search
         searchCancelTokenRef.current = axios.CancelToken.source();
 
         setLoading(true);
@@ -164,14 +141,12 @@ export function SearchProvider({ children }) {
           setIsFromCache(false);
         }
 
-        // Check cache first (now source-aware)
         const cachedResults = searchResultsManager.getCachedResults(
           normalizedQuery,
           source
         );
 
         if (cachedResults?.items?.length > 0) {
-          // Use cached results
           setResults(cachedResults.items);
           setTotalResults(cachedResults.totalResults);
           setIsFromCache(true);
@@ -179,35 +154,32 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        // Not in cache, perform search with specified source
         setIsFromCache(false);
 
         const response = await searchItems(
-          source, // Use the source parameter instead of hardcoded "smithsonian"
+          source, 
           normalizedQuery,
           handleSearchProgress
         );
 
-        // Check if request was cancelled during the search
         if (searchCancelTokenRef.current?.token.reason) {
-          return; // Don't update state if cancelled
+          return; 
         }
 
-        // Set complete results
+
         setResults(response.items || []);
         setTotalResults(response.total || 0);
 
-        // Cache the complete results with source
+      
         if (response.items?.length > 0) {
           searchResultsManager.storeResults(
             normalizedQuery,
             response.items,
             response.total,
-            source // Include source in cache storage
+            source 
           );
         }
       } catch (error) {
-        // Ignore canceled requests
         if (axios.isCancel(error)) {
           return;
         }
@@ -215,7 +187,6 @@ export function SearchProvider({ children }) {
         setError("Failed to search collections. Please try again.");
         console.error("Search error:", error.message);
       } finally {
-        // Only clear loading if this request wasn't cancelled
         if (!searchCancelTokenRef.current?.token.reason) {
           setLoading(false);
           setProgress(null);

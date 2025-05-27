@@ -31,13 +31,12 @@ export const adaptEuropeanaSearchResults = (
   const totalResults = apiData.totalResults || 0;
   const items = apiData.items || [];
 
-  // Process items to match Smithsonian adapter format
   const processedItems = processSearchItems(items);
 
   return {
     total: totalResults,
     items: processedItems,
-    allItems: processedItems, // Initially the same as items
+    allItems: processedItems,
   };
 };
 
@@ -55,74 +54,42 @@ export const adaptEuropeanaItemDetails = (apiData) => {
   try {
     const record = apiData.object;
 
-    // Extract basic info
     const id = cleanId(record.about) || "";
     const title = extractRecordTitle(record) || "Untitled";
-
-    // Extract images from aggregations
     const imageData = extractRecordImages(record);
-
-    // Extract creator information
     const creators = extractCreators(record);
-
-    // Extract dates
     const dates = extractRecordDates(record);
-
-    // Extract location info
     const location = extractLocation(record);
-
-    // Extract descriptions
     const descriptions = extractDescriptions(record);
-
-    // Extract collection/provider info
     const museum = extractRecordMuseum(record);
     const collectionInfo = extractCollectionInfo(record);
 
-    // Build the adapted item matching Smithsonian structure
     return {
-      // Basic identification
       id: id,
-      recordId: record.about || id, // Keep original for reference
+      recordId: record.about || id, 
       title: title,
-
-      // URLs
       url: extractExternalUrl(record),
-
-      // Source information
       source: "europeana",
       museum: museum,
       dataSource: museum,
-
-      // Images - multiple formats
       imageUrl: imageData.fullImage || "",
       screenImageUrl: imageData.screenImage || imageData.fullImage || "",
       thumbnailUrl: imageData.thumbnail || "",
-
-      // Dates (matching Smithsonian structure)
       dateCollected: "",
       datePublished: dates.published || "",
-
-      // Location
       place: location.place || "",
       geoLocation: location.geoLocation || null,
-
-      // Creator information (original format for backward compatibility)
       creatorInfo: creators.original || [],
-
-      // Collection info
       setNames: collectionInfo.setNames || [],
       collectionTypes: collectionInfo.types || [],
       collectors: [],
       curatorName: [],
       bioRegion: [],
 
-      // Identifiers
       identifiers: extractIdentifiers(record),
 
-      // Notes/descriptions (original format)
       notes: descriptions.notes || [],
 
-      // Enhanced organized structure (matching Smithsonian)
       media: {
         primaryImage: imageData.screenImage || imageData.fullImage || "",
         fullImage: imageData.fullImage || "",
@@ -162,7 +129,6 @@ export const adaptEuropeanaItemDetails = (apiData) => {
       console.error("Error adapting Europeana record:", error);
     }
 
-    // Return minimal structure on error
     return {
       id: cleanId(apiData.object?.about) || "",
       title: extractRecordTitle(apiData.object) || "Untitled Item",
@@ -187,31 +153,18 @@ function processSearchItems(items) {
     .map((item) => {
       try {
         return {
-          // Basic identification (required for ItemCard)
-          id: cleanId(item.id), // Clean the Europeana ID format
-          recordId: item.id, // Keep original for Record API calls
+          id: cleanId(item.id), 
+          recordId: item.id, 
           title: extractTitle(item) || "Untitled",
-
-          // Images (required for ItemCard)
           thumbnailUrl: extractThumbnailUrl(item),
-          imageUrl: extractImageUrl(item), // Full-size image
-          screenImageUrl: extractImageUrl(item), // Use same for now
-
-          // Institution info (required for ItemCard)
-          source: "europeana", // Code for internal use
-          museum: extractMuseum(item), // Readable name for display
-
-          // Date info (optional but good to have)
+          imageUrl: extractImageUrl(item), 
+          screenImageUrl: extractImageUrl(item), 
+          source: "europeana", 
+          museum: extractMuseum(item),
           datePublished: extractDate(item),
-
-          // Description (may not be available in search results)
           description: "", // Not typically in search results
-
-          // URL for external link
           url: item.guid || "",
-
-          // Additional Europeana-specific fields we might want later
-          dataSource: "", // Not in search results
+          dataSource: "", // Needed? 
           country: extractCountry(item),
           rights: extractRights(item),
         };
@@ -220,7 +173,6 @@ function processSearchItems(items) {
           console.warn("Error processing Europeana item:", error);
         }
 
-        // Return minimal data on error
         return {
           id: item.id || "",
           title: extractTitle(item) || "Untitled Item",
