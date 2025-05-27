@@ -12,7 +12,7 @@ export const API_CONFIG = {
 
 // Smithsonian batch, page etc sizes
 export const smithsonianConfig = {
-  batchSize: 300,
+  batchSize: 1000,
   maxBatches: 50,
   defaultPageSize: 24, 
   requestTimeout: 30000,
@@ -21,17 +21,17 @@ export const smithsonianConfig = {
 
 // Europeana batch, page etc sizes
 export const europeanaConfig = {
-  batchSize: 100, // Europeana max is 100 per request
-  maxBatches: 20, // Since results are faster, don't need as many
-  defaultPageSize: 24, // results per page 
+  batchSize: 100, 
+  maxBatches: 20, 
+  defaultPageSize: 24, 
   requestTimeout: 15000, 
   maxParallelRequests: 10, 
-  defaultSearchRows: 50, // Default number of items to fetch
-  maxSearchRows: 1000, // Max items for comprehensive search
+  defaultSearchRows: 50,
+  maxSearchRows: 1000,
 
   // Default API parameters
   defaultSort: "relevancy",
-  defaultProfile: "standard", // ?
-  requireThumbnails: true, // Always request thumbnail: 'true'
-  filterToImages: true, // Always add qf: 'TYPE:IMAGE' // Only returns items with type Image
+  defaultProfile: "standard", 
+  requireThumbnails: true, 
+  filterToImages: true, 
 };
