@@ -7,7 +7,7 @@ import {
   useEffect,
 } from "react";
 import axios from "axios";
-import { searchItems, getItemDetails } from "../api/museumService";
+import { searchItems, searchAllSources, getItemDetails } from "../api/museumService";
 import searchResultsManager from "../utils/searchResultsManager";
 
 const SearchContext = createContext();
@@ -103,6 +103,115 @@ export function SearchProvider({ children }) {
   const handleSearchProgress = useCallback((progressData) => {
     setProgress(progressData);
   }, []);
+
+  /**
+   * Perform unified search across all sources (default search method)
+   * @param {string} searchQuery - The search term
+   * @param {boolean} reset - Whether to reset pagination and state
+   */
+  const performUnifiedSearch = useCallback(
+    async (searchQuery, reset = true) => {
+      if (!searchQuery?.trim()) {
+        return;
+      }
+
+      const normalizedQuery = searchQuery.trim();
+
+      try {
+        if (searchCancelTokenRef.current) {
+          searchCancelTokenRef.current.cancel("New search started");
+        }
+        searchCancelTokenRef.current = axios.CancelToken.source();
+
+        setLoading(true);
+        setError(null);
+        setProgress(null);
+
+        if (reset) {
+          setQuery(normalizedQuery);
+          setPage(1);
+          setResults([]);
+          setIsFromCache(false);
+        }
+
+        // Check cache for both sources
+        const smithsonianCache = searchResultsManager.getCachedResults(
+          normalizedQuery,
+          "smithsonian"
+        );
+        const europeanaCache = searchResultsManager.getCachedResults(
+          normalizedQuery,
+          "europeana"
+        );
+
+        // If both are cached, combine and return
+        if (smithsonianCache?.items?.length > 0 && europeanaCache?.items?.length > 0) {
+          const combinedItems = [...europeanaCache.items, ...smithsonianCache.items];
+          const combinedTotal = smithsonianCache.totalResults + europeanaCache.totalResults;
+          
+          setResults(combinedItems);
+          setTotalResults(combinedTotal);
+          setIsFromCache(true);
+          setLoading(false);
+          return;
+        }
+
+        // If only one is cached, we'll still do unified search for consistency
+        // (could be optimized later to use cache + fetch other source)
+        setIsFromCache(false);
+
+        const response = await searchAllSources(
+          normalizedQuery,
+          handleSearchProgress
+        );
+
+        if (searchCancelTokenRef.current?.token.reason) {
+          return;
+        }
+
+        setResults(response.items || []);
+        setTotalResults(response.total || 0);
+
+        // Cache results by source for future single-source searches
+        if (response.items?.length > 0) {
+          // Separate and cache by source
+          const smithsonianItems = response.items.filter(item => item.source === "smithsonian");
+          const europeanaItems = response.items.filter(item => item.source === "europeana");
+
+          if (smithsonianItems.length > 0) {
+            searchResultsManager.storeResults(
+              normalizedQuery,
+              smithsonianItems,
+              smithsonianItems.length, // We don't have individual totals, so use item count
+              "smithsonian"
+            );
+          }
+
+          if (europeanaItems.length > 0) {
+            searchResultsManager.storeResults(
+              normalizedQuery,
+              europeanaItems,
+              europeanaItems.length,
+              "europeana"
+            );
+          }
+        }
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          return;
+        }
+
+        setError("Failed to search collections. Please try again.");
+        console.error("Unified search error:", error.message);
+      } finally {
+        if (!searchCancelTokenRef.current?.token.reason) {
+          setLoading(false);
+          setProgress(null);
+        }
+      }
+    },
+    [handleSearchProgress]
+  );
 
   /**
    * Perform a search 
@@ -221,9 +330,9 @@ export function SearchProvider({ children }) {
     
     setIsFromCache(false);
     
-    // TODO: Re-implement search call when multi-source search is ready
-    console.log("Refresh requested - cache cleared for sources:", sources);
-  }, [query, results]);
+    // Re-run unified search
+    performUnifiedSearch(query, false);
+  }, [query, results, performUnifiedSearch]);
 
   /**
    * Clear the item details cache
@@ -257,6 +366,7 @@ export function SearchProvider({ children }) {
 
     // Actions
     performSearch, 
+    performUnifiedSearch, // New default search method
     clearSearch,
     refreshSearch,
 
