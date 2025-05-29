@@ -3,7 +3,7 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
 
 /**
- * @param {Object} item - The item data 
+ * @param {Object} item - The item data (unified format)
  * @param {boolean} isLoading - Whether additional item details are being loaded
  * @param {string} error - Error message
  */
@@ -15,7 +15,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  // placeholder image 
+  // Placeholder image 
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
@@ -40,20 +40,9 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   }
 
-  // Image selection-  prefer screen image for main display, full-res for zoom
-  const screenImage =
-    item.media?.primaryImage || 
-    item.screenImageUrl || 
-    item.imageUrl; 
-
-  const fullResImage =
-    item.media?.fullImage || 
-    item.imageUrl || 
-    screenImage; 
-
-  const displayImage = screenImage || defaultImage;
-  const zoomImage = fullResImage || screenImage || defaultImage;
-
+  // Image selection (unified format)
+  const displayImage = item.media?.primaryImage || item.media?.fullImage || defaultImage;
+  const zoomImage = item.media?.fullImage || item.media?.primaryImage || defaultImage;
 
   const DisplayField = ({ label, value, className = "" }) => {
     if (value === undefined || value === null) return null;
@@ -87,7 +76,6 @@ export default function SingleItemCard({ item, isLoading, error }) {
   };
 
   return (
-
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* Image Zoom Modal */}
       <ImageZoomModal
@@ -96,6 +84,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
         imageUrl={zoomImage}
         alt={item.title || "Item image"}
       />
+      
       <div className="md:flex">
         {/* Image Section */}
         <div className="md:w-3/5 lg:w-1/2">
@@ -153,42 +142,28 @@ export default function SingleItemCard({ item, isLoading, error }) {
             <AddToCollectionButton item={item} />
           </div>
 
-          {/* Date created - supports both structures */}
-          {(item.dates?.display ||
-            item.dateCollected ||
-            item.datePublished) && (
-            <div className="mb-3">
-              {item.dates?.display || item.dateCollected || item.datePublished}
+          {/* Date created (unified format) */}
+          {item.dateCreated && (
+            <div className="mb-3 text-gray-600">
+              <span className="font-medium">Created: </span>
+              {item.dateCreated}
             </div>
           )}
 
-          {/* Creator/Maker Information - supports both structures */}
+          {/* Creator Information (unified format) */}
           {hasData(item.creators) && (
             <div className="mb-4">
               {item.creators.map((creator, index) => (
                 <DisplayField
                   key={index}
                   label={creator.role || "Creator"}
-                  value={creator.displayText || creator.names?.join(", ")}
+                  value={creator.displayText}
                 />
               ))}
             </div>
           )}
 
-          {/* Original creator info structure fallback */}
-          {!hasData(item.creators) && hasData(item.creatorInfo) && (
-            <div className="mb-4">
-              {item.creatorInfo.map((creator, index) => (
-                <DisplayField
-                  key={index}
-                  label={creator.label || "Creator"}
-                  value={creator.content}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Notes Section - supports both structures */}
+          {/* Descriptions (unified format) */}
           {hasData(item.descriptions) && (
             <div className="col-span-1 md:col-span-2 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
@@ -196,8 +171,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
               </h2>
               {item.descriptions.map((description, index) => (
                 <div key={index} className="mb-4">
-                  {description.paragraphs &&
-                  description.paragraphs.length > 0 ? (
+                  {description.paragraphs && description.paragraphs.length > 0 ? (
                     description.paragraphs.map((paragraph, i) => (
                       <p key={i} className="text-gray-800 mb-2">
                         {paragraph}
@@ -211,97 +185,84 @@ export default function SingleItemCard({ item, isLoading, error }) {
             </div>
           )}
 
-          {/* Original notes structure fallback */}
-          {!hasData(item.descriptions) && hasData(item.notes) && (
+          {/* Notes (for Europeana concept notes) */}
+          {hasData(item.notes) && (
             <div className="col-span-1 md:col-span-2 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Description
+                Additional Notes
               </h2>
               {item.notes.map((note, index) => (
-                <div key={index} className="mb-4">
-                  {note.content.split("\n\n").map((paragraph, i) => (
-                    <p key={i} className="text-gray-800 mb-2">
-                      {paragraph}
-                    </p>
-                  ))}
+                <div key={index} className="mb-3">
+                  {note.conceptLabel && (
+                    <h4 className="text-sm font-medium text-gray-600 mb-1">
+                      {note.conceptLabel}
+                    </h4>
+                  )}
+                  <p className="text-gray-800">{note.text}</p>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Main content divided into sections */}
+          {/* Main content sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-            {/* Location Section - supports both structures */}
-            {(hasData(item.location?.place) || hasData(item.place)) && (
+            {/* Location Section (unified format) */}
+            {hasData(item.location?.place) && (
               <div className="col-span-1 md:col-span-2 mb-4">
                 <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                   Location
                 </h2>
                 <DisplayField
                   label="Place"
-                  value={item.location?.place || item.place}
+                  value={item.location.place}
                 />
-                {hasData(item.location?.coordinates) && (
+                {hasData(item.location?.geoLocation) && (
                   <DisplayField
-                    label="Coordinates"
-                    value={item.location.coordinates}
+                    label="Geographic Location"
+                    value={item.location.geoLocation}
                   />
                 )}
               </div>
             )}
 
-            {/* Collection Information - supports both structures */}
+            {/* Collection Information */}
             <div className="col-span-1 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Collection
               </h2>
               <DisplayField
                 label="Source"
-                value={item.museum || "Smithsonian Institution"}
+                value={item.museum}
               />
 
-              <DisplayField
-                label="Collectors"
-                value={
-                  item.collection?.collectors ||
-                  (Array.isArray(item.collectors)
-                    ? item.collectors.join(", ")
-                    : item.collectors)
-                }
-              />
-
-              <DisplayField
-                label="Curator"
-                value={
-                  item.collection?.curatorName ||
-                  (Array.isArray(item.curatorName)
-                    ? item.curatorName.join(", ")
-                    : item.curatorName)
-                }
-              />
-
-              <DisplayField
-                label="Collection Type"
-                value={item.collection?.types || item.collectionTypes}
-              />
-
-              <DisplayField
-                label="Date Collected"
-                value={item.dates?.collected || item.dateCollected}
-              />
-
-              <DisplayField
-                label="Biogeographical Region"
-                value={
-                  item.collection?.bioRegion ||
-                  (Array.isArray(item.bioRegion)
-                    ? item.bioRegion.join(", ")
-                    : item.bioRegion)
-                }
-              />
+              {/* Smithsonian-specific collection info */}
+              {item.collection && (
+                <>
+                  <DisplayField
+                    label="Collection Name"
+                    value={item.collection.name}
+                  />
+                  <DisplayField
+                    label="Collectors"
+                    value={item.collection.collectors}
+                  />
+                  <DisplayField
+                    label="Curator"
+                    value={item.collection.curatorName}
+                  />
+                  <DisplayField
+                    label="Collection Types"
+                    value={item.collection.types}
+                  />
+                  <DisplayField
+                    label="Biogeographical Region"
+                    value={item.collection.bioRegion}
+                  />
+                </>
+              )}
             </div>
 
-            {/* Identifiers - supports both structures */}
+            {/* Identifiers (unified format) */}
             <div className="col-span-1 md:col-span-2 mb-4">
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Identifiers
@@ -318,23 +279,23 @@ export default function SingleItemCard({ item, isLoading, error }) {
                   ))}
                 <DisplayField
                   label="Record ID"
-                  value={item.recordId || item.id}
+                  value={item.id}
                   className="col-span-1"
                 />
               </div>
             </div>
           </div>
 
-          {/* External Link - supports both structures */}
-          {(item.source?.url || item.url) && (
+          {/* External Link (unified format) */}
+          {item.url && (
             <div className="mt-6">
               <a
-                href={item.source?.url || item.url}
+                href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
               >
-                View on {item.museum || "Smithsonian"}
+                View on {item.museum || "Original Site"}
               </a>
             </div>
           )}

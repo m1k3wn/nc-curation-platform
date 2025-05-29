@@ -7,9 +7,12 @@ const isDevelopment = () => {
 
 import { getMuseumName } from "./smithsonianMuseumCodes";
 
+// ================ MAIN ADAPTER FUNCTIONS ================
+
 /**
- * @param {Object} apiData - Raw API response
- * @returns {Object} - Adapted search results
+ * Adapt search results from Smithsonian Search API
+ * @param {Object} apiData - Raw API response from Smithsonian Search API
+ * @returns {Object} - Adapted search results for ItemCard
  */
 export const adaptSmithsonianSearchResults = (apiData) => {
   if (!apiData || !apiData.response) {
@@ -18,7 +21,36 @@ export const adaptSmithsonianSearchResults = (apiData) => {
 
   const totalResults = apiData.response.rowCount || 0;
   const items = apiData.response.rows || [];
-  const processedItems = processItems(items);
+  
+  const processedItems = items
+    .map((item) => {
+      try {
+        const imageData = extractBestImages(item);
+        const id = item.id || item.url || "";
+
+        // Skip items without thumbnails
+        if (!imageData.thumbnail) {
+          return null;
+        }
+
+        return {
+          id: id,
+          title: cleanHtmlTags(item.title) || "Untitled",
+          source: "smithsonian",
+          museum: getMuseumName(item.unitCode) || "Smithsonian Institution",
+          dateCreated: getSearchDate(item),
+          media: {
+            thumbnail: imageData.thumbnail,
+            primaryImage: imageData.screenImage || imageData.fullImage,
+            fullImage: imageData.fullImage
+          },
+          url: item.content?.descriptiveNonRepeating?.record_link || "",
+        };
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
 
   return {
     total: totalResults,
@@ -27,46 +59,87 @@ export const adaptSmithsonianSearchResults = (apiData) => {
 };
 
 /**
- * @param {Object} apiData - Raw API response
- * @returns {Object} - Adapted item details
+ * Adapt single item details from Smithsonian Record API
+ * @param {Object} apiData - Raw API response from Smithsonian Record API
+ * @returns {Object} - Adapted item details for SingleItemCard
  */
 export const adaptSmithsonianItemDetails = (apiData) => {
   if (!apiData) return null;
 
   try {
-    const baseItem = processItemDetails(apiData);
-    const organisedItem = organiseItemForDisplay(baseItem);
+    const data = apiData.response || apiData;
+    const imageData = extractBestImages(data);
+    const freetext = data.content?.freetext || {};
+    const creators = extractCreators(freetext);
+    const descriptions = extractDescriptions(freetext);
+    const dateCreated = extractItemDate(data, freetext);
+    const place = extractPlace(data, freetext);
 
-    return organisedItem;
+    return {
+      // Basic info
+      id: data.id || "",
+      title: cleanHtmlTags(
+        data.title ||
+          data.content?.descriptiveNonRepeating?.title?.content ||
+          "Untitled"
+      ),
+      url: data.content?.descriptiveNonRepeating?.record_link || "",
+      source: "smithsonian",
+      museum: getMuseumName(
+        data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
+      ) || "Smithsonian Institution",
+      dateCreated,
+
+      media: {
+        thumbnail: imageData.thumbnail,
+        primaryImage: imageData.screenImage || imageData.fullImage,
+        fullImage: imageData.fullImage
+      },
+      location: { 
+        place,
+        geoLocation: processGeoLocation(data.content?.indexedStructured?.geoLocation)
+      },
+      creators,
+      descriptions,
+      notes: [], // Smithsonian doesn't have concept notes like Europeana
+
+      identifiers: extractIdentifiers(freetext),
+      collection: extractCollectionInfo(data, freetext),
+    };
+
   } catch (error) {
-    console.error("Error adapting item details:", error.message);
-
-    try {
-      const processedItem = processItemDetails(apiData);
-      return processedItem;
-    } catch (fallbackError) {
-      console.error("Error in fallback processing:", fallbackError.message);
-
-      return {
-        id: apiData.id || "unknown",
-        title: apiData.title || "Unknown Item",
-      };
+    if (isDevelopment()) {
+      console.error("Error adapting Smithsonian record:", error);
     }
+
+    return {
+      id: apiData.id || apiData.response?.id || "",
+      title: apiData.title || apiData.response?.title || "Untitled Item",
+      source: "smithsonian",
+      museum: "Smithsonian Institution",
+      dateCreated: "",
+      media: {
+        thumbnail: "",
+        primaryImage: "",
+        fullImage: ""
+      },
+      location: { place: "", geoLocation: null },
+      creators: [],
+      descriptions: [],
+      notes: [],
+      identifiers: [],
+      collection: {},
+    };
   }
 };
 
-/* ----------------------- HELPER FUNCTIONS ----------------------- */
+// ================ UTILITY FUNCTIONS ================
 
-/**
- * @param {string} text - Text to clean
- * @returns {string} - Cleaned text
- */
-function cleanHtmlTags(text) {
+const cleanHtmlTags = (text) => {
   if (!text) return "";
 
   try {
     const str = String(text);
-
     let cleanedText = str.replace(/<\/?[^>]+(>|$)/g, "");
     cleanedText = cleanedText.replace(/\(\s*\)/g, "");
     cleanedText = cleanedText.replace(/^\s*\((.*)\)\s*$/, "$1");
@@ -74,13 +147,9 @@ function cleanHtmlTags(text) {
   } catch {
     return String(text || "");
   }
-}
+};
 
-/**
- * @param {string} dateStr - Raw date string
- * @returns {string} - Formatted date
- */
-function formatDateForDisplay(dateStr) {
+const formatDateForDisplay = (dateStr) => {
   if (!dateStr) return "";
   const dateString = String(dateStr);
 
@@ -97,56 +166,11 @@ function formatDateForDisplay(dateStr) {
     return dateString.substring(0, 12) + "...";
   }
   return dateString;
-}
+};
 
-/**
- * Process items from search results and extract those with images
- * @param {Array} items - Raw item array from search results
- * @returns {Array} - Processed items with consistent structure
- */
-function processItems(items) {
-  if (!items || !Array.isArray(items)) return [];
-
-  return items
-    .map((item) => {
-      try {
-        const imageData = extractBestImages(item);
-        const id = item.id || item.url || "";
-
-        return {
-          id: id,
-          recordId: id,
-          title: cleanHtmlTags(item.title) || "Untitled",
-          description:
-            cleanHtmlTags(item.content?.descriptiveNonRepeating?.description) ||
-            "",
-          imageUrl: imageData.fullImage,
-          screenImageUrl: imageData.screenImage,
-          thumbnailUrl: imageData.thumbnail,
-          source: "smithsonian",
-          museum: getMuseumName(item.unitCode) || "Smithsonian Institution",
-          datePublished: getDate(item),
-          url: item.content?.descriptiveNonRepeating?.record_link || "",
-        };
-      } catch {
-        return {
-          id: item.id || "",
-          title: item.title || "Untitled Item",
-          thumbnailUrl: "",
-        };
-      }
-    })
-    .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0);
-}
-
-/**
- * @param {Object} item - Item from search results
- * @returns {Object} - Object with fullImage, screenImage, and thumbnail URLs
- */
-function extractBestImages(item) {
+const extractBestImages = (item) => {
   try {
-    const mediaContent =
-      item.content?.descriptiveNonRepeating?.online_media?.media;
+    const mediaContent = item.content?.descriptiveNonRepeating?.online_media?.media;
 
     if (!mediaContent || mediaContent.length === 0) {
       return { thumbnail: "", screenImage: "", fullImage: "" };
@@ -154,7 +178,6 @@ function extractBestImages(item) {
 
     const media = mediaContent[0];
 
-    // Build URLs from idsId
     if (media.idsId) {
       return {
         fullImage: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`,
@@ -172,13 +195,9 @@ function extractBestImages(item) {
   } catch {
     return { thumbnail: "", screenImage: "", fullImage: "" };
   }
-}
+};
 
-/**
- * @param {Object} item - Item from search results
- * @returns {string} - Formatted date or empty string
- */
-function getDate(item) {
+const getSearchDate = (item) => {
   try {
     let dateStr = "";
 
@@ -192,277 +211,98 @@ function getDate(item) {
   } catch {
     return "";
   }
-}
+};
 
-/**
- * @param {Object} rawItemData - Raw item data from API
- * @returns {Object} - Processed item with consistent structure
- */
-function processItemDetails(rawItemData) {
-  if (!rawItemData) return null;
-
+const extractItemDate = (data, freetext) => {
   try {
-    const data = rawItemData.response || rawItemData;
-    const imageData = extractBestImages(data);
-    const freetext = data.content?.freetext || {};
-
-    const creatorInfo = freetext.name
-      ? freetext.name.map((item) => ({
-          label: item.label,
-          content: item.content,
-        }))
-      : [];
-
-    const rawSetNames = getFreetextContent(freetext, "setName").map(
-      (item) => item.content
-    );
-
-    const collectionTypes = extractCollectionTypes(rawSetNames);
-
-    // Extract only descriptive notes (not all notes)
-    const descriptiveNotes = extractDescriptiveNotes(freetext);
-
-    return {
-      id: data.id || "",
-      title: cleanHtmlTags(
-        data.title ||
-          data.content?.descriptiveNonRepeating?.title?.content ||
-          "Untitled"
-      ),
-      description:
-        cleanHtmlTags(data.content?.descriptiveNonRepeating?.description) || "",
-      url: data.content?.descriptiveNonRepeating?.record_link || "",
-      source: "smithsonian",
-      museum:
-        getMuseumName(
-          data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
-        ) || "Smithsonian Institution",
-      recordId: data.id || "",
-
-      imageUrl: imageData.fullImage || "",
-      screenImageUrl: imageData.screenImage || "",
-      thumbnailUrl: imageData.thumbnail || "",
-
-      dateCollected:
-        formatDateForDisplay(
-          getFreetextContent(freetext, "date", "Collection Date")?.[0]
-        ) || "",
-      datePublished:
-        formatDateForDisplay(
-          (Array.isArray(data.content?.indexedStructured?.date)
-            ? data.content?.indexedStructured?.date[0]
-            : data.content?.indexedStructured?.date) ||
-            getFreetextContent(freetext, "date")?.[0]?.content
-        ) || "",
-
-      place:
-        getFreetextContent(freetext, "place")?.[0]?.content ||
-        (Array.isArray(data.content?.indexedStructured?.place)
-          ? data.content?.indexedStructured?.place.join(", ")
-          : data.content?.indexedStructured?.place) ||
-        "",
-      geoLocation: data.content?.indexedStructured?.geoLocation || null,
-
-      creatorInfo: creatorInfo || [],
-
-      collectors: getFreetextContent(freetext, "name", "Collector") || [],
-      curatorName: getFreetextContent(freetext, "name", "Curator") || [],
-      bioRegion:
-        getFreetextContent(freetext, "name", "Biogeographical Region") || [],
-
-      setNames: rawSetNames || [],
-      collectionTypes: collectionTypes || [],
-
-      identifiers: getFreetextContent(freetext, "identifier") || [],
-
-      // Include only descriptive notes for descriptions
-      notes: descriptiveNotes || [],
-    };
-  } catch (error) {
-    if (isDevelopment()) {
-      console.error("Error processing item details:", error.message);
-    }
-    return {
-      id: rawItemData.id || rawItemData.response?.id || "",
-      title:
-        rawItemData.title || rawItemData.response?.title || "Untitled Item",
-    };
-  }
-}
-
-/**
- * @param {Object} freetext - The freetext object from API response
- * @param {string} field - Field name to extract
- * @param {string|null} label - Optional label to filter by
- * @returns {Array} - Array of content items
- */
-function getFreetextContent(freetext, field, label = null) {
-  try {
-    if (!freetext || !freetext[field]) return [];
-
-    if (label) {
-      return freetext[field]
-        .filter((item) => item.label === label || item.label.includes(label))
-        .map((item) => item.content);
+    if (data.content?.indexedStructured?.date) {
+      const dateStr = Array.isArray(data.content.indexedStructured.date)
+        ? data.content.indexedStructured.date[0]
+        : data.content.indexedStructured.date;
+      
+      if (dateStr) return formatDateForDisplay(dateStr);
     }
 
-    return freetext[field].map((item) => ({
-      label: item.label,
-      content: item.content,
-    }));
+    const freetextDates = getFreetextContent(freetext, "date");
+    for (const dateItem of freetextDates) {
+      if (dateItem.label && dateItem.content) {
+        if (!dateItem.label.toLowerCase().includes('collection')) {
+          return formatDateForDisplay(dateItem.content);
+        }
+      }
+    }
+
+    if (freetextDates.length > 0) {
+      return formatDateForDisplay(freetextDates[0].content);
+    }
+
+    return "";
   } catch {
-    return [];
+    return "";
   }
-}
+};
 
-/**
- * @param {Array} rawSetNames - Array of set names
- * @returns {Array} - Array of collection types
- */
-function extractCollectionTypes(rawSetNames) {
+
+const extractPlace = (data, freetext) => {
   try {
-    return rawSetNames.map((str) => {
-      if (!str) return "";
-      const parts = str.split(",");
-      return parts.length > 1 ? parts[1].trim() : str;
+    const freetextPlace = getFreetextContent(freetext, "place");
+    if (freetextPlace.length > 0) {
+      return freetextPlace[0].content || "";
+    }
+    if (data.content?.indexedStructured?.place) {
+      const place = data.content.indexedStructured.place;
+      return Array.isArray(place) ? place.join(", ") : place;
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+};
+
+
+const processGeoLocation = (geoLocation) => {
+  try {
+    if (!geoLocation || !Array.isArray(geoLocation)) return null;
+
+    const places = [];
+    const coordinates = [];
+
+    geoLocation.forEach(item => {
+      if (item.Other && item.Other.content) {
+        places.push(item.Other.content);
+      }
+      
+      if (item.points && item.points.point) {
+        const point = item.points.point;
+        if (point.latitude && point.longitude) {
+          coordinates.push({
+            lat: parseFloat(point.latitude.content),
+            lng: parseFloat(point.longitude.content)
+          });
+        }
+      }
     });
-  } catch {
-    return [];
-  }
-}
 
-/**
- * Extract meaningful description content from freetext notes
- * @param {Object} freetext - The freetext object from API response
- * @returns {Array} - Array of filtered description notes
- */
-function extractDescriptiveNotes(freetext) {
-  try {
-    if (!freetext || !freetext.notes) return [];
-
-    // Labels that contain actual descriptive content we want to display
-    const descriptiveLabels = [
-      "Label",
-      "Luce Center Label", 
-      "Museum Label",
-      "Description",
-      "Summary",
-      "About",
-      "Exhibition Label"
-    ];
-
-    return freetext.notes
-      .filter((note) => {
-        if (!note || !note.label || !note.content) return false;
-        return descriptiveLabels.some(label => 
-          note.label.includes(label) || label.includes(note.label)
-        );
-      })
-      .map((note) => ({
-        label: note.label,
-        content: note.content,
-      }));
-  } catch {
-    return [];
-  }
-}
-
-/**
- * @param {Object} item - Processed item data
- * @returns {Object} - Organised item data for UI
- */
-function organiseItemForDisplay(item) {
-  if (!item) return null;
-
-  try {
-    return {
-      id: item.id || "",
-      title: item.title || "Untitled",
-      recordId: item.recordId || item.id || "",
-      description: item.description || "",
-
-      ...item,
-
-      media: {
-        primaryImage: item.screenImageUrl || item.imageUrl || "",
-        fullImage: item.imageUrl || "",
-        thumbnail: item.thumbnailUrl || "",
-      },
-
-      dates: {
-        created: item.dateCreated || "",
-        collected: item.dateCollected || "",
-        published: item.datePublished || "",
-        display: item.dateCollected || item.datePublished || "",
-      },
-
-      location: {
-        place: item.place || "",
-        geoLocation: item.geoLocation || null,
-      },
-
-      creators: organiseCreatorInfo(item.creatorInfo),
-
-      collection: {
-        name: getMainCollection(item.setNames),
-        types: item.collectionTypes || [],
-        collectors: formatNameList(item.collectors),
-        curatorName: formatNameList(item.curatorName),
-        bioRegion: formatNameList(item.bioRegion),
-        allCollections: item.setNames || [],
-      },
-
-      descriptions: organiseDescriptions(item.notes),
-    };
-  } catch {
-    return item;
-  }
-}
-
-/**
- * @param {Array|string} names - List of names
- * @returns {string} - Formatted name list
- */
-function formatNameList(names) {
-  try {
-    if (!names) return "";
-    if (Array.isArray(names) && names.length > 0) {
-      return names.join(", ");
+    const result = {};
+    if (places.length > 0) {
+      result.places = places;
     }
-    return String(names);
-  } catch {
-    return "";
-  }
-}
-
-/**
- * @param {Array} setNames - List of collection set names
- * @returns {string} - Main collection name
- */
-function getMainCollection(setNames) {
-  try {
-    if (!setNames || !Array.isArray(setNames) || setNames.length === 0) {
-      return "";
+    if (coordinates.length > 0) {
+      result.coordinates = coordinates;
     }
 
-    const collections = [...setNames].sort((a, b) => a.length - b.length);
-    return collections[0] || "";
+    return Object.keys(result).length > 0 ? result : null;
   } catch {
-    return "";
+    return null;
   }
-}
+};
 
-/**
- * @param {Array} creatorInfo - Creator information from the API
- * @returns {Array} - Structured creator information
- */
-function organiseCreatorInfo(creatorInfo) {
+const extractCreators = (freetext) => {
   try {
-    if (
-      !creatorInfo ||
-      !Array.isArray(creatorInfo) ||
-      creatorInfo.length === 0
-    ) {
+    const creatorInfo = freetext.name || [];
+    
+    if (!Array.isArray(creatorInfo) || creatorInfo.length === 0) {
       return [];
     }
 
@@ -489,30 +329,102 @@ function organiseCreatorInfo(creatorInfo) {
   } catch {
     return [];
   }
-}
+};
 
-/**
- * @param {Array} notes - Notes from the API
- * @returns {Array} - Structured descriptions
- */
-function organiseDescriptions(notes) {
+const extractDescriptions = (freetext) => {
   try {
-    if (!notes || !Array.isArray(notes) || notes.length === 0) {
-      return [];
-    }
+    if (!freetext || !freetext.notes) return [];
 
-    return notes
-      .map((note) => {
-        if (!note) return null;
+    const descriptiveLabels = [
+      "Label",
+      "Luce Center Label", 
+      "Museum Label",
+      "Description",
+      "Summary",
+      "About",
+      "Exhibition Label"
+    ];
 
-        return {
-          title: note.label || "Description",
-          content: note.content || "",
-          paragraphs: note.content ? note.content.split("\n\n") : [],
-        };
-      })
-      .filter(Boolean);
+    const descriptiveNotes = freetext.notes
+      .filter((note) => {
+        if (!note || !note.label || !note.content) return false;
+        return descriptiveLabels.some(label => 
+          note.label.includes(label) || label.includes(note.label)
+        );
+      });
+
+    if (descriptiveNotes.length === 0) return [];
+
+    const allContent = descriptiveNotes.map(note => note.content).join("\n\n");
+    const allParagraphs = descriptiveNotes.map(note => note.content).filter(content => content && content.trim());
+
+    return [{
+      title: "Description",
+      content: allContent,
+      paragraphs: allParagraphs,
+    }];
   } catch {
     return [];
   }
-}
+};
+
+
+const extractIdentifiers = (freetext) => {
+  try {
+    return getFreetextContent(freetext, "identifier").map(item => ({
+      label: item.label || "Identifier",
+      content: item.content,
+    }));
+  } catch {
+    return [];
+  }
+};
+
+
+const extractCollectionInfo = (data, freetext) => {
+  try {
+    const rawSetNames = getFreetextContent(freetext, "setName").map(item => item.content);
+    const uniqueSetNames = [...new Set(rawSetNames)];
+    
+    const collectionTypes = uniqueSetNames
+      .filter(name => name && !name.includes("National Museum")) 
+      .map((str) => {
+        if (!str) return "";
+        const parts = str.split(",");
+        return parts[0].trim();
+      })
+      .filter(type => type && type.length > 0);
+
+    const uniqueCollectionTypes = [...new Set(collectionTypes)];
+
+    return {
+      name: uniqueSetNames.length > 0 ? uniqueSetNames.sort((a, b) => a.length - b.length)[0] : "",
+      types: uniqueCollectionTypes,
+      collectors: getFreetextContent(freetext, "name", "Collector").join(", "),
+      curatorName: getFreetextContent(freetext, "name", "Curator").join(", "),
+      bioRegion: getFreetextContent(freetext, "name", "Biogeographical Region").join(", "),
+      allCollections: uniqueSetNames,
+    };
+  } catch {
+    return {};
+  }
+};
+
+const getFreetextContent = (freetext, field, label = null) => {
+  try {
+    if (!freetext || !freetext[field]) return [];
+
+    if (label) {
+      return freetext[field]
+        .filter((item) => item.label === label || item.label.includes(label))
+        .map((item) => item.content);
+    }
+
+    return freetext[field].map((item) => ({
+      label: item.label,
+      content: item.content,
+    }));
+  } catch {
+    return [];
+  }
+};

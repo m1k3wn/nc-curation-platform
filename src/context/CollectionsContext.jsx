@@ -132,8 +132,11 @@ export function CollectionsProvider({ children }) {
           id: pendingItem.id,
           title: pendingItem.title,
           description: pendingItem.description,
-          thumbnailUrl: pendingItem.thumbnailUrl,
-          imageUrl: pendingItem.imageUrl,
+          media: {
+            thumbnail: pendingItem.media?.thumbnail,
+            primaryImage: pendingItem.media?.primaryImage,
+            fullImage: pendingItem.media?.fullImage,
+          },
           museum: pendingItem.museum,
           source: pendingItem.source,
           datePublished: pendingItem.datePublished,
@@ -234,8 +237,14 @@ export function CollectionsProvider({ children }) {
           id: item.id,
           title: item.title,
           description: item.description,
-          thumbnailUrl: item.thumbnailUrl,
-          imageUrl: item.imageUrl,
+          media: {
+            // Avoid circular references by only including necessary fields
+            thumbnail: item.media?.thumbnail,
+            primaryImage: item.media?.primaryImage,
+            fullImage: item.media?.fullImage
+          },
+          // thumbnailUrl: item.thumbnailUrl,
+          // imageUrl: item.imageUrl,
           museum: item.museum,
           source: item.source,
           datePublished: item.datePublished,
