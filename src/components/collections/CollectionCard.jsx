@@ -70,9 +70,9 @@ export default function CollectionCard({ collection }) {
               key={item.id}
               className="aspect-square bg-gray-100 overflow-hidden"
             >
-              {item.thumbnailUrl ? (
+              {item.media?.thumbnail ? (
                 <img
-                  src={item.thumbnailUrl}
+                  src={item.media?.thumbnail}
                   alt={item.title}
                   className="w-full h-full object-cover"
                 />

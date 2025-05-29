@@ -1,51 +1,60 @@
-import { europeanaConfig } from "../config";
 
-/**
- * Check if application is running in development mode
- * @returns {boolean} True if in development mode
- */
-const isDevelopment = () => {
-  return (
-    import.meta.env?.DEV === true ||
-    (typeof process !== "undefined" && process.env?.NODE_ENV === "development")
-  );
-};
+// ================ MAIN ADAPTER FUNCTIONS ================
 
 /**
  * Adapt search results from Europeana Search API
- *
  * @param {Object} apiData - Raw API response from Europeana Search API
- * @param {number} page - Current page number (optional)
- * @param {number} pageSize - Items per page (optional)
- * @returns {Object} - Adapted search results in consistent format
+ * @returns {Object} - Adapted search results for ItemCard
  */
-export const adaptEuropeanaSearchResults = (
-  apiData,
-  page = 1,
-  pageSize = europeanaConfig.defaultPageSize
-) => {
+export const adaptEuropeanaSearchResults = (apiData) => {
   if (!apiData || !apiData.items) {
-    return { total: 0, items: [], allItems: [] };
+    return { total: 0, items: [] };
   }
 
   const totalResults = apiData.totalResults || 0;
   const items = apiData.items || [];
 
-  const processedItems = processSearchItems(items);
+  const processedItems = items
+    .map((item) => {
+      try {
+        // Extract thumbnail - skip items without thumbnails ? DEBUG THIS
+        const thumbnailUrl = getFirst(item.edmPreview);
+        if (!thumbnailUrl || thumbnailUrl.trim() === '') {
+          return null;
+        }
+
+        return {
+          id: cleanId(item.id),
+          title: getFirst(item.title) || getMultilingual(item.dcTitleLangAware) || "Untitled",
+          source: "europeana",
+          museum: getFirst(item.dataProvider) || "European Institution",
+          dateCreated: getFirst(item.year) || "",
+          media: {
+            thumbnail: thumbnailUrl,
+            primaryImage: thumbnailUrl,
+            fullImage: thumbnailUrl
+          },
+          country: getFirst(item.country) || "",
+        };
+      } catch (error) {
+        if (isDevelopment()) {
+          console.warn("Error processing Europeana search item:", error);
+        }
+        return null;
+      }
+    })
+    .filter(Boolean);
 
   return {
     total: totalResults,
     items: processedItems,
-    //  Dupliucate? redundant?
-    allItems: processedItems,
   };
 };
 
 /**
  * Adapt single item details from Europeana Record API
- *
  * @param {Object} apiData - Raw API response from Europeana Record API
- * @returns {Object} - Adapted item details matching Smithsonian structure
+ * @returns {Object} - Adapted item details for SingleItemCard
  */
 export const adaptEuropeanaItemDetails = (apiData) => {
   if (!apiData || !apiData.object) {
@@ -54,77 +63,32 @@ export const adaptEuropeanaItemDetails = (apiData) => {
 
   try {
     const record = apiData.object;
-
-    const id = cleanId(record.about) || "";
-    const title = extractRecordTitle(record) || "Untitled";
-    const imageData = extractRecordImages(record);
-    const creators = extractCreators(record);
+    const images = extractRecordImages(record);
     const dates = extractRecordDates(record);
-    const location = extractLocation(record);
-    const descriptions = extractDescriptions(record);
-    const museum = extractRecordMuseum(record);
-    const collectionInfo = extractCollectionInfo(record);
+    const creators = extractCreators(record);
+    const { notes, descriptions } = extractDescriptions(record);
+    const place = extractLocation(record);
 
     return {
-      id: id,
-      recordId: record.about || id, 
-      title: title,
+      id: cleanId(record.about) || "",
+      title: extractRecordTitle(record),
       url: extractExternalUrl(record),
       source: "europeana",
-      museum: museum,
-      dataSource: museum,
-      imageUrl: imageData.fullImage || "",
-      screenImageUrl: imageData.screenImage || imageData.fullImage || "",
-      thumbnailUrl: imageData.thumbnail || "",
-      dateCollected: "",
-      datePublished: dates.published || "",
-      place: location.place || "",
-      geoLocation: location.geoLocation || null,
-      creatorInfo: creators.original || [],
-      setNames: collectionInfo.setNames || [],
-      collectionTypes: collectionInfo.types || [],
-      collectors: [],
-      curatorName: [],
-      bioRegion: [],
-
-      identifiers: extractIdentifiers(record),
-
-      notes: descriptions.notes || [],
+      museum: extractRecordMuseum(record),
+      dateCreated: dates.created,
 
       media: {
-        primaryImage: imageData.screenImage || imageData.fullImage || "",
-        fullImage: imageData.fullImage || "",
-        thumbnail: imageData.thumbnail || "",
+        thumbnail: images.thumbnailUrl,
+        primaryImage: images.screenImageUrl || images.imageUrl,
+        fullImage: images.imageUrl
       },
-
-      dates: {
-        created: dates.created || "",
-        collected: "",
-        published: dates.published || "",
-        display: dates.display || dates.published || "",
-      },
-
-      location: {
-        place: location.place || "",
-        geoLocation: location.geoLocation || null,
-      },
-
-      creators: creators.structured || [],
-
-      collection: {
-        name: collectionInfo.mainCollection || "",
-        types: collectionInfo.types || [],
-        collectors: "",
-        curatorName: "",
-        bioRegion: "",
-        allCollections: collectionInfo.setNames || [],
-      },
-
-      descriptions: descriptions.structured || [],
-
-      // Raw API response for debugging
-      _rawApiResponse: apiData,
+      location: { place },
+      creators,
+      notes,
+      descriptions,
+      identifiers: extractIdentifiers(record),
     };
+
   } catch (error) {
     if (isDevelopment()) {
       console.error("Error adapting Europeana record:", error);
@@ -135,586 +99,288 @@ export const adaptEuropeanaItemDetails = (apiData) => {
       title: extractRecordTitle(apiData.object) || "Untitled Item",
       source: "europeana",
       museum: "European Institution",
-      _rawApiResponse: apiData,
+      dateCreated: "",
+      media: {
+        thumbnail: "",
+        primaryImage: "",
+        fullImage: ""
+      },
+      location: { place: "" },
+      creators: [],
+      notes: [],
+      descriptions: [],
+      identifiers: [],
     };
   }
 };
 
+// ================ UTILITY FUNCTIONS ================
+
 /**
- * Process items from Europeana search results to match Smithsonian format
- * @param {Array} items - Raw item array from Europeana search results
- * @returns {Array} - Processed items with consistent structure for ItemCard
+ * Safe array access
  */
-function processSearchItems(items) {
-  if (!items || !Array.isArray(items)) return [];
+const getFirst = (value) => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] : value;
+};
 
-  return items
-    .map((item) => {
-      try {
-        return {
-          id: cleanId(item.id), 
-          recordId: item.id, 
-          title: extractTitle(item) || "Untitled",
-          thumbnailUrl: extractThumbnailUrl(item),
-          imageUrl: extractImageUrl(item), 
-          screenImageUrl: extractImageUrl(item), 
-          source: "europeana", 
-          museum: extractMuseum(item),
-          datePublished: extractDate(item),
-          description: "", // Not typically in search results
-          url: item.guid || "",
-          dataSource: "", // Needed? 
-          country: extractCountry(item),
-          rights: extractRights(item),
-        };
-      } catch (error) {
-        if (isDevelopment()) {
-          console.warn("Error processing Europeana item:", error);
-        }
 
-        return {
-          id: item.id || "",
-          title: extractTitle(item) || "Untitled Item",
-          thumbnailUrl: "",
-          source: "europeana",
-          museum: "European Institution",
-        };
+const getMultilingual = (field, preferredLangs = ['en', 'def']) => {
+  if (!field || typeof field !== 'object') {
+    return getFirst(field);
+  }
+
+  for (const lang of preferredLangs) {
+    if (field[lang]) {
+      const value = getFirst(field[lang]);
+      if (value && value.trim()) return value;
+    }
+  }
+
+  return null;
+};
+
+
+const cleanId = (id) => {
+  if (!id || typeof id !== 'string') return '';
+  return id.startsWith('/') ? id.substring(1) : id;
+};
+
+// ================ RECORD-SPECIFIC EXTRACTORS ================
+
+
+const extractRecordTitle = (record) => {
+  if (record.proxies && Array.isArray(record.proxies)) {
+    for (const proxy of record.proxies) {
+      if (proxy.dcTitle) {
+        const title = getMultilingual(proxy.dcTitle);
+        if (title) return title;
       }
-    })
-    .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0); // Only items with thumbnails
-}
-
-
-/* ----------------------- HELPER FUNCTIONS ----------------------- */
-
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Clean title
- */
-function extractTitle(item) {
-  try {
-    // Handle both search results (title array) and record format (dcTitle)
-    if (item.title && Array.isArray(item.title)) {
-      return item.title[0] || "";
     }
 
-    if (item.dcTitleLangAware && item.dcTitleLangAware.en) {
-      return item.dcTitleLangAware.en[0] || "";
-    }
-
-    if (typeof item.title === "string") {
-      return item.title;
-    }
-
-    return "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Thumbnail URL
- */
-function extractThumbnailUrl(item) {
-  try {
-    if (item.edmPreview && Array.isArray(item.edmPreview)) {
-      return item.edmPreview[0] || "";
-    }
-
-    if (typeof item.edmPreview === "string") {
-      return item.edmPreview;
-    }
-
-    return "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Full image URL
- */
-function extractImageUrl(item) {
-  try {
-    if (item.edmIsShownBy && Array.isArray(item.edmIsShownBy)) {
-      return item.edmIsShownBy[0] || "";
-    }
-
-    if (typeof item.edmIsShownBy === "string") {
-      return item.edmIsShownBy;
-    }
-
-    // Fallback to thumbnail if no full image
-    return extractThumbnailUrl(item);
-  } catch {
-    return "";
-  }
-}
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Museum name
- */
-function extractMuseum(item) {
-  try {
-    if (item.dataProvider && Array.isArray(item.dataProvider)) {
-      return item.dataProvider[0] || "European Institution";
-    }
-
-    if (typeof item.dataProvider === "string") {
-      return item.dataProvider;
-    }
-
-    return "European Institution";
-  } catch {
-    return "European Institution";
-  }
-}
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Formatted date
- */
-function extractDate(item) {
-  try {
-    if (item.year && Array.isArray(item.year)) {
-      return item.year[0] || "";
-    }
-
-    if (typeof item.year === "string") {
-      return item.year;
-    }
-
-    return "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Country name
- */
-function extractCountry(item) {
-  try {
-    if (item.country && Array.isArray(item.country)) {
-      return item.country[0] || "";
-    }
-
-    if (typeof item.country === "string") {
-      return item.country;
-    }
-
-    return "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * @param {Object} item - Europeana item
- * @returns {string} - Rights statement
- */
-function extractRights(item) {
-  try {
-    if (item.rights && Array.isArray(item.rights)) {
-      return item.rights[0] || "";
-    }
-
-    if (typeof item.rights === "string") {
-      return item.rights;
-    }
-
-    return "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * Clean Europeana ID for use in routing
- * Europeana IDs start with "/" which can cause routing issues
- * @param {string} id - Raw Europeana ID
- * @returns {string} - Cleaned ID
- */
-function cleanId(id) {
-  if (!id) return "";
-
-  // Remove leading slash and encode for URL safety
-  return id.startsWith("/") ? id.substring(1) : id;
-}
-
-
-/**
- * @param {Object} record - Europeana record object
- * @returns {string} - Title
- */
-function extractRecordTitle(record) {
-  try {
-    // Check proxies for title information
-    if (record.proxies && Array.isArray(record.proxies)) {
-      for (const proxy of record.proxies) {
-        if (proxy.dcTitle) {
-          if (proxy.dcTitle.en && Array.isArray(proxy.dcTitle.en)) {
-            return proxy.dcTitle.en[0];
-          }
-          if (proxy.dcTitle.def && Array.isArray(proxy.dcTitle.def)) {
-            return proxy.dcTitle.def[0];
-          }
-          // Handle other language variants
-          const titleKeys = Object.keys(proxy.dcTitle);
-          if (titleKeys.length > 0) {
-            const firstKey = titleKeys[0];
-            const titleValue = proxy.dcTitle[firstKey];
-            return Array.isArray(titleValue) ? titleValue[0] : titleValue;
-          }
+    // Fallback to description as title
+    for (const proxy of record.proxies) {
+      if (proxy.dcDescription) {
+        const desc = getMultilingual(proxy.dcDescription);
+        if (desc && desc.trim()) {
+          return desc.length > 50 ? desc.substring(0, 50) + "..." : desc;
         }
       }
     }
-
-    // Fallback to basic title extraction
-    return extractTitle(record);
-  } catch {
-    return "";
   }
-}
 
-/**
- * @param {Object} record - Europeana record object
- * @returns {Object} - Image URLs
- */
-function extractRecordImages(record) {
-  const images = { fullImage: "", screenImage: "", thumbnail: "" };
+  return "Untitled";
+};
 
-  try {
-    // Check aggregations for image info
-    if (record.aggregations && Array.isArray(record.aggregations)) {
-      const aggregation = record.aggregations[0]; // Use first aggregation
 
-      if (aggregation.edmIsShownBy) {
-        images.fullImage = Array.isArray(aggregation.edmIsShownBy)
-          ? aggregation.edmIsShownBy[0]
-          : aggregation.edmIsShownBy;
-      }
+const extractRecordImages = (record) => {
+  const images = { imageUrl: "", screenImageUrl: "", thumbnailUrl: "" };
 
-      if (aggregation.edmObject) {
-        images.screenImage = Array.isArray(aggregation.edmObject)
-          ? aggregation.edmObject[0]
-          : aggregation.edmObject;
-      }
+  if (record.aggregations && Array.isArray(record.aggregations)) {
+    const aggregation = record.aggregations[0];
+    if (aggregation) {
+      images.imageUrl = getFirst(aggregation.edmIsShownBy) || "";
+      images.screenImageUrl = getFirst(aggregation.edmObject) || "";
     }
-
-    // Check europeanaAggregation for preview
-    if (record.europeanaAggregation && record.europeanaAggregation.edmPreview) {
-      images.thumbnail = record.europeanaAggregation.edmPreview;
-    }
-
-    // Use fullImage as screenImage fallback
-    if (!images.screenImage && images.fullImage) {
-      images.screenImage = images.fullImage;
-    }
-
-    return images;
-  } catch {
-    return images;
   }
-}
 
-/**
- * @param {Object} record - Europeana record object
- * @returns {Object} - Creator info in both original and structured format
- */
-function extractCreators(record) {
-  const creators = { original: [], structured: [] };
+  if (record.europeanaAggregation && record.europeanaAggregation.edmPreview) {
+    images.thumbnailUrl = record.europeanaAggregation.edmPreview;
+  }
 
-  try {
-    if (record.proxies && Array.isArray(record.proxies)) {
-      for (const proxy of record.proxies) {
-        if (proxy.dcCreator) {
-          const creatorEntries = Object.entries(proxy.dcCreator);
+  if (!images.screenImageUrl && images.imageUrl) {
+    images.screenImageUrl = images.imageUrl;
+  }
 
-          creatorEntries.forEach(([lang, values]) => {
+  return images;
+};
+
+
+const extractRecordDates = (record) => {
+  let dateStr = "";
+
+  if (record.proxies && Array.isArray(record.proxies)) {
+    for (const proxy of record.proxies) {
+      if (proxy.dcDate) {
+        dateStr = getMultilingual(proxy.dcDate);
+        if (dateStr) break;
+      }
+      if (!dateStr && proxy.dctermsCreated) {
+        dateStr = getMultilingual(proxy.dctermsCreated);
+        if (dateStr) break;
+      }
+    }
+  }
+
+  if (!dateStr && record.timespans && Array.isArray(record.timespans)) {
+    const timespan = record.timespans[0];
+    if (timespan && timespan.prefLabel) {
+      dateStr = getMultilingual(timespan.prefLabel);
+    }
+  }
+
+  return {
+    created: dateStr || "",
+  };
+};
+
+
+const extractCreators = (record) => {
+  const creators = [];
+
+  if (record.proxies && Array.isArray(record.proxies)) {
+    for (const proxy of record.proxies) {
+      if (proxy.dcCreator) {
+        const creatorEntries = Object.entries(proxy.dcCreator);
+        
+        for (const [lang, values] of creatorEntries) {
+          if (lang === 'en' || lang === 'def') { 
             const creatorArray = Array.isArray(values) ? values : [values];
-
-            creatorArray.forEach((creator) => {
-              // Original format (for backward compatibility)
-              creators.original.push({
-                label: "Creator",
-                content: creator,
-              });
-
-              // Structured format (for new UI)
-              creators.structured.push({
-                role: "Creator",
-                names: [creator],
-                displayText: creator,
-              });
-            });
-          });
-        }
-      }
-    }
-
-    return creators;
-  } catch {
-    return creators;
-  }
-}
-
-/**
- * Extract date information from record
- * @param {Object} record - Europeana record object
- * @returns {Object} - Date information
- */
-function extractRecordDates(record) {
-  const dates = { created: "", published: "", display: "" };
-
-  try {
-    if (record.proxies && Array.isArray(record.proxies)) {
-      for (const proxy of record.proxies) {
-        if (proxy.dcDate || proxy.dctermsCreated) {
-          const dateSource = proxy.dcDate || proxy.dctermsCreated;
-
-          if (dateSource.def && Array.isArray(dateSource.def)) {
-            dates.published = dateSource.def[0];
-            dates.display = dateSource.def[0];
-          } else if (dateSource.en && Array.isArray(dateSource.en)) {
-            dates.published = dateSource.en[0];
-            dates.display = dateSource.en[0];
-          }
-        }
-      }
-    }
-
-    // Check timespans for more date info
-    if (record.timespans && Array.isArray(record.timespans)) {
-      const timespan = record.timespans[0];
-      if (timespan && timespan.prefLabel) {
-        const labelKeys = Object.keys(timespan.prefLabel);
-        if (labelKeys.length > 0) {
-          const dateValue = timespan.prefLabel[labelKeys[0]];
-          if (!dates.published && Array.isArray(dateValue)) {
-            dates.published = dateValue[0];
-            dates.display = dateValue[0];
-          }
-        }
-      }
-    }
-
-    return dates;
-  } catch {
-    return dates;
-  }
-}
-
-/**
- * Extract location information from record
- * @param {Object} record - Europeana record object
- * @returns {Object} - Location information
- */
-function extractLocation(record) {
-  const location = { place: "", geoLocation: null };
-
-  try {
-    if (record.proxies && Array.isArray(record.proxies)) {
-      for (const proxy of record.proxies) {
-        if (proxy.dctermsSpatial) {
-          const spatialKeys = Object.keys(proxy.dctermsSpatial);
-          if (spatialKeys.length > 0) {
-            const spatialValue = proxy.dctermsSpatial[spatialKeys[0]];
-            location.place = Array.isArray(spatialValue)
-              ? spatialValue[0]
-              : spatialValue;
-          }
-        }
-
-        if (proxy.edmCurrentLocation) {
-          const locationKeys = Object.keys(proxy.edmCurrentLocation);
-          if (locationKeys.length > 0 && !location.place) {
-            const locationValue = proxy.edmCurrentLocation[locationKeys[0]];
-            location.place = Array.isArray(locationValue)
-              ? locationValue[0]
-              : locationValue;
-          }
-        }
-      }
-    }
-
-    return location;
-  } catch {
-    return location;
-  }
-}
-
-/**
- * Extract descriptions from record
- * @param {Object} record - Europeana record object
- * @returns {Object} - Description information
- */
-function extractDescriptions(record) {
-  const descriptions = { notes: [], structured: [] };
-
-  try {
-    if (record.proxies && Array.isArray(record.proxies)) {
-      for (const proxy of record.proxies) {
-        if (proxy.dcDescription) {
-          const descriptionEntries = Object.entries(proxy.dcDescription);
-
-          descriptionEntries.forEach(([lang, values]) => {
-            const descArray = Array.isArray(values) ? values : [values];
-
-            descArray.forEach((desc) => {
-              if (desc.trim()) {
-                // Original format
-                descriptions.notes.push({
-                  label: "Description",
-                  content: desc,
-                });
-
-                // Structured format
-                descriptions.structured.push({
-                  title: "Description",
-                  content: desc,
-                  paragraphs: desc.split("\n\n").filter((p) => p.trim()),
+            
+            for (const creator of creatorArray) {
+              if (creator && creator.trim()) {
+                creators.push({
+                  role: "Creator",
+                  names: [creator],      
+                  displayText: creator   
                 });
               }
-            });
-          });
-        }
-      }
-    }
-
-    return descriptions;
-  } catch {
-    return descriptions;
-  }
-}
-
-/**
- * Extract museum/institution name from detailed record
- * @param {Object} record - Europeana record object
- * @returns {string} - Museum name
- */
-function extractRecordMuseum(record) {
-  try {
-    // Check organizations first
-    if (record.organizations && Array.isArray(record.organizations)) {
-      for (const org of record.organizations) {
-        if (org.prefLabel) {
-          const labelKeys = Object.keys(org.prefLabel);
-          if (labelKeys.length > 0) {
-            const orgName = org.prefLabel[labelKeys[0]];
-            return Array.isArray(orgName) ? orgName[0] : orgName;
+            }
           }
         }
       }
     }
+  }
 
-    // Fallback to aggregation data provider
-    if (record.aggregations && Array.isArray(record.aggregations)) {
-      const aggregation = record.aggregations[0];
-      if (aggregation.edmDataProvider && aggregation.edmDataProvider.def) {
-        return Array.isArray(aggregation.edmDataProvider.def)
-          ? aggregation.edmDataProvider.def[0]
-          : aggregation.edmDataProvider.def;
+  return creators;
+};
+
+
+const extractDescriptions = (record) => {
+  const notes = [];         
+  const descriptions = [];  
+
+  if (record.proxies && Array.isArray(record.proxies)) {
+    for (const proxy of record.proxies) {
+      if (proxy.dcDescription && proxy.dcDescription.en) {
+        const descArray = Array.isArray(proxy.dcDescription.en) ? proxy.dcDescription.en : [proxy.dcDescription.en];
+        
+        for (const desc of descArray) {
+          if (desc && desc.trim()) {
+            descriptions.push({
+              title: "Description",   
+              content: desc,          
+              paragraphs: desc.split("\n\n").filter(p => p.trim())
+            });
+          }
+        }
       }
     }
-
-    return "European Institution";
-  } catch {
-    return "European Institution";
   }
-}
 
-/**
- * Extract collection information from record
- * @param {Object} record - Europeana record object
- * @returns {Object} - Collection information
- */
-function extractCollectionInfo(record) {
-  const collection = { setNames: [], types: [], mainCollection: "" };
 
-  try {
-    if (record.edmDatasetName && Array.isArray(record.edmDatasetName)) {
-      collection.setNames = [...record.edmDatasetName];
-      collection.mainCollection = record.edmDatasetName[0] || "";
+  if (record.concepts && Array.isArray(record.concepts)) {
+    for (const concept of record.concepts) {
+      if (concept.note && concept.note.en) {
+        const noteArray = Array.isArray(concept.note.en) ? concept.note.en : [concept.note.en];
+        
+        for (const note of noteArray) {
+          if (note && note.trim()) {
+            notes.push({
+              text: note,
+              conceptLabel: getMultilingual(concept.prefLabel) || ""
+            });
+          }
+        }
+      }
     }
-
-    if (
-      record.europeanaCollectionName &&
-      Array.isArray(record.europeanaCollectionName)
-    ) {
-      collection.types = [...record.europeanaCollectionName];
-    }
-
-    return collection;
-  } catch {
-    return collection;
   }
-}
 
-/**
- * Extract identifiers from record
- * @param {Object} record - Europeana record object
- * @returns {Array} - Identifier information
- */
-function extractIdentifiers(record) {
+  return { notes, descriptions };
+};
+
+
+const extractLocation = (record) => {
+  let place = "";
+
+  if (record.proxies && Array.isArray(record.proxies)) {
+    for (const proxy of record.proxies) {
+      if (proxy.dctermsSpatial) {
+        place = getMultilingual(proxy.dctermsSpatial);
+        if (place) break;
+      }
+      if (!place && proxy.edmCurrentLocation) {
+        place = getMultilingual(proxy.edmCurrentLocation);
+        if (place) break;
+      }
+    }
+  }
+
+  return place;
+};
+
+
+const extractRecordMuseum = (record) => {
+  if (record.organizations && Array.isArray(record.organizations)) {
+    for (const org of record.organizations) {
+      if (org.prefLabel) {
+        const name = getMultilingual(org.prefLabel);
+        if (name) return name;
+      }
+    }
+  }
+
+  if (record.aggregations && Array.isArray(record.aggregations)) {
+    const aggregation = record.aggregations[0];
+    if (aggregation && aggregation.edmDataProvider) {
+      const provider = getMultilingual(aggregation.edmDataProvider);
+      if (provider) return provider;
+    }
+  }
+
+  return "European Institution";
+};
+
+
+const extractIdentifiers = (record) => {
   const identifiers = [];
 
-  try {
-    if (record.proxies && Array.isArray(record.proxies)) {
-      for (const proxy of record.proxies) {
-        if (proxy.dcIdentifier) {
-          const identifierEntries = Object.entries(proxy.dcIdentifier);
-
-          identifierEntries.forEach(([lang, values]) => {
-            const idArray = Array.isArray(values) ? values : [values];
-
-            idArray.forEach((identifier) => {
+  if (record.proxies && Array.isArray(record.proxies)) {
+    for (const proxy of record.proxies) {
+      if (proxy.dcIdentifier) {
+        const idEntries = Object.entries(proxy.dcIdentifier);
+        
+        for (const [lang, values] of idEntries) {
+          const idArray = Array.isArray(values) ? values : [values];
+          
+          for (const identifier of idArray) {
+            if (identifier && identifier.trim()) {
               identifiers.push({
                 label: "Identifier",
                 content: identifier,
               });
-            });
-          });
+            }
+          }
         }
       }
     }
-
-    return identifiers;
-  } catch {
-    return identifiers;
   }
-}
 
-/**
- * Extract external URL from record
- * @param {Object} record - Europeana record object
- * @returns {string} - External URL
- */
-function extractExternalUrl(record) {
-  try {
-    if (
-      record.europeanaAggregation &&
-      record.europeanaAggregation.edmLandingPage
-    ) {
-      return record.europeanaAggregation.edmLandingPage;
-    }
+  return identifiers;
+};
 
-    if (record.aggregations && Array.isArray(record.aggregations)) {
-      const aggregation = record.aggregations[0];
-      if (aggregation.edmIsShownAt) {
-        return Array.isArray(aggregation.edmIsShownAt)
-          ? aggregation.edmIsShownAt[0]
-          : aggregation.edmIsShownAt;
-      }
-    }
 
-    return "";
-  } catch {
-    return "";
+const extractExternalUrl = (record) => {
+  if (record.europeanaAggregation && record.europeanaAggregation.edmLandingPage) {
+    return record.europeanaAggregation.edmLandingPage;
   }
-}
+
+  if (record.aggregations && Array.isArray(record.aggregations)) {
+    const aggregation = record.aggregations[0];
+    if (aggregation && aggregation.edmIsShownAt) {
+      return getFirst(aggregation.edmIsShownAt);
+    }
+  }
+
+  return "";
+};

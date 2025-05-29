@@ -26,8 +26,10 @@ const handleCardClick = () => {
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  const imgSrc = item.thumbnailUrl || defaultImage;
-
+    //  smithsonian isnt retrieveing images for itemcard from thumbnail..... 
+  const imgSrc = item.media?.thumbnail || item.media?.primaryImage 
+  // || defaultImage;
+ 
   return (
     <div className="break-inside-avoid mb-4">
       <div
@@ -87,7 +89,7 @@ const handleCardClick = () => {
             {item.title || "Untitled Item"}
           </h3>
 
-          {/* Description */}
+          {/* Description
           {item.description && (
             <p
               className="text-gray-600 text-sm mb-2 line-clamp-2"
@@ -95,16 +97,15 @@ const handleCardClick = () => {
             >
               {item.description}
             </p>
-          )}
+          )} */}
 
           {/* Source & Date */}
           <div className="flex justify-between text-xs text-gray-500 mb-3">
             <span>
               {item.museum ||
-                item.source?.institution ||
-                "Smithsonian Institution"}
+                item.source?.institution}
             </span>
-            <span>{item.datePublished || ""}</span>
+            <span>{item.dateCreated || ""}</span>
           </div>
 
           {/* Action Buttons */}

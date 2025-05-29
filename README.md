@@ -303,3 +303,35 @@ The Museum Collection Explorer is a well-structured React application that demon
 The application balances immediate user feedback with comprehensive data retrieval through its sophisticated batch processing system. The UI is clean and responsive, with thoughtful handling of loading states, errors, and edge cases.
 
 The codebase is ready for further development to add authentication, user collections, and additional data sources while maintaining its clean architecture and separation of concerns.
+
+
+europeana datra format for search:
+
+{
+  id: "123",
+  title: "Artwork", 
+  thumbnailUrl: "url",
+  source: "europeana",
+  museum: "Museum Name",
+  dates: { display: "1850", published: "1850", created: "", collected: "" },
+  country: "France"
+}
+
+for record: 
+{
+  id: "123",
+  title: "Artwork",
+  url: "external-url", 
+  source: "europeana",
+  museum: "Museum Name",
+  imageUrl: "full-res-url",
+  screenImageUrl: "screen-url", 
+  thumbnailUrl: "thumb-url",
+  dates: { display: "1850", created: "1850", published: "1850", collected: "" },
+  location: { place: "Paris" },
+  creatorInfo: [{ label: "Creator", content: "Artist Name" }], // Legacy
+  creators: [{ role: "Creator", names: ["Artist"], displayText: "Artist" }], // New
+  notes: [{ label: "Description", content: "..." }], // Legacy  
+  descriptions: [{ title: "Description", content: "...", paragraphs: [...] }], // New
+  identifiers: [{ label: "Identifier", content: "..." }]
+}

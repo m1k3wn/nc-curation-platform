@@ -12,7 +12,6 @@ export default function SearchResultsPage() {
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
   
-  // Use ref to track if we've already performed this search
   const lastSearchedQuery = useRef("");
 
   const {
@@ -31,21 +30,16 @@ export default function SearchResultsPage() {
       lastSearchedQuery.current = queryParam;
       performUnifiedSearch(queryParam);
     }
-  }, [queryParam]); // Remove performUnifiedSearch from dependencies
+  }, [queryParam]); 
 
-  // Cleanup when component unmounts (navigating away from search results page)
   useEffect(() => {
     return () => {
-      // Only clear if there's an ongoing search when user navigates away
       if (loading) {
         clearSearch();
       }
     };
-  }, []); // Empty dependency array - only run on mount/unmount
+  }, []); 
 
-  /**
-   * Get appropriate results message
-   */
   const getResultsMessage = () => {
     if (loading) {
       return "Searching...";
