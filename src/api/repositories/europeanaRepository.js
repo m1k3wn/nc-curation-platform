@@ -12,7 +12,7 @@ export const europeanaRepository = {
     const params = {
       wskey: import.meta.env.VITE_EUROPEANA_API_KEY,
       query: "*",
-      rows: "1",
+      rows: "100",
     };
 
     // Apply config-based parameters
