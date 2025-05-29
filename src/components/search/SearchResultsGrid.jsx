@@ -3,9 +3,6 @@ import SearchProgress from "./SearchProgress";
 import Pagination from "./Pagination";
 import { useSearch } from "../../context/SearchContext";
 
-/**
- * Error message component
- */
 const ErrorMessage = ({ message }) => (
   <div
     className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
@@ -16,9 +13,6 @@ const ErrorMessage = ({ message }) => (
   </div>
 );
 
-/**
- * Empty results message component
- */
 const EmptyResults = () => (
   <div className="text-center py-16" role="status" aria-live="polite">
     <p className="text-gray-500 text-lg">No results with images found</p>
@@ -28,9 +22,6 @@ const EmptyResults = () => (
   </div>
 );
 
-/**
- * Cache indicator component
- */
 const CacheIndicator = ({ itemCount, onRefresh }) => (
   <div className="flex justify-between items-center mb-4 p-2 bg-blue-50 rounded">
     <span className="text-blue-800">
@@ -46,9 +37,7 @@ const CacheIndicator = ({ itemCount, onRefresh }) => (
   </div>
 );
 
-/**
- * Component to display search results in a grid layout
- */
+
 export default function SearchResultsGrid() {
   const {
     results,
@@ -63,22 +52,19 @@ export default function SearchResultsGrid() {
     refreshSearch,
   } = useSearch();
 
-  // Error state
+
   if (error) {
     return <ErrorMessage message={error} />;
   }
 
-  // Loading state - show progress
   if (loading) {
     return <SearchProgress progress={progress} />;
   }
 
-  // Empty results state
   if (!results || results.length === 0) {
     return <EmptyResults />;
   }
 
-  // Results state - show grid with pagination
   return (
     <div>
       {/* Cache indicator and refresh button */}

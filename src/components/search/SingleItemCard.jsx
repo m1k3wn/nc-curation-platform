@@ -3,9 +3,9 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
 
 /**
- * @param {Object} item - The item data to display
+ * @param {Object} item - The item data 
  * @param {boolean} isLoading - Whether additional item details are being loaded
- * @param {string} error - Error message, if any
+ * @param {string} error - Error message
  */
 export default function SingleItemCard({ item, isLoading, error }) {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -15,7 +15,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  // Default placeholder image 
+  // placeholder image 
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
@@ -87,6 +87,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
   };
 
   return (
+
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* Image Zoom Modal */}
       <ImageZoomModal
@@ -95,7 +96,6 @@ export default function SingleItemCard({ item, isLoading, error }) {
         imageUrl={zoomImage}
         alt={item.title || "Item image"}
       />
-
       <div className="md:flex">
         {/* Image Section */}
         <div className="md:w-3/5 lg:w-1/2">

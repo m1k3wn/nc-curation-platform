@@ -26,7 +26,7 @@ export const europeanaConfig = {
   defaultPageSize: 24, 
   requestTimeout: 15000, 
   maxParallelRequests: 10, 
-  defaultSearchRows: 50,
+  defaultSearchRows: 100,
   maxSearchRows: 1000,
 
   // Default API parameters

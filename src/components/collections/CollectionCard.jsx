@@ -4,8 +4,6 @@ import { useCollections } from "../../context/CollectionsContext";
 import DeleteConfirmation from "../common/DeleteConfirmation";
 
 /**
- * Card component for displaying a collection preview
- *
  * @param {Object} collection - The collection to display
  */
 export default function CollectionCard({ collection }) {
@@ -14,9 +12,6 @@ export default function CollectionCard({ collection }) {
   const { deleteCollection, setActiveCollection, openEditModal } =
     useCollections();
 
-  /**
-   * Format date for display
-   */
   const formatDate = (isoDate) => {
     if (!isoDate) return "";
     const date = new Date(isoDate);
@@ -27,48 +22,34 @@ export default function CollectionCard({ collection }) {
     });
   };
 
-  /**
-   * Navigate to collection view
-   */
+
   const handleViewCollection = () => {
     setActiveCollection(collection);
     navigate(`/collections/${collection.id}`);
   };
 
-  /**
-   * Handle edit collection (opens modal)
-   */
   const handleEditCollection = (e) => {
     e.stopPropagation();
     openEditModal(collection);
   };
 
-  /**
-   * Handle delete collection
-   */
+
   const handleDeleteCollection = (e) => {
     e.stopPropagation();
     setIsConfirmingDelete(true);
   };
 
-  /**
-   * Confirm deletion
-   */
   const confirmDelete = (e) => {
     e.stopPropagation();
     deleteCollection(collection.id);
     setIsConfirmingDelete(false);
   };
 
-  /**
-   * Cancel deletion
-   */
   const cancelDelete = (e) => {
     e.stopPropagation();
     setIsConfirmingDelete(false);
   };
 
-  // Generate preview images if collection has items
   const previewItems = collection.items.slice(0, 4);
   const hasPreviewItems = previewItems.length > 0;
 
@@ -170,7 +151,7 @@ export default function CollectionCard({ collection }) {
             </button>
           </div>
 
-          {/* Keep the View button for visual clarity, but it's now redundant */}
+      
           <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded text-sm font-medium">
             {collection.items.length}{" "}
             {collection.items.length === 1 ? "item" : "items"}

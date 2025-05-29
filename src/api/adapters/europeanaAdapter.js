@@ -12,7 +12,7 @@ const isDevelopment = () => {
 };
 
 /**
- * Adapt search results from Europeana API to common format (matching Smithsonian structure)
+ * Adapt search results from Europeana Search API
  *
  * @param {Object} apiData - Raw API response from Europeana Search API
  * @param {number} page - Current page number (optional)
@@ -36,12 +36,13 @@ export const adaptEuropeanaSearchResults = (
   return {
     total: totalResults,
     items: processedItems,
+    //  Dupliucate? redundant?
     allItems: processedItems,
   };
 };
 
 /**
- * Adapt single item details from Europeana Record API to common format
+ * Adapt single item details from Europeana Record API
  *
  * @param {Object} apiData - Raw API response from Europeana Record API
  * @returns {Object} - Adapted item details matching Smithsonian structure
@@ -139,8 +140,6 @@ export const adaptEuropeanaItemDetails = (apiData) => {
   }
 };
 
-/* ----------------------- HELPER FUNCTIONS ----------------------- */
-
 /**
  * Process items from Europeana search results to match Smithsonian format
  * @param {Array} items - Raw item array from Europeana search results
@@ -185,8 +184,11 @@ function processSearchItems(items) {
     .filter((item) => item.thumbnailUrl && item.thumbnailUrl.length > 0); // Only items with thumbnails
 }
 
+
+/* ----------------------- HELPER FUNCTIONS ----------------------- */
+
+
 /**
- * Extract and clean the title from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Clean title
  */
@@ -212,7 +214,6 @@ function extractTitle(item) {
 }
 
 /**
- * Extract thumbnail URL from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Thumbnail URL
  */
@@ -233,7 +234,6 @@ function extractThumbnailUrl(item) {
 }
 
 /**
- * Extract full image URL from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Full image URL
  */
@@ -255,7 +255,6 @@ function extractImageUrl(item) {
 }
 
 /**
- * Extract museum/institution name from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Museum name
  */
@@ -276,7 +275,6 @@ function extractMuseum(item) {
 }
 
 /**
- * Extract date from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Formatted date
  */
@@ -297,7 +295,6 @@ function extractDate(item) {
 }
 
 /**
- * Extract country from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Country name
  */
@@ -318,7 +315,6 @@ function extractCountry(item) {
 }
 
 /**
- * Extract rights information from Europeana item
  * @param {Object} item - Europeana item
  * @returns {string} - Rights statement
  */
@@ -351,10 +347,8 @@ function cleanId(id) {
   return id.startsWith("/") ? id.substring(1) : id;
 }
 
-/* ----------------------- RECORD API HELPER FUNCTIONS ----------------------- */
 
 /**
- * Extract title from detailed record (different structure than search)
  * @param {Object} record - Europeana record object
  * @returns {string} - Title
  */
@@ -389,7 +383,6 @@ function extractRecordTitle(record) {
 }
 
 /**
- * Extract images from record aggregations
  * @param {Object} record - Europeana record object
  * @returns {Object} - Image URLs
  */
@@ -431,7 +424,6 @@ function extractRecordImages(record) {
 }
 
 /**
- * Extract creator information from record
  * @param {Object} record - Europeana record object
  * @returns {Object} - Creator info in both original and structured format
  */

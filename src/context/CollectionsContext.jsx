@@ -8,12 +8,11 @@ import {
 import CollectionModal from "../components/collections/CollectionModal";
 
 /**
- * Context for managing user collections across the application
+ * Context for managing user collections 
  */
 const CollectionsContext = createContext();
 
 /**
- * Hook to access the collections context
  * @returns {Object} Collections context value
  */
 export function useCollections() {
@@ -24,9 +23,6 @@ export function useCollections() {
   return context;
 }
 
-/**
- * Provider component for collections functionality
- */
 export function CollectionsProvider({ children }) {
   // Collections state
   const [collections, setCollections] = useState([]);
@@ -139,6 +135,7 @@ export function CollectionsProvider({ children }) {
           thumbnailUrl: pendingItem.thumbnailUrl,
           imageUrl: pendingItem.imageUrl,
           museum: pendingItem.museum,
+          source: pendingItem.source,
           datePublished: pendingItem.datePublished,
           url: pendingItem.url,
           // Add any other specific fields you need, but avoid complex objects
@@ -240,6 +237,7 @@ export function CollectionsProvider({ children }) {
           thumbnailUrl: item.thumbnailUrl,
           imageUrl: item.imageUrl,
           museum: item.museum,
+          source: item.source,
           datePublished: item.datePublished,
           url: item.url,
           dateAdded: new Date().toISOString(),

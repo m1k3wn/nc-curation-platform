@@ -3,23 +3,20 @@ import { useNavigate } from "react-router-dom";
 import AddToCollectionButton from "../collections/AddToCollectionButton";
 
 /**
- * Card component for displaying a museum item in search results
- *
  * @param {Object} item - The item to display
- * @param {React.ReactNode} actionButtons - Optional additional action buttons to render
+ * @param {React.ReactNode} actionButtons - Optional additional action buttons 
  */
 export default function ItemCard({ item, actionButtons }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
 
-  /**
-   * Navigate to item details page
-   */
+
 const handleCardClick = () => {
   // Europeana
   if (item.source === 'europeana') {
-    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}?recordId=${encodeURIComponent(item.recordId)}`);
+    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
+
   } else {
     // Smithsonian 
     navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
@@ -29,7 +26,6 @@ const handleCardClick = () => {
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  // Use the thumbnail URL provided by the service, or fallback to default
   const imgSrc = item.thumbnailUrl || defaultImage;
 
   return (
@@ -56,7 +52,7 @@ const handleCardClick = () => {
             </div>
           )}
 
-          {/* Item image with lazy loading */}
+          {/* Item image*/}
           <img
             src={imgSrc}
             alt={item.title || "Museum item"}
@@ -115,7 +111,7 @@ const handleCardClick = () => {
           <div className="flex justify-between items-center">
             <AddToCollectionButton item={item} />
 
-            {/* Additional action buttons (like remove from collection) */}
+            {/* Additional action buttons - remove? */}
             {actionButtons && (
               <div className="flex items-center space-x-1">{actionButtons}</div>
             )}

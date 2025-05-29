@@ -1,4 +1,3 @@
-// CollectionView.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useCollections } from "../context/CollectionsContext";
@@ -14,7 +13,6 @@ export default function CollectionView() {
   const [collection, setCollection] = useState(null);
   const [sortOption, setSortOption] = useState("dateAdded-desc");
 
-  // Find the collection and set it as active when component mounts or ID changes
   useEffect(() => {
     if (collections.length > 0 && collectionId) {
       const foundCollection = collections.find((c) => c.id === collectionId);
@@ -23,15 +21,13 @@ export default function CollectionView() {
         setCollection(foundCollection);
         setActiveCollection(foundCollection);
       } else {
-        // Collection not found, redirect to collections page
+        // Collection not found fallback
         navigate("/collections");
       }
     }
   }, [collectionId, collections, setActiveCollection, navigate]);
 
-  /**
-   * Sort collection items based on selected option
-   */
+
   const getSortedItems = () => {
     if (!collection || !collection.items) return [];
 
@@ -41,7 +37,7 @@ export default function CollectionView() {
     return items.sort((a, b) => {
       let valueA, valueB;
 
-      // Determine values to compare based on field
+
       switch (field) {
         case "title":
           valueA = (a.title || "").toLowerCase();
@@ -58,7 +54,7 @@ export default function CollectionView() {
           break;
       }
 
-      // Compare based on direction
+   
       if (direction === "asc") {
         return valueA.localeCompare(valueB);
       } else {
@@ -67,9 +63,7 @@ export default function CollectionView() {
     });
   };
 
-  /**
-   * Format date for display
-   */
+
   const formatDate = (isoDate) => {
     if (!isoDate) return "";
     const date = new Date(isoDate);
@@ -91,7 +85,6 @@ export default function CollectionView() {
   // Get sorted items for display
   const sortedItems = getSortedItems();
 
-  // Empty collection state
   if (sortedItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -253,8 +246,10 @@ export default function CollectionView() {
                 <RemoveFromCollectionButton
                   item={item}
                   collectionId={collectionId}
+             
                 />
               }
+                
             />
           </div>
         ))}
