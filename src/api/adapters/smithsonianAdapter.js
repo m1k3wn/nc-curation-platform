@@ -28,7 +28,6 @@ export const adaptSmithsonianSearchResults = (apiData) => {
         const imageData = extractBestImages(item);
         const id = item.id || item.url || "";
 
-        // Skip items without thumbnails
         if (!imageData.thumbnail) {
           return null;
         }
