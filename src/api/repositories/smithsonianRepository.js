@@ -1,11 +1,10 @@
 import axios from "axios";
+import { API_CONFIG } from "../config.js";
 
-//  Use this in vercel production- ("") relative urls - calls vercel api routes
-// const API_URL = ""
-const API_URL = import.meta.env.PROD ? "" : "http://localhost:3000";
+console.log("🔍 Smithsonian server URL:", API_CONFIG.SMITHSONIAN_SERVER);
 
 const smithsonianAPI = axios.create({
-  baseURL: API_URL,
+  baseURL: API_CONFIG.SMITHSONIAN_SERVER,
 });
 
 /**

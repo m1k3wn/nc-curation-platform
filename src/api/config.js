@@ -1,16 +1,15 @@
-// Just keep it simple - only Europeana needs the API key in frontend config
 export const API_CONFIG = {
+  SMITHSONIAN_SERVER: "https://nc-curation-platform.onrender.com",  // Proxy server for Smithsonian API
   EUROPEANA: {
     BASE_URL: "https://api.europeana.eu/record/v2",
     API_KEY: import.meta.env.VITE_EUROPEANA_API_KEY || "",
   },
 };
-
 export const resultsConfig = {
   defaultPageSize: 44, 
 }
 
-// Smithsonian config (used by frontend for batching logic)
+// Smithsonian config 
 export const smithsonianConfig = {
   batchSize: 1000,
   maxBatches: 50,
