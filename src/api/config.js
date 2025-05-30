@@ -6,6 +6,8 @@ export const API_CONFIG = {
   },
 };
 
+export const supportedSources = ["smithsonian", "europeana"] 
+
 export const resultsConfig = {
   defaultPageSize: 44, 
 }

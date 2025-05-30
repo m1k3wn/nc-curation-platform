@@ -109,6 +109,8 @@ export function SearchProvider({ children }) {
 
   const handleSearchProgress = useCallback(
     (progressData) => {
+      // debugging
+      console.log("🔍 Progress Data:", progressData);
       setProgress(progressData);
 
       if (
@@ -263,6 +265,7 @@ export function SearchProvider({ children }) {
   );
 
   /**
+   * Perform search on a specific source (Smithsonian or Europeana) - LEGACY
    * @param {string} searchQuery - The search term
    * @param {string} source - API source ("smithsonian" or "europeana")
    * @param {boolean} reset - Whether to reset pagination and state
