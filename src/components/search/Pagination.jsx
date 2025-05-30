@@ -1,15 +1,10 @@
 /**
- * Pagination component for search results
- *
  * @param {number} currentPage - Current active page
  * @param {number} totalPages - Total number of pages
  * @param {Function} onPageChange - Callback when page changes
  */
 export default function Pagination({ currentPage, totalPages, onPageChange }) {
-  // Don't render pagination if only one page exists
   if (totalPages <= 1) return null;
-
-  // Calculate which page buttons to show
   const pages = calculatePageButtons(currentPage, totalPages);
 
   return (
@@ -57,8 +52,6 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
 }
 
 /**
- * Calculate which page buttons to show
- *
  * @param {number} currentPage - Current active page
  * @param {number} totalPages - Total number of pages
  * @returns {Array} - Array of page numbers to display
@@ -68,42 +61,33 @@ function calculatePageButtons(currentPage, totalPages) {
   const maxButtonsToShow = 5;
 
   if (totalPages <= maxButtonsToShow) {
-    // Show all pages if there are few
     for (let i = 1; i <= totalPages; i++) {
       pages.push(i);
     }
   } else {
-    // Show a subset with current page in the middle
-    pages.push(1); // Always show first page
+    pages.push(1);
 
-    // Calculate range around current page
     let start = Math.max(2, currentPage - 1);
     let end = Math.min(currentPage + 1, totalPages - 1);
 
-    // Add ellipsis if needed
     if (start > 2) {
       pages.push("...");
     }
 
-    // Add middle pages
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
 
-    // Add ellipsis if needed
     if (end < totalPages - 1) {
       pages.push("...");
     }
 
-    pages.push(totalPages); // Always show last page
+    pages.push(totalPages);
   }
 
   return pages;
 }
 
-/**
- * Reusable pagination button component
- */
 function PaginationButton({
   children,
   onClick,

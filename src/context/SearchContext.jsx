@@ -5,9 +5,16 @@ import {
   useCallback,
   useRef,
   useEffect,
+  // useNavigate,
 } from "react";
+import { useNavigate } from "react-router-dom";
+
 import axios from "axios";
-import { searchItems, searchAllSources, getItemDetails } from "../api/museumService";
+import {
+  searchItems,
+  searchAllSources,
+  getItemDetails,
+} from "../api/museumService";
 import searchResultsManager from "../utils/searchResultsManager";
 
 const SearchContext = createContext();
@@ -43,6 +50,8 @@ export function SearchProvider({ children }) {
   const searchCancelTokenRef = useRef(null);
   const itemDetailsCache = useRef(new Map());
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     return () => {
       if (searchCancelTokenRef.current) {
@@ -70,7 +79,7 @@ export function SearchProvider({ children }) {
       setCurrentItem(null);
 
       const cacheKey = `${source}_${itemId}`;
-      
+
       if (itemDetailsCache.current.has(cacheKey)) {
         setCurrentItem(itemDetailsCache.current.get(cacheKey));
         setItemLoading(false);
@@ -145,10 +154,17 @@ export function SearchProvider({ children }) {
         );
 
         // If both are cached, combine and return
-        if (smithsonianCache?.items?.length > 0 && europeanaCache?.items?.length > 0) {
-          const combinedItems = [...europeanaCache.items, ...smithsonianCache.items];
-          const combinedTotal = smithsonianCache.totalResults + europeanaCache.totalResults;
-          
+        if (
+          smithsonianCache?.items?.length > 0 &&
+          europeanaCache?.items?.length > 0
+        ) {
+          const combinedItems = [
+            ...europeanaCache.items,
+            ...smithsonianCache.items,
+          ];
+          const combinedTotal =
+            smithsonianCache.totalResults + europeanaCache.totalResults;
+
           setResults(combinedItems);
           setTotalResults(combinedTotal);
           setIsFromCache(true);
@@ -175,8 +191,12 @@ export function SearchProvider({ children }) {
         // Cache results by source for future single-source searches
         if (response.items?.length > 0) {
           // Separate and cache by source
-          const smithsonianItems = response.items.filter(item => item.source === "smithsonian");
-          const europeanaItems = response.items.filter(item => item.source === "europeana");
+          const smithsonianItems = response.items.filter(
+            (item) => item.source === "smithsonian"
+          );
+          const europeanaItems = response.items.filter(
+            (item) => item.source === "europeana"
+          );
 
           if (smithsonianItems.length > 0) {
             searchResultsManager.storeResults(
@@ -214,7 +234,6 @@ export function SearchProvider({ children }) {
   );
 
   /**
-   * Perform a search 
    * @param {string} searchQuery - The search term
    * @param {string} source - API source ("smithsonian" or "europeana")
    * @param {boolean} reset - Whether to reset pagination and state
@@ -260,13 +279,13 @@ export function SearchProvider({ children }) {
         setIsFromCache(false);
 
         const response = await searchItems(
-          source, 
+          source,
           normalizedQuery,
           handleSearchProgress
         );
 
         if (searchCancelTokenRef.current?.token.reason) {
-          return; 
+          return;
         }
 
         setResults(response.items || []);
@@ -277,7 +296,7 @@ export function SearchProvider({ children }) {
             normalizedQuery,
             response.items,
             response.total,
-            source 
+            source
           );
         }
       } catch (error) {
@@ -297,11 +316,26 @@ export function SearchProvider({ children }) {
     [handleSearchProgress]
   );
 
-  const changePage = useCallback((pageNumber) => {
-    if (pageNumber < 1) return;
-    setPage(pageNumber);
-    window.scrollTo(0, 0);
-  }, []);
+  const changePage = useCallback(
+    (pageNumber) => {
+      if (pageNumber < 1) return;
+      setPage(pageNumber);
+
+      // Use navigate instead of pushState to properly update React Router
+      const currentUrl = new URL(window.location);
+      if (pageNumber === 1) {
+        currentUrl.searchParams.delete("page");
+      } else {
+        currentUrl.searchParams.set("page", pageNumber.toString());
+      }
+
+      // This will trigger useLocation to update in SearchResultsPage
+      navigate(currentUrl.pathname + currentUrl.search, { replace: true });
+
+      window.scrollTo(0, 0);
+    },
+    [navigate]
+  );
 
   const clearSearch = useCallback(() => {
     if (searchCancelTokenRef.current) {
@@ -318,37 +352,30 @@ export function SearchProvider({ children }) {
     setLoading(false);
   }, []);
 
-  /**
-   * Refresh search (clear cache and search again)
-   */
   const refreshSearch = useCallback(() => {
     if (!query || results.length === 0) return;
 
-    // Get unique sources from current results and clear their caches
-    const sources = [...new Set(results.map(r => r.source))];
-    sources.forEach(source => searchResultsManager.clearCacheItem(query, source));
-    
+    const sources = [...new Set(results.map((r) => r.source))];
+    sources.forEach((source) =>
+      searchResultsManager.clearCacheItem(query, source)
+    );
+
     setIsFromCache(false);
-    
-    // Re-run unified search
+
     performUnifiedSearch(query, false);
   }, [query, results, performUnifiedSearch]);
 
-  /**
-   * Clear the item details cache
-   */
   const clearItemCache = useCallback(() => {
     itemDetailsCache.current.clear();
   }, []);
 
-  // Calculate pagination
+  // Pagination
   const totalPages = Math.ceil(results.length / pageSize);
   const startIdx = (page - 1) * pageSize;
   const endIdx = startIdx + pageSize;
   const pageResults = results.slice(startIdx, endIdx);
 
   const value = {
-    // Search state
     query,
     results: pageResults,
     allResults: results,
@@ -358,19 +385,16 @@ export function SearchProvider({ children }) {
     isFromCache,
     progress,
 
-    // Pagination
     page,
     pageSize,
     totalPages,
     changePage,
-
-    // Actions
-    performSearch, 
-    performUnifiedSearch, // New default search method
+    setPage,
+    performSearch,
+    performUnifiedSearch,
     clearSearch,
     refreshSearch,
 
-    // Item details
     currentItem,
     itemLoading,
     itemError,

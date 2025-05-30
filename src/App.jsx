@@ -26,8 +26,8 @@ export default function App() {
   return (
     <AuthProvider>
       <CollectionsProvider>
-        <SearchProvider>
-          <Router>
+        <Router>
+          <SearchProvider>
             <div className="min-h-screen flex flex-col">
               <Header />
 
@@ -56,8 +56,8 @@ export default function App() {
 
               <Footer />
             </div>
-          </Router>
-        </SearchProvider>
+          </SearchProvider>
+        </Router>
       </CollectionsProvider>
     </AuthProvider>
   );
