@@ -25,8 +25,6 @@ export const europeanaRepository = {
 
     url.search = new URLSearchParams(params).toString();
 
-    console.log("Health Check URL:", url.toString());
-
     try {
       const response = await fetch(url, {
         timeout: europeanaConfig.requestTimeout,
@@ -94,7 +92,6 @@ export const europeanaRepository = {
       const response = await fetch(url, {
         timeout: europeanaConfig.requestTimeout,
       });
-      console.log("Search Response Status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -139,7 +136,6 @@ export const europeanaRepository = {
       const response = await fetch(url, {
         timeout: europeanaConfig.requestTimeout,
       });
-      console.log("Record Response Status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -150,7 +146,6 @@ export const europeanaRepository = {
       }
 
       const data = await response.json();
-      console.log("Europeana Record Response:", data);
       return data;
     } catch (error) {
       console.error("Europeana record error:", error);
