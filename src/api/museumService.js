@@ -5,16 +5,6 @@ import * as smithsonianAdapter from "./adapters/smithsonianAdapter";
 import { europeanaRepository } from "./repositories/europeanaRepository";
 import { adaptEuropeanaItemDetails, adaptEuropeanaSearchResults } from "./adapters/europeanaAdapter";
 
-/**
- * Check if application is running in development mode
- */
-const isDevelopment = () => {
-  return (
-    import.meta.env?.DEV === true ||
-    (typeof process !== "undefined" && process.env?.NODE_ENV === "development")
-  );
-};
-
 const SUPPORTED_SOURCES = ["smithsonian", "europeana"];
 
 const isSourceSupported = (source) => {
@@ -31,18 +21,9 @@ const isSourceSupported = (source) => {
  */
 const handleApiError = (error, source, operation, id = null) => {
   if (axios.isCancel(error)) {
-    if (isDevelopment()) {
-      console.log(
-        `${source} ${operation} request cancelled${id ? ` for ${id}` : ""}`
-      );
-    }
     throw error;
   }
-  if (isDevelopment()) {
-    console.error(
-      `Error ${operation} ${source}${id ? ` item ${id}` : ""}: ${error.message}`
-    );
-  }
+
   const baseErrorObj = {
     error: error.message,
     source,
@@ -65,15 +46,13 @@ const handleApiError = (error, source, operation, id = null) => {
 };
 
 /**
- * Search all museum sources in parallel (Smithsonian + Europeana)
- * Results should come back progressively - Europeana first (fast), then Smithsonian (slower)
+ * Search all museum sources with progressive results
+ * Europeana results come first (fast), then Smithsonian results are added (slower)
  */
 export const searchAllSources = async (query, progressCallback = null) => {
   if (!query) {
     throw new Error("Search query is required");
   }
-
-  console.log("🔄 searchAllSources called with query:", query);
 
   const results = {
     items: [],
@@ -84,124 +63,80 @@ export const searchAllSources = async (query, progressCallback = null) => {
     }
   };
 
-  let europeanaComplete = false;
-  let smithsonianComplete = false;
-
-  const updateProgress = (message) => {
+  const updateProgress = (message, includeResults = true) => {
     if (progressCallback) {
       progressCallback({
         message,
-        itemsFound: results.items.length,
+        itemsFound: includeResults ? results.items.length : 0,
         totalResults: results.total,
+        currentResults: includeResults ? [...results.items] : [],
+        query: query, 
       });
     }
   };
 
-  updateProgress("Searching museum collections...");
+  updateProgress("Searching museum collections...", false);
 
-  const promises = [];
 
-  console.log("🚀 Starting Europeana search...");
-  
-  // Europeana search (fast)
-  promises.push(
-    searchEuropeanaComplete(query, (progress) => {
-      console.log("📊 Europeana progress:", progress);
-      if (!europeanaComplete) {
-        updateProgress(`Found ${results.items.length} results, searching more collections...`);
-      }
-    })
+  const europeanaPromise = searchEuropeanaComplete(query)
     .then((europeanaResponse) => {
-      console.log("✅ Europeana search completed:", europeanaResponse);
-      europeanaComplete = true;
       results.totalEuropeana = europeanaResponse.total || 0;
       
       if (europeanaResponse.items?.length > 0) {
-        console.log(`📦 Adding ${europeanaResponse.items.length} Europeana items`);
         results.items.push(...europeanaResponse.items);
-        updateProgress(`Found ${results.items.length} results, searching more collections...`);
-      } else {
-        console.log("⚠️ No Europeana items returned");
+        updateProgress(`Found ${results.items.length} results, searching for more...`);
       }
       
       return europeanaResponse;
     })
     .catch((error) => {
-      console.error("❌ Europeana search failed:", error);
-      europeanaComplete = true;
-      if (isDevelopment()) {
-        console.error("Europeana search failed:", error.message);
-      }
-      // Continue with partial results
       return { total: 0, items: [] };
-    })
-  );
+    });
 
-  console.log("🚀 Starting Smithsonian search...");
-
-  // Smithsonian search (slower)
-  promises.push(
-    searchSmithsonianComplete(query, (progress) => {
-      console.log("📊 Smithsonian progress:", progress);
-      if (!smithsonianComplete) {
-        const itemCount = results.items.length;
-        const message = itemCount > 0 
-          ? `Found ${itemCount} results, searching more collections...`
-          : "Searching museum collections...";
-        updateProgress(message);
-      }
-    })
+  const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
+    if (progress.message && !progress.message.includes("complete")) {
+      const itemCount = results.items.length;
+      const message = itemCount > 0 
+        ? `Found ${itemCount} results, searching for more...`
+        : "Searching museum collections...";
+      updateProgress(message);
+    }
+  })
     .then((smithsonianResponse) => {
-      console.log("✅ Smithsonian search completed:", smithsonianResponse);
-      smithsonianComplete = true;
       results.totalSmithsonian = smithsonianResponse.total || 0;
       
       if (smithsonianResponse.items?.length > 0) {
-        console.log(`📦 Adding ${smithsonianResponse.items.length} Smithsonian items`);
         results.items.push(...smithsonianResponse.items);
-      } else {
-        console.log("⚠️ No Smithsonian items returned");
       }
       
       return smithsonianResponse;
     })
     .catch((error) => {
-      console.error("❌ Smithsonian search failed:", error);
-      smithsonianComplete = true;
-      if (isDevelopment()) {
-        console.error("Smithsonian search failed:", error.message);
-      }
-      // Continue with partial results
       return { total: 0, items: [] };
-    })
-  );
+    });
 
-  try {
-    console.log("⏳ Waiting for both searches to complete...");
-        await Promise.all(promises);
-    
-    console.log("🎉 Both searches completed!");
-    console.log(`📊 Final results: ${results.items.length} total items`);
-    console.log(`   - Europeana: ${results.totalEuropeana} total, ${results.items.filter(i => i.source === 'europeana').length} items`);
-    console.log(`   - Smithsonian: ${results.totalSmithsonian} total, ${results.items.filter(i => i.source === 'smithsonian').length} items`);
-        updateProgress(`Search complete: ${results.items.length} results found`);
-    
-    if (isDevelopment()) {
-      console.log(`Unified search complete: ${results.items.length} total items (${results.totalEuropeana} Europeana, ${results.totalSmithsonian} Smithsonian)`);
-    }
+  await europeanaPromise;
+
+  if (results.items.length > 0) {
+    smithsonianPromise.then(() => {
+      updateProgress(`Search complete: ${results.items.length} results found`);
+    });
 
     return {
       total: results.total,
-      items: results.items,
+      items: [...results.items], 
+      smithsonianPromise, 
     };
-
-  } catch (error) {
-    console.error("💥 Unified search error:", error);
-    if (isDevelopment()) {
-      console.error("Unified search error:", error.message);
-    }
-    throw error;
   }
+
+  await smithsonianPromise;
+
+  updateProgress(`Search complete: ${results.items.length} results found`);
+
+  return {
+    total: results.total,
+    items: results.items,
+  };
 };
 
 /**
@@ -230,15 +165,12 @@ export const searchItems = async (
         throw new Error(`Source implementation not found: ${source}`);
     }
   } catch (error) {
-    if (isDevelopment()) {
-      console.error(`Error searching ${source}: ${error.message}`);
-    }
     throw error;
   }
 };
 
 /**
- * Choose which API to call based on source
+ * Select API to call based on source
  */
 export const getItemDetails = async (source, id, cancelToken = null) => {
   if (!id) {
@@ -267,10 +199,6 @@ export const getItemDetails = async (source, id, cancelToken = null) => {
  * Get item details from Smithsonian API
  */
 async function getSmithsonianItemDetails(id, cancelToken = null) {
-  if (isDevelopment()) {
-    console.log(`Fetching Smithsonian item details for ID: ${id}`);
-  }
-
   const rawData = await smithsonianRepository.getSmithsonianItemDetails(
     id,
     cancelToken
@@ -287,10 +215,6 @@ async function getSmithsonianItemDetails(id, cancelToken = null) {
  * Get item details from Europeana API
  */
 async function getEuropeanaItemDetails(id, cancelToken = null) {
-  if (isDevelopment()) {
-    console.log(`Fetching Europeana item details for ID: ${id}`);
-  }
-
   const rawData = await europeanaRepository.getRecord(id, {
     profile: "rich",
   });
@@ -319,7 +243,6 @@ async function searchEuropeanaComplete(query, progressCallback = null) {
       });
     }
 
-    // Adapt the results to match our ItemCard format (MISSING LINE!)
     const adaptedResults = adaptEuropeanaSearchResults(response);
 
     return {
@@ -327,36 +250,10 @@ async function searchEuropeanaComplete(query, progressCallback = null) {
       items: adaptedResults.items || [],
     };
   } catch (error) {
-    if (isDevelopment()) {
-      console.error(`Error searching Europeana API: ${error.message}`);
-    }
     throw error;
   }
 }
 
-/**
- * Helper function to fetch and process a single batch
- */
-async function fetchBatch(query, offset, batchSize, batchNum) {
-  try {
-    const batchResponse = await smithsonianRepository.searchSmithsonianItems(
-      query,
-      offset,
-      batchSize
-    );
-
-    const adaptedBatch = smithsonianAdapter.adaptSmithsonianSearchResults(
-      batchResponse
-    );
-
-    return adaptedBatch.items || [];
-  } catch (error) {
-    if (isDevelopment()) {
-      console.error(`Error fetching batch ${batchNum + 1}: ${error.message}`);
-    }
-    return [];
-  }
-}
 
 /**
  * Search Smithsonian API and return ALL results with images
@@ -376,12 +273,6 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
     const totalResults = initialResponse.response.rowCount;
     const batchSize = smithsonianConfig.batchSize;
     const totalBatches = Math.ceil(totalResults / batchSize);
-
-    if (isDevelopment()) {
-      console.log(
-        `Found ${totalResults} total results, processing in ${totalBatches} batches`
-      );
-    }
 
     if (progressCallback) {
       progressCallback({
@@ -428,20 +319,34 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
       }
     }
 
-    if (isDevelopment()) {
-      console.log(
-        `Search complete. Found ${allItemsWithImages.length} items with images`
-      );
-    }
-
     return {
       total: totalResults,
       items: allItemsWithImages,
     };
   } catch (error) {
-    if (isDevelopment()) {
-      console.error(`Error searching Smithsonian API: ${error.message}`);
-    }
     throw error;
+  }
+}
+
+
+/**
+ * Helper functions
+ */
+
+async function fetchBatch(query, offset, batchSize, batchNum) {
+  try {
+    const batchResponse = await smithsonianRepository.searchSmithsonianItems(
+      query,
+      offset,
+      batchSize
+    );
+
+    const adaptedBatch = smithsonianAdapter.adaptSmithsonianSearchResults(
+      batchResponse
+    );
+
+    return adaptedBatch.items || [];
+  } catch (error) {
+    return [];
   }
 }
