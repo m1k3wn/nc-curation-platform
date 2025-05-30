@@ -16,6 +16,7 @@ import {
   getItemDetails,
 } from "../api/museumService";
 import searchResultsManager from "../utils/searchResultsManager";
+import { resultsConfig } from "../api/config";
 
 const SearchContext = createContext();
 
@@ -39,7 +40,7 @@ export function SearchProvider({ children }) {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(25);
+  const [pageSize] = useState(resultsConfig.defaultPageSize);
 
   // Item detail state
   const [currentItem, setCurrentItem] = useState(null);
