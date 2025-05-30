@@ -21,10 +21,9 @@ export const smithsonianConfig = {
 // Europeana config
 export const europeanaConfig = {
   batchSize: 100,              // Items per API call (API seems to limit to 100)
-  maxResults: 1000,            // Maximum total results to fetch (basic pagination limit)
+  maxResults: 500,            // Maximum total results to fetch (basic pagination limit)
   requestTimeout: 15000, 
-  defaultSearchRows: 100,      // Default for single requests (legacy)
-  maxSearchRows: 1000,         // API maximum per request (legacy)
+
 
   defaultSort: "relevancy",
   defaultProfile: "standard", 
