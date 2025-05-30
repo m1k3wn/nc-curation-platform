@@ -1,26 +1,6 @@
 import ItemCard from "./ItemCard";
-import SearchProgress from "./SearchProgress";
 import Pagination from "./Pagination";
 import { useSearch } from "../../context/SearchContext";
-
-const ErrorMessage = ({ message }) => (
-  <div
-    className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
-    role="alert"
-    aria-live="assertive"
-  >
-    {message}
-  </div>
-);
-
-const EmptyResults = () => (
-  <div className="text-center py-16" role="status" aria-live="polite">
-    <p className="text-gray-500 text-lg">No results with images found</p>
-    <p className="text-gray-400">
-      Try adjusting your search terms or browse another category
-    </p>
-  </div>
-);
 
 const CacheIndicator = ({ itemCount, onRefresh }) => (
   <div className="flex justify-between items-center mb-4 p-2 bg-blue-50 rounded">
@@ -37,33 +17,16 @@ const CacheIndicator = ({ itemCount, onRefresh }) => (
   </div>
 );
 
-
 export default function SearchResultsGrid() {
   const {
     results,
     allResults,
-    loading,
-    error,
-    progress,
     isFromCache,
     page,
     totalPages,
     changePage,
     refreshSearch,
   } = useSearch();
-
-
-  if (error) {
-    return <ErrorMessage message={error} />;
-  }
-
-  if (loading) {
-    return <SearchProgress progress={progress} />;
-  }
-
-  if (!results || results.length === 0) {
-    return <EmptyResults />;
-  }
 
   return (
     <div>
@@ -74,16 +37,6 @@ export default function SearchResultsGrid() {
           onRefresh={refreshSearch}
         />
       )}
-
-      {/* Results count */}
-      <div className="mb-4 text-gray-600">
-        Showing {results.length} {results.length === 1 ? "item" : "items"}
-        {allResults?.length > results.length && (
-          <span className="text-gray-500 ml-1">
-            (page {page} of {totalPages})
-          </span>
-        )}
-      </div>
 
       {/* Results Grid */}
       <div

@@ -2,7 +2,28 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
+import SearchProgress from "../components/search/SearchProgress";
+import SearchInfo from "../components/search/SearchInfo";
 import { useSearch } from "../context/SearchContext";
+
+const ErrorMessage = ({ message }) => (
+  <div
+    className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
+    role="alert"
+    aria-live="assertive"
+  >
+    {message}
+  </div>
+);
+
+const EmptyResults = () => (
+  <div className="text-center py-16" role="status" aria-live="polite">
+    <p className="text-gray-500 text-lg">No results with images found</p>
+    <p className="text-gray-400">
+      Try adjusting your search terms or browse another category
+    </p>
+  </div>
+);
 
 export default function SearchResultsPage() {
   const location = useLocation();
@@ -14,10 +35,12 @@ export default function SearchResultsPage() {
   const {
     query,
     performUnifiedSearch,
+    results,
     allResults,
     totalResults,
     loading,
     error,
+    progress,
     clearSearch,
     setPage,
   } = useSearch();
@@ -88,18 +111,26 @@ export default function SearchResultsPage() {
             </div>
           )}
 
-          {/* Error Message */}
-          {error && (
-            <div
-              className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
-              role="alert"
-            >
-              {error}
-            </div>
+          {/* Error State */}
+          {error && <ErrorMessage message={error} />}
+
+          {/* Initial Loading State - spinner */}
+          {loading && (!results || results.length === 0) && (
+            <SearchProgress progress={progress} />
           )}
 
-          {/* Results Grid */}
-          <SearchResultsGrid />
+          {/* Progressive status bar (hopefully) */}
+          {!error && <SearchInfo progress={progress} />}
+
+          {/* Empty State */}
+          {!loading && !error && (!results || results.length === 0) && (
+            <EmptyResults />
+          )}
+
+          {/* Results Grid  */}
+          {!loading && !error && results && results.length > 0 && (
+            <SearchResultsGrid />
+          )}
         </div>
       </div>
     </div>
