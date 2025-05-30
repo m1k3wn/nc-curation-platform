@@ -1,7 +1,6 @@
 import axios from "axios";
 import { API_CONFIG } from "../config.js";
 
-console.log("🔍 Smithsonian server URL:", API_CONFIG.SMITHSONIAN_SERVER);
 
 const smithsonianAPI = axios.create({
   baseURL: API_CONFIG.SMITHSONIAN_SERVER,

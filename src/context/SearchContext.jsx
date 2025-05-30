@@ -28,7 +28,6 @@ export function useSearch() {
 }
 
 export function SearchProvider({ children }) {
-  // Search state
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,11 +36,9 @@ export function SearchProvider({ children }) {
   const [isFromCache, setIsFromCache] = useState(false);
   const [progress, setProgress] = useState(null);
 
-  // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize] = useState(resultsConfig.defaultPageSize);
 
-  // Item detail state
   const [currentItem, setCurrentItem] = useState(null);
   const [itemLoading, setItemLoading] = useState(false);
   const [itemError, setItemError] = useState(null);
@@ -112,23 +109,15 @@ export function SearchProvider({ children }) {
 
   const handleSearchProgress = useCallback(
     (progressData) => {
-      console.log(
-        "📊 Progress update:",
-        progressData.message,
-        "- currentResults:",
-        progressData.currentResults?.length || 0
-      );
       setProgress(progressData);
 
-      // If we have currentResults from the progress callback, update results progressively
       if (
         progressData.currentResults &&
         progressData.currentResults.length > 0
       ) {
-        setLoading(false); // Show results as soon as we have them
+        setLoading(false);
 
         setResults((prevResults) => {
-          // Avoid duplicates by checking if we already have these items
           const existingIds = new Set(prevResults.map((item) => item.id));
           const newItems = progressData.currentResults.filter(
             (item) => !existingIds.has(item.id)
@@ -143,20 +132,8 @@ export function SearchProvider({ children }) {
         setTotalResults(progressData.totalResults || 0);
       }
 
-      // If search is complete, cache the unified results
-      // Use the query from progressData or get current query from state
       if (progressData.message && progressData.message.includes("complete")) {
-        console.log(
-          "🏁 Search complete detected, currentResults:",
-          progressData.currentResults?.length || 0
-        );
         if (progressData.currentResults && progressData.query) {
-          console.log(
-            "💾 Caching unified results:",
-            progressData.currentResults.length,
-            "items for query:",
-            progressData.query
-          );
           searchResultsManager.storeResults(
             progressData.query,
             progressData.currentResults,
@@ -199,20 +176,13 @@ export function SearchProvider({ children }) {
           setIsFromCache(false);
         }
 
-        // Check for unified cache first
+        // Check for unified cache
         const unifiedCache = searchResultsManager.getCachedResults(
           normalizedQuery,
           "unified"
         );
 
-        console.log("🔍 Cache check for:", normalizedQuery);
-        console.log(
-          "📦 Unified cache found:",
-          unifiedCache ? `${unifiedCache.items?.length} items` : "none"
-        );
-
         if (unifiedCache?.items?.length > 0) {
-          console.log("✅ Using unified cache");
           setResults(unifiedCache.items);
           setTotalResults(unifiedCache.totalResults);
           setIsFromCache(true);
@@ -220,8 +190,6 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        console.log("❌ No unified cache, starting fresh search");
-        // No unified cache found, proceed with fresh search
         setIsFromCache(false);
 
         const response = await searchAllSources(
@@ -233,18 +201,14 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        // Set initial results (likely from Europeana)
         setResults(response.items || []);
         setTotalResults(response.total || 0);
 
-        // If there's a background Smithsonian promise, handle it
         if (response.smithsonianPromise) {
           backgroundPromiseRef.current = response.smithsonianPromise;
 
           response.smithsonianPromise
             .then(() => {
-              // Smithsonian search completed in background
-              // Results should already be updated via progress callback
               setLoading(false);
               setProgress(null);
             })
@@ -256,14 +220,11 @@ export function SearchProvider({ children }) {
               setProgress(null);
             });
         } else {
-          // No background promise, search is complete
           setLoading(false);
           setProgress(null);
         }
 
-        // Cache results by source for future single-source searches
         if (response.items?.length > 0) {
-          // Separate and cache by source
           const smithsonianItems = response.items.filter(
             (item) => item.source === "smithsonian"
           );
@@ -293,9 +254,7 @@ export function SearchProvider({ children }) {
         if (axios.isCancel(error)) {
           return;
         }
-
         setError("Failed to search collections. Please try again.");
-        console.error("Unified search error:", error.message);
         setLoading(false);
         setProgress(null);
       }
@@ -375,7 +334,6 @@ export function SearchProvider({ children }) {
         }
 
         setError("Failed to search collections. Please try again.");
-        console.error("Search error:", error.message);
       } finally {
         if (!searchCancelTokenRef.current?.token.reason) {
           setLoading(false);
@@ -391,7 +349,6 @@ export function SearchProvider({ children }) {
       if (pageNumber < 1) return;
       setPage(pageNumber);
 
-      // Use navigate instead of pushState to properly update React Router
       const currentUrl = new URL(window.location);
       if (pageNumber === 1) {
         currentUrl.searchParams.delete("page");
@@ -399,9 +356,7 @@ export function SearchProvider({ children }) {
         currentUrl.searchParams.set("page", pageNumber.toString());
       }
 
-      // This will trigger useLocation to update in SearchResultsPage
       navigate(currentUrl.pathname + currentUrl.search, { replace: true });
-
       window.scrollTo(0, 0);
     },
     [navigate]
@@ -412,7 +367,6 @@ export function SearchProvider({ children }) {
       searchCancelTokenRef.current.cancel("Search cleared");
     }
 
-    // Cancel any background promises
     if (backgroundPromiseRef.current) {
       backgroundPromiseRef.current = null;
     }
@@ -430,10 +384,8 @@ export function SearchProvider({ children }) {
   const refreshSearch = useCallback(() => {
     if (!query || results.length === 0) return;
 
-    // Clear unified cache
     searchResultsManager.clearCacheItem(query, "unified");
 
-    // Also clear individual source caches
     const sources = [...new Set(results.map((r) => r.source))];
     sources.forEach((source) =>
       searchResultsManager.clearCacheItem(query, source)
@@ -448,7 +400,6 @@ export function SearchProvider({ children }) {
     itemDetailsCache.current.clear();
   }, []);
 
-  // Pagination
   const totalPages = Math.ceil(results.length / pageSize);
   const startIdx = (page - 1) * pageSize;
   const endIdx = startIdx + pageSize;

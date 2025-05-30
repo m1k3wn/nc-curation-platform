@@ -308,8 +308,14 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
       batchResponse
     );
 
+    // Debugging
+        console.log(`📦 Batch ${batchNum + 1}: offset=${offset}, got ${adaptedBatch.items?.length || 0} items`);
+
+
     return adaptedBatch.items || [];
   } catch (error) {
+        console.log(`❌ Batch ${batchNum + 1} failed:`, error.message);
+
     return [];
   }
 }
@@ -331,7 +337,15 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
 
     const totalResults = initialResponse.response.rowCount;
     const batchSize = smithsonianConfig.batchSize;
-    const totalBatches = Math.ceil(totalResults / batchSize);
+    const maxBatches = smithsonianConfig.maxBatches; 
+    const totalBatches = Math.min(Math.ceil(totalResults / batchSize), maxBatches);
+
+    // debugging
+        console.log("🔍 Smithsonian Debug:");
+    console.log("  - totalResults:", totalResults);
+    console.log("  - batchSize:", batchSize);
+    console.log("  - maxBatches:", maxBatches);
+    console.log("  - totalBatches:", totalBatches);
 
     if (progressCallback) {
       progressCallback({
@@ -377,6 +391,8 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
         }
       }
     }
+// Debugging
+    console.log("🎯 Smithsonian Final Results:", allItemsWithImages.length, "items");
 
     return {
       total: totalResults,

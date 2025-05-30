@@ -2,22 +2,13 @@
 const CACHE_PREFIX = "museum_search_";
 const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
-// Check if Dev mode
-const isDevelopment = () => {
-  return (
-    import.meta.env?.DEV === true ||
-    (typeof process !== "undefined" && process.env?.NODE_ENV === "development")
-  );
-};
-
-// Normalizes a search query
 const normalizeQuery = (query) => query?.trim().toLowerCase() || "";
 
-// Generates a cache key for a query and source
+// Generates a cache key
 const getCacheKey = (query, source = "smithsonian") =>
   `${CACHE_PREFIX}${source}_${normalizeQuery(query)}`;
 
-//Safely access localStorage with fallbacks
+//Safely access localStorage 
 const safeLocalStorage = {
   get: (key) => {
     try {
@@ -59,11 +50,9 @@ const safeLocalStorage = {
   },
 };
 
-// Manages caching and retrieval of search results
+// Manages caching and retrieval of results
 const searchResultsManager = {
-  /**
-   * Store search results in localStorage
-   */
+
   storeResults(query, items, totalResults, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery, source);
@@ -76,25 +65,17 @@ const searchResultsManager = {
       source,
     };
 
-    // Try to store in localStorage
     const success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
 
-    // If storage failed due to quota, try clearing old caches and retry
     if (!success) {
       this.clearOldCaches();
       safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
     }
 
-    if (isDevelopment()) {
-      console.log(
-        `Cached ${items.length} ${source} items for "${normalizedQuery}"`
-      );
-    }
+
   },
 
-  /**
-   * Get cached results for a query
-   */
+
   getCachedResults(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery, source);
@@ -108,11 +89,8 @@ const searchResultsManager = {
     try {
       const parsedData = JSON.parse(cachedData);
 
-      // Check for expiration
       if (Date.now() - parsedData.timestamp > CACHE_EXPIRY) {
-        if (isDevelopment()) {
-          console.log(`Cache expired for ${source} "${normalizedQuery}"`);
-        }
+      
         safeLocalStorage.remove(cacheKey);
         return null;
       }
@@ -120,14 +98,12 @@ const searchResultsManager = {
       return parsedData;
     } catch (error) {
       console.error("Error parsing cached results:", error);
-      safeLocalStorage.remove(cacheKey); // Remove corrupt data
+      safeLocalStorage.remove(cacheKey); 
       return null;
     }
   },
 
-  /**
-   * Clear cache for a specific query and source
-   */
+
   clearCacheItem(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery, source);
@@ -138,9 +114,7 @@ const searchResultsManager = {
     }
   },
 
-  /**
-   * Clear all caches for a specific source
-   */
+
   clearSourceCaches(source) {
     const sourcePrefix = `${CACHE_PREFIX}${source}_`;
     const keysToRemove = safeLocalStorage
@@ -154,9 +128,7 @@ const searchResultsManager = {
     }
   },
 
-  /**
-   * Clear all caches for all sources
-   */
+
   clearAllCaches() {
     const keysToRemove = safeLocalStorage
       .keys()
@@ -169,13 +141,10 @@ const searchResultsManager = {
     }
   },
 
-  /**
-   * Clear old caches to free up space
-   */
+
   clearOldCaches() {
     const cacheEntries = [];
 
-    // Collect all cache entries with timestamps
     safeLocalStorage
       .keys()
       .filter((key) => key.startsWith(CACHE_PREFIX))
@@ -188,7 +157,6 @@ const searchResultsManager = {
             source: data.source || "unknown",
           });
         } catch (e) {
-          // If entry is corrupted, mark it for removal
           cacheEntries.push({
             key,
             timestamp: 0,
@@ -197,10 +165,8 @@ const searchResultsManager = {
         }
       });
 
-    // Sort by age (oldest first)
     cacheEntries.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Remove oldest 50% of entries
     const entriesToRemove = cacheEntries.slice(
       0,
       Math.floor(cacheEntries.length / 2)
@@ -208,14 +174,8 @@ const searchResultsManager = {
 
     entriesToRemove.forEach((entry) => safeLocalStorage.remove(entry.key));
 
-    if (isDevelopment()) {
-      console.log(`Cleared ${entriesToRemove.length} old cache entries`);
-    }
   },
 
-  /**
-   * Get cache statistics
-   */
   getCacheStats() {
     const stats = {
       smithsonian: 0,
@@ -230,7 +190,7 @@ const searchResultsManager = {
       .forEach((key) => {
         try {
           const data = JSON.parse(safeLocalStorage.get(key));
-          const source = data.source || "smithsonian"; // Default to smithsonian for backward compatibility
+          const source = data.source || "smithsonian";
           if (stats.hasOwnProperty(source)) {
             stats[source]++;
           }
