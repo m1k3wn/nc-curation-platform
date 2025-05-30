@@ -21,7 +21,6 @@ export const smithsonianConfig = {
 export const europeanaConfig = {
   batchSize: 1000, 
   maxBatches: 100, 
-  defaultPageSize: 24, 
   requestTimeout: 15000, 
   maxParallelRequests: 10, 
   defaultSearchRows: 100,
