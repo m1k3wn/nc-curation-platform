@@ -4,32 +4,30 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 
 /**
  * @param {Object} item - The item to display
- * @param {React.ReactNode} actionButtons - Optional additional action buttons 
+ * @param {React.ReactNode} actionButtons - Optional additional action buttons
  */
 export default function ItemCard({ item, actionButtons }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
 
+  const handleCardClick = () => {
+    // Get current page from URL
+    const currentUrl = new URL(window.location);
+    const currentPage = currentUrl.searchParams.get("page") || "1";
 
-const handleCardClick = () => {
-  // Europeana
-  if (item.source === 'europeana') {
-    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
+    navigate(
+      `/item/${item.source}/${encodeURIComponent(item.id)}?page=${currentPage}`
+    );
+  };
 
-  } else {
-    // Smithsonian 
-    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
-  }
-};
-  // Default placeholder image
+  // Default image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-    //  smithsonian isnt retrieveing images for itemcard from thumbnail..... 
-  const imgSrc = item.media?.thumbnail || item.media?.primaryImage 
-  // || defaultImage;
- 
+  const imgSrc =
+    item.media?.thumbnail || item.media?.primaryImage || defaultImage;
+
   return (
     <div className="break-inside-avoid mb-4">
       <div
@@ -101,10 +99,7 @@ const handleCardClick = () => {
 
           {/* Source & Date */}
           <div className="flex justify-between text-xs text-gray-500 mb-3">
-            <span>
-              {item.museum ||
-                item.source?.institution}
-            </span>
+            <span>{item.museum || item.source?.institution}</span>
             <span>{item.dateCreated || ""}</span>
           </div>
 

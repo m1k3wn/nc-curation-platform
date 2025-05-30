@@ -4,33 +4,30 @@ import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import { useSearch } from "../context/SearchContext";
 
-/**
- * Page component for displaying search results
- */
 export default function SearchResultsPage() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
-  
+
   const lastSearchedQuery = useRef("");
 
   const {
     query,
-    performUnifiedSearch, // Use unified search as default
+    performUnifiedSearch,
     allResults,
     totalResults,
     loading,
     error,
     clearSearch,
+    setPage,
   } = useSearch();
 
-  // Perform search when query param changes
   useEffect(() => {
     if (queryParam && queryParam !== lastSearchedQuery.current) {
       lastSearchedQuery.current = queryParam;
       performUnifiedSearch(queryParam);
     }
-  }, [queryParam]); 
+  }, [queryParam]);
 
   useEffect(() => {
     return () => {
@@ -38,7 +35,17 @@ export default function SearchResultsPage() {
         clearSearch();
       }
     };
-  }, []); 
+  }, []);
+
+  useEffect(() => {
+    const pageParam = searchParams.get("page");
+    if (pageParam) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (pageNumber > 0) {
+        setPage(pageNumber);
+      }
+    }
+  }, []);
 
   const getResultsMessage = () => {
     if (loading) {
@@ -69,7 +76,7 @@ export default function SearchResultsPage() {
             <SearchBar initialValue={queryParam} />
           </div>
 
-          {/* Results Header */}
+          {/* Header */}
           {queryParam && (
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">
@@ -91,7 +98,7 @@ export default function SearchResultsPage() {
             </div>
           )}
 
-          {/* Results Grid with built-in loading state */}
+          {/* Results Grid */}
           <SearchResultsGrid />
         </div>
       </div>
