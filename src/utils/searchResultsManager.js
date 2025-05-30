@@ -65,16 +65,28 @@ const searchResultsManager = {
       source,
     };
 
-    const success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
+    // Try to cache, but don't let failure break the search
+    let success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
 
     if (!success) {
       this.clearOldCaches();
-      safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
+      success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
+      
+      if (!success) {
+        // If still failing, clear all old caches and try once more
+        this.clearAllCaches();
+        success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
+        
+        if (!success) {
+          console.warn(`Failed to cache ${items.length} results for ${source} query: ${normalizedQuery} - continuing without cache`);
+        }
+      }
     }
-
-
+//  debugging
+    if (success) {
+      console.log(`✅ Cached ${items.length} ${source} results for "${normalizedQuery}"`);
+    }
   },
-
 
   getCachedResults(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
@@ -90,7 +102,6 @@ const searchResultsManager = {
       const parsedData = JSON.parse(cachedData);
 
       if (Date.now() - parsedData.timestamp > CACHE_EXPIRY) {
-      
         safeLocalStorage.remove(cacheKey);
         return null;
       }
@@ -103,17 +114,15 @@ const searchResultsManager = {
     }
   },
 
-
   clearCacheItem(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery, source);
     safeLocalStorage.remove(cacheKey);
 
-    if (isDevelopment()) {
+    // Debugging output
       console.log(`Cleared ${source} cache for "${normalizedQuery}"`);
-    }
+   
   },
-
 
   clearSourceCaches(source) {
     const sourcePrefix = `${CACHE_PREFIX}${source}_`;
@@ -123,11 +132,10 @@ const searchResultsManager = {
 
     keysToRemove.forEach((key) => safeLocalStorage.remove(key));
 
-    if (isDevelopment()) {
+   // debugging
       console.log(`Cleared ${keysToRemove.length} cached ${source} searches`);
-    }
+   
   },
-
 
   clearAllCaches() {
     const keysToRemove = safeLocalStorage
@@ -136,11 +144,10 @@ const searchResultsManager = {
 
     keysToRemove.forEach((key) => safeLocalStorage.remove(key));
 
-    if (isDevelopment()) {
+    // debugging
       console.log(`Cleared ${keysToRemove.length} cached searches`);
-    }
+   
   },
-
 
   clearOldCaches() {
     const cacheEntries = [];
@@ -167,12 +174,16 @@ const searchResultsManager = {
 
     cacheEntries.sort((a, b) => a.timestamp - b.timestamp);
 
+    // Remove 75% of old caches to free up more space
     const entriesToRemove = cacheEntries.slice(
       0,
-      Math.floor(cacheEntries.length / 2)
+      Math.floor(cacheEntries.length * 0.75)
     );
 
     entriesToRemove.forEach((entry) => safeLocalStorage.remove(entry.key));
+
+   // debugging
+      console.log(`Cleared ${entriesToRemove.length} old cache entries`);
 
   },
 
