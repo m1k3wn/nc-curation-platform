@@ -49,7 +49,7 @@ const recordId = searchParams.get('recordId') || id; // Fallback to id if no rec
             clipRule="evenodd"
           />
         </svg>
-        Back to results
+        Back
       </button>
 
       {/* Error message */}

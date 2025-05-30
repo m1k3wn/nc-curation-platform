@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
+import BrokenImage from "../common/BrokenImage";
 
 /**
  * @param {Object} item - The item data (unified format)
@@ -10,12 +11,15 @@ import ImageZoomModal from "../common/ImageZoomModal";
 export default function SingleItemCard({ item, isLoading, error }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageTimeout, setImageTimeout] = useState(false);
+
   const [showDebug, setShowDebug] = useState(false);
 
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  // Placeholder image 
+  // Placeholder image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
@@ -40,9 +44,11 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   }
 
-  // Image selection (unified format)
-  const displayImage = item.media?.primaryImage || item.media?.fullImage || defaultImage;
-  const zoomImage = item.media?.fullImage || item.media?.primaryImage || defaultImage;
+  // Image selection
+  const displayImage =
+    item.media?.primaryImage || item.media?.fullImage || defaultImage;
+  const zoomImage =
+    item.media?.fullImage || item.media?.primaryImage || defaultImage;
 
   const DisplayField = ({ label, value, className = "" }) => {
     if (value === undefined || value === null) return null;
@@ -64,9 +70,6 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   };
 
-  /**
-   * Check if a value has data worth displaying
-   */
   const hasData = (value) => {
     if (value === undefined || value === null) return false;
     if (typeof value === "string") return value.trim() !== "";
@@ -74,6 +77,18 @@ export default function SingleItemCard({ item, isLoading, error }) {
     if (typeof value === "object") return Object.keys(value).length > 0;
     return true;
   };
+
+  // timeout handler
+  useEffect(() => {
+    if (!imageLoaded && !imageError) {
+      const timeoutId = setTimeout(() => {
+        setImageTimeout(true);
+        setImageError(true);
+      }, 6000);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [imageLoaded, imageError]);
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -84,7 +99,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
         imageUrl={zoomImage}
         alt={item.title || "Item image"}
       />
-      
+
       <div className="md:flex">
         {/* Image Section */}
         <div className="md:w-3/5 lg:w-1/2">
@@ -95,7 +110,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
             aria-label="Click to see fullsize image"
           >
             {/* Loading spinner */}
-            {!imageLoaded && (
+            {!imageLoaded && !imageError && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
               </div>
@@ -110,14 +125,22 @@ export default function SingleItemCard({ item, isLoading, error }) {
               } transition-opacity duration-300`}
               onLoad={() => setImageLoaded(true)}
               onError={() => {
-                if (displayImage !== defaultImage) {
-                  setImageLoaded(true);
-                }
+                setImageError(true);
+                setImageLoaded(true);
               }}
             />
 
+            {/* Show BrokenImage component when image fails or times out */}
+            {(imageError || imageTimeout) && (
+              <BrokenImage
+                thumbnailUrl={item.media?.thumbnail}
+                sourceUrl={item.url}
+                sourceName={item.museum || "source"}
+              />
+            )}
+
             {/* Zoom indicator */}
-            {imageLoaded && (
+            {imageLoaded && !imageError && (
               <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white p-1 rounded text-xs">
                 View Fullsize Image
               </div>
@@ -171,7 +194,8 @@ export default function SingleItemCard({ item, isLoading, error }) {
               </h2>
               {item.descriptions.map((description, index) => (
                 <div key={index} className="mb-4">
-                  {description.paragraphs && description.paragraphs.length > 0 ? (
+                  {description.paragraphs &&
+                  description.paragraphs.length > 0 ? (
                     description.paragraphs.map((paragraph, i) => (
                       <p key={i} className="text-gray-800 mb-2">
                         {paragraph}
@@ -212,10 +236,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
                 <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                   Location
                 </h2>
-                <DisplayField
-                  label="Place"
-                  value={item.location.place}
-                />
+                <DisplayField label="Place" value={item.location.place} />
                 {hasData(item.location?.geoLocation) && (
                   <DisplayField
                     label="Geographic Location"
@@ -230,10 +251,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
               <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
                 Collection
               </h2>
-              <DisplayField
-                label="Source"
-                value={item.museum}
-              />
+              <DisplayField label="Source" value={item.museum} />
 
               {/* Smithsonian-specific collection info */}
               {item.collection && (
@@ -286,7 +304,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
             </div>
           </div>
 
-          {/* External Link (unified format) */}
+          {/* External Link */}
           {item.url && (
             <div className="mt-6">
               <a
