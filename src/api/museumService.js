@@ -66,7 +66,7 @@ const handleApiError = (error, source, operation, id = null) => {
 
 /**
  * Search all museum sources in parallel (Smithsonian + Europeana)
- * Results come back progressively - Europeana first (fast), then Smithsonian (slower)
+ * Results should come back progressively - Europeana first (fast), then Smithsonian (slower)
  */
 export const searchAllSources = async (query, progressCallback = null) => {
   if (!query) {
@@ -84,11 +84,9 @@ export const searchAllSources = async (query, progressCallback = null) => {
     }
   };
 
-  // Track completion status
   let europeanaComplete = false;
   let smithsonianComplete = false;
 
-  // Progress update helper
   const updateProgress = (message) => {
     if (progressCallback) {
       progressCallback({
@@ -99,10 +97,8 @@ export const searchAllSources = async (query, progressCallback = null) => {
     }
   };
 
-  // Initial progress
   updateProgress("Searching museum collections...");
 
-  // Create promise handlers for both searches
   const promises = [];
 
   console.log("🚀 Starting Europeana search...");
@@ -182,17 +178,13 @@ export const searchAllSources = async (query, progressCallback = null) => {
 
   try {
     console.log("⏳ Waiting for both searches to complete...");
-    
-    // Wait for both searches to complete
-    await Promise.all(promises);
+        await Promise.all(promises);
     
     console.log("🎉 Both searches completed!");
     console.log(`📊 Final results: ${results.items.length} total items`);
     console.log(`   - Europeana: ${results.totalEuropeana} total, ${results.items.filter(i => i.source === 'europeana').length} items`);
     console.log(`   - Smithsonian: ${results.totalSmithsonian} total, ${results.items.filter(i => i.source === 'smithsonian').length} items`);
-    
-    // Final progress update
-    updateProgress(`Search complete: ${results.items.length} results found`);
+        updateProgress(`Search complete: ${results.items.length} results found`);
     
     if (isDevelopment()) {
       console.log(`Unified search complete: ${results.items.length} total items (${results.totalEuropeana} Europeana, ${results.totalSmithsonian} Smithsonian)`);
@@ -246,7 +238,7 @@ export const searchItems = async (
 };
 
 /**
- * Routing and orchestration - determines which API to call based on source
+ * Choose which API to call based on source
  */
 export const getItemDetails = async (source, id, cancelToken = null) => {
   if (!id) {
