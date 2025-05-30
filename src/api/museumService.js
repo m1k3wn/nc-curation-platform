@@ -70,14 +70,14 @@ export const searchAllSources = async (query, progressCallback = null) => {
         itemsFound: includeResults ? results.items.length : 0,
         totalResults: results.total,
         currentResults: includeResults ? [...results.items] : [],
-        query: query, 
+        query: query, // Include the query in progress data
       });
     }
   };
 
   updateProgress("Searching museum collections...", false);
 
-
+  // Start both searches but handle them as they complete
   const europeanaPromise = searchEuropeanaComplete(query)
     .then((europeanaResponse) => {
       results.totalEuropeana = europeanaResponse.total || 0;
@@ -90,10 +90,12 @@ export const searchAllSources = async (query, progressCallback = null) => {
       return europeanaResponse;
     })
     .catch((error) => {
+      // Continue with partial results if Europeana fails
       return { total: 0, items: [] };
     });
 
   const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
+    // Update progress during Smithsonian search
     if (progress.message && !progress.message.includes("complete")) {
       const itemCount = results.items.length;
       const message = itemCount > 0 
@@ -112,23 +114,29 @@ export const searchAllSources = async (query, progressCallback = null) => {
       return smithsonianResponse;
     })
     .catch((error) => {
+      // Continue with partial results if Smithsonian fails
       return { total: 0, items: [] };
     });
 
+  // Wait for Europeana first (should be very fast)
   await europeanaPromise;
 
+  // If we have Europeana results, return them immediately
+  // Smithsonian will continue in background and update via progress callback
   if (results.items.length > 0) {
+    // Continue with Smithsonian in background
     smithsonianPromise.then(() => {
       updateProgress(`Search complete: ${results.items.length} results found`);
     });
 
     return {
       total: results.total,
-      items: [...results.items], 
-      smithsonianPromise, 
+      items: [...results.items], // Return current items
+      smithsonianPromise, // Allow caller to wait for completion if needed
     };
   }
 
+  // If no Europeana results, wait for Smithsonian
   await smithsonianPromise;
 
   updateProgress(`Search complete: ${results.items.length} results found`);
@@ -170,7 +178,7 @@ export const searchItems = async (
 };
 
 /**
- * Select API to call based on source
+ * Choose which API to call based on source
  */
 export const getItemDetails = async (source, id, cancelToken = null) => {
   if (!id) {
@@ -227,33 +235,84 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
 }
 
 /**
- * Search Europeana API 
+ * Search Europeana API with pagination to get up to maximum results
  */
 async function searchEuropeanaComplete(query, progressCallback = null) {
   try {
-    const response = await europeanaRepository.search(query, {
-      rows: europeanaConfig.defaultSearchRows,
-    });
+    const maxResults = europeanaConfig.maxResults || 1000;
+    const batchSize = europeanaConfig.batchSize || 100;
+    const totalBatches = Math.ceil(maxResults / batchSize);
+    
+    let allItems = [];
+    let totalResults = 0;
 
-    if (progressCallback) {
-      progressCallback({
-        message: `Found ${response.totalResults} Europeana results`,
-        itemsFound: response.itemsCount || 0,
-        totalResults: response.totalResults || 0,
-      });
+    for (let batch = 0; batch < totalBatches; batch++) {
+      // const start = batch * batchSize;
+      const start = batch * batchSize;
+      const searchOptions = {
+      rows: batchSize,
+    };
+
+  // Only add start parameter if it's greater than 0
+  if (start > 0) {
+    searchOptions.start = start;
+  }
+      
+      const response = await europeanaRepository.search(query, searchOptions);
+
+      if (batch === 0) {
+        totalResults = response.totalResults || 0;
+      }
+
+      const adaptedBatch = adaptEuropeanaSearchResults(response);
+      
+      if (adaptedBatch.items?.length > 0) {
+        allItems.push(...adaptedBatch.items);
+      }
+
+      // If we got fewer items than requested, we've reached the end
+      if ((response.itemsCount || 0) < batchSize) {
+        break;
+      }
+
+      if (progressCallback) {
+        progressCallback({
+          message: `Found ${allItems.length} Europeana results...`,
+          itemsFound: allItems.length,
+          totalResults: totalResults,
+        });
+      }
     }
 
-    const adaptedResults = adaptEuropeanaSearchResults(response);
-
     return {
-      total: adaptedResults.total || 0,
-      items: adaptedResults.items || [],
+      total: totalResults,
+      items: allItems,
     };
   } catch (error) {
     throw error;
   }
 }
 
+/**
+ * Helper function to fetch and process a single batch
+ */
+async function fetchBatch(query, offset, batchSize, batchNum) {
+  try {
+    const batchResponse = await smithsonianRepository.searchSmithsonianItems(
+      query,
+      offset,
+      batchSize
+    );
+
+    const adaptedBatch = smithsonianAdapter.adaptSmithsonianSearchResults(
+      batchResponse
+    );
+
+    return adaptedBatch.items || [];
+  } catch (error) {
+    return [];
+  }
+}
 
 /**
  * Search Smithsonian API and return ALL results with images
@@ -325,28 +384,5 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
     };
   } catch (error) {
     throw error;
-  }
-}
-
-
-/**
- * Helper functions
- */
-
-async function fetchBatch(query, offset, batchSize, batchNum) {
-  try {
-    const batchResponse = await smithsonianRepository.searchSmithsonianItems(
-      query,
-      offset,
-      batchSize
-    );
-
-    const adaptedBatch = smithsonianAdapter.adaptSmithsonianSearchResults(
-      batchResponse
-    );
-
-    return adaptedBatch.items || [];
-  } catch (error) {
-    return [];
   }
 }

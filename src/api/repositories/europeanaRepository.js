@@ -15,7 +15,6 @@ export const europeanaRepository = {
       rows: "100",
     };
 
-    // Apply config-based parameters
     if (europeanaConfig.requireThumbnails) {
       params.thumbnail = "true";
     }
@@ -61,6 +60,7 @@ export const europeanaRepository = {
     const {
       rows = europeanaConfig.defaultSearchRows,
       sort = europeanaConfig.defaultSort,
+      start,
     } = options;
 
     const url = new URL(`${EUROPEANA_API_BASE}/record/v2/search.json`);
@@ -71,12 +71,14 @@ export const europeanaRepository = {
       rows: rows.toString(),
     };
 
-    // Only add sort parameter if it's not the default "relevancy"
+  if (start && start > 0) {
+    params.start = start.toString();
+  }
+
     if (sort && sort !== "relevancy") {
       params.sort = sort;
     }
 
-    // Apply config-based filters
     if (europeanaConfig.requireThumbnails) {
       params.thumbnail = "true";
     }
@@ -87,7 +89,6 @@ export const europeanaRepository = {
 
     url.search = new URLSearchParams(params).toString();
 
-    console.log("Europeana Search URL:", url.toString());
 
     try {
       const response = await fetch(url, {
@@ -104,7 +105,7 @@ export const europeanaRepository = {
       }
 
       const data = await response.json();
-      console.log("Europeana Search Response:", data);
+ 
       return data;
     } catch (error) {
       console.error("Europeana search error:", error);
@@ -121,7 +122,6 @@ export const europeanaRepository = {
   async getRecord(recordId, options = {}) {
     const { profile = europeanaConfig.defaultProfile || "rich" } = options;
 
-    // Clean the record ID - remove leading slash if present
     const cleanedId = recordId.startsWith("/")
       ? recordId.substring(1)
       : recordId;
@@ -134,8 +134,6 @@ export const europeanaRepository = {
     };
 
     url.search = new URLSearchParams(params).toString();
-
-    console.log("Europeana Record URL:", url.toString());
 
     try {
       const response = await fetch(url, {

@@ -17,6 +17,7 @@ export const adaptEuropeanaSearchResults = (apiData) => {
     .map((item) => {
       try {
         const thumbnailUrl = getFirst(item.edmPreview);
+
         if (!thumbnailUrl || thumbnailUrl.trim() === '') {
           return null;
         }
@@ -164,15 +165,6 @@ const extractLanguageAwareEntries = (field, preferredLangs = ['en', 'def']) => {
 
   return results;
 };
-
-
-// const processAsArray = (value, processorFn) => {
-//   if (!value) return [];
-  
-//   const array = Array.isArray(value) ? value : [value];
-//   return array.map(processorFn).filter(Boolean);
-// };
-
 
 const getFirstAggregation = (record) => {
   if (!record.aggregations || !Array.isArray(record.aggregations)) {
