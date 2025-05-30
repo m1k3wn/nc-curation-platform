@@ -58,7 +58,7 @@ export const europeanaRepository = {
    */
   async search(query, options = {}) {
     const {
-      rows = europeanaConfig.defaultSearchRows,
+      rows = 100, // fallback value
       sort = europeanaConfig.defaultSort,
       start,
     } = options;
