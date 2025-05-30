@@ -216,27 +216,46 @@ const extractRecordImages = (record) => {
   return images;
 };
 
+
 const extractRecordDates = (record) => {
+  // Try DC date fields
   let dateStr = extractFromProxies(record, (proxy) => {
-    return safeExtract(proxy, 'dcDate', getMultilingual);
+    return safeExtract(proxy, 'dcDate', getMultilingual) ||
+           safeExtract(proxy, 'dctermsCreated', getMultilingual) ||
+           safeExtract(proxy, 'dctermsIssued', getMultilingual);
   });
 
-  if (!dateStr) {
-    dateStr = extractFromProxies(record, (proxy) => {
-      return safeExtract(proxy, 'dctermsCreated', getMultilingual);
+  let year = extractYear(dateStr);
+
+  // Check timespans if no year found
+  if (!year && record.timespans?.[0]?.prefLabel) {
+    year = extractYear(getMultilingual(record.timespans[0].prefLabel));
+  }
+
+  // Try extracting year from title as fallback
+  if (!year) {
+    const title = extractFromProxies(record, (proxy) => {
+      return safeExtract(proxy, 'dcTitle', getMultilingual);
     });
+    year = extractYear(title);
   }
 
-  if (!dateStr && record.timespans?.length > 0) {
-    const timespan = record.timespans[0];
-    if (timespan?.prefLabel) {
-      dateStr = getMultilingual(timespan.prefLabel);
-    }
+  // Fallback to digitisation timestamp
+  if (!year && record.timestamp_created && 
+      record.timestamp_created !== "1970-01-01T00:00:00.000Z") {
+    const timestampYear = new Date(record.timestamp_created).getFullYear();
+    if (timestampYear > 1970) year = `${timestampYear} (digitised)`;
   }
 
-  return { created: dateStr || "" };
+  return { created: year || "" };
 };
 
+const extractYear = (dateStr) => {
+  if (!dateStr) return "";
+  if (dateStr.includes("(digitised)")) return dateStr;
+  const yearMatch = dateStr.match(/\b\d{4}\b/);
+  return yearMatch?.[0] || "";
+};
 
 const extractCreators = (record) => {
   const creators = [];
