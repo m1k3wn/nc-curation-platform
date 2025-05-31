@@ -80,7 +80,10 @@ export default function ItemCard({ item, actionButtons }) {
             <div className="absolute top-3 right-3">
               <AddToCollectionButton item={item} />
             </div>
-
+            {/* delete button if in collection */}
+            {actionButtons && (
+              <div className="absolute top-3 left-3">{actionButtons}</div>
+            )}
             {/* Title, Source & Date */}
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4">
               {/* Title */}
@@ -100,13 +103,6 @@ export default function ItemCard({ item, actionButtons }) {
                   <span className="whitespace-nowrap">{item.dateCreated}</span>
                 )}
               </div>
-
-              {/* action buttons */}
-              {actionButtons && (
-                <div className="flex items-center space-x-1 mt-2">
-                  {actionButtons}
-                </div>
-              )}
             </div>
           </div>
         </div>

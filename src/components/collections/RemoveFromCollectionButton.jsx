@@ -1,8 +1,6 @@
 import { useCollections } from "../../context/CollectionsContext";
 
 /**
- * Button component for removing items from collections
- *
  * @param {Object} item - The item to remove from collection
  * @param {string} collectionId - The ID of the collection to remove from
  */
@@ -10,7 +8,6 @@ import { useCollections } from "../../context/CollectionsContext";
 export default function RemoveFromCollectionButton({ item, collectionId }) {
   const { removeItemFromCollection } = useCollections();
 
-  // Handles removing item from collection
   const handleRemove = (e) => {
     e.stopPropagation();
     removeItemFromCollection(collectionId, item.id);
@@ -18,7 +15,7 @@ export default function RemoveFromCollectionButton({ item, collectionId }) {
 
   return (
     <button
-      className="p-1.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+      className="p-3 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
       onClick={handleRemove}
       aria-label="Remove from collection"
       title="Remove from collection"
