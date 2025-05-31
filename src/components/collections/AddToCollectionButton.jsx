@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useCollections } from "../../context/CollectionsContext";
 
 /**
- * Button component for adding items to collections
- *
  * @param {Object} item - The item to add to a collection
  */
 export default function AddToCollectionButton({ item }) {
@@ -24,7 +22,6 @@ export default function AddToCollectionButton({ item }) {
     openCreateModal,
   } = useCollections();
 
-  // Clear feedback message after timeout
   useEffect(() => {
     if (feedback.show) {
       const timer = setTimeout(() => {
@@ -34,7 +31,6 @@ export default function AddToCollectionButton({ item }) {
     }
   }, [feedback]);
 
-  // Close modal on escape key press
   useEffect(() => {
     if (showModal) {
       const handleEscape = (e) => {
@@ -50,24 +46,15 @@ export default function AddToCollectionButton({ item }) {
     }
   }, [showModal]);
 
-  /**
-   * Open the collection selection modal
-   */
   const handleOpenModal = (e) => {
     e.stopPropagation();
     setShowModal(true);
   };
 
-  /**
-   * Close the collection selection modal
-   */
   const handleCloseModal = () => {
     setShowModal(false);
   };
 
-  /**
-   * Handle adding/removing item from collection
-   */
   const handleCollectionAction = (e, collectionId, collectionName) => {
     e.stopPropagation();
 
@@ -86,25 +73,16 @@ export default function AddToCollectionButton({ item }) {
         collectionId: collectionId,
       });
     }
-
-    // Close modal after a short delay to show feedback
     setTimeout(() => {
       setShowModal(false);
     }, 2500);
   };
 
-  /**
-   * Navigate to the collection
-   */
   const handleViewCollection = (e, collectionId) => {
     e.stopPropagation();
     navigate(`/collections/${collectionId}`);
   };
 
-  /**
-   * Handle create collection click
-   * Opens the create modal with the current item
-   */
   const handleCreateCollectionClick = (e) => {
     e.stopPropagation();
     setShowModal(false);
@@ -115,7 +93,7 @@ export default function AddToCollectionButton({ item }) {
     <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
       {/* Add to collection button */}
       <button
-        className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+        className="p-3 bg-green-800 hover:bg-green-600 rounded-full hover:bg-gray-100 text-white"
         onClick={handleOpenModal}
         aria-label="Add to collection"
         title="Add to collection"

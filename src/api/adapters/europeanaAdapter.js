@@ -15,9 +15,10 @@ export const adaptEuropeanaSearchResults = (apiData) => {
 
   const processedItems = items
     .map((item) => {
+      // debug
+      console.log("full item from searh api:", item)
       try {
         const thumbnailUrl = getFirst(item.edmPreview);
-
         if (!thumbnailUrl || thumbnailUrl.trim() === '') {
           return null;
         }
@@ -27,7 +28,7 @@ export const adaptEuropeanaSearchResults = (apiData) => {
           title: getMultilingual(item.dcTitleLangAware) || getFirst(item.title) || "Untitled",
           source: "europeana",
           museum: getFirst(item.dataProvider) || "European Institution",
-          dateCreated: getFirst(item.year) || "",
+          dateCreated: extractSearchDates(item),
           media: {
             thumbnail: thumbnailUrl,
             primaryImage: thumbnailUrl,
@@ -216,9 +217,28 @@ const extractRecordImages = (record) => {
   return images;
 };
 
+//  For search API response
+const extractSearchDates = (record) => {
+  let dateStr = getFirst(record.year) || 
+                getFirst(record.dcDate) || 
+                getFirst(record.date) || 
+                getFirst(record.edmTimespanLabel);
+  
+  let year = extractYear(dateStr);
+  
+  // Fallback to year from digitisation timestamp
+  if (!year && record.timestamp_created && 
+    //  filter out Unix epoch placeholders
+      record.timestamp_created !== "1970-01-01T00:00:00.000Z") {
+    const timestampYear = new Date(record.timestamp_created).getFullYear();
+    if (timestampYear > 1970) year = `${timestampYear} (digitised)`;
+  }
+  
+  return year || "";
+};
 
+//  For Records API response
 const extractRecordDates = (record) => {
-  // Try DC date fields
   let dateStr = extractFromProxies(record, (proxy) => {
     return safeExtract(proxy, 'dcDate', getMultilingual) ||
            safeExtract(proxy, 'dctermsCreated', getMultilingual) ||
@@ -227,12 +247,10 @@ const extractRecordDates = (record) => {
 
   let year = extractYear(dateStr);
 
-  // Check timespans if no year found
   if (!year && record.timespans?.[0]?.prefLabel) {
     year = extractYear(getMultilingual(record.timespans[0].prefLabel));
   }
 
-  // Try extracting year from title as fallback
   if (!year) {
     const title = extractFromProxies(record, (proxy) => {
       return safeExtract(proxy, 'dcTitle', getMultilingual);
@@ -240,7 +258,6 @@ const extractRecordDates = (record) => {
     year = extractYear(title);
   }
 
-  // Fallback to digitisation timestamp
   if (!year && record.timestamp_created && 
       record.timestamp_created !== "1970-01-01T00:00:00.000Z") {
     const timestampYear = new Date(record.timestamp_created).getFullYear();
@@ -265,11 +282,14 @@ const extractCreators = (record) => {
       const creatorNames = extractLanguageAwareEntries(proxy.dcCreator);
       
       creatorNames.forEach(name => {
-        creators.push({
-          role: "Creator",
-          names: [name],
-          displayText: name
-        });
+        // Filter out URLs and empty/meaningless names
+        if (!isUrlOrMeaningless(name)) {
+          creators.push({
+            role: "Creator",
+            names: [name],
+            displayText: name
+          });
+        }
       });
     }
     return null; 
@@ -278,6 +298,21 @@ const extractCreators = (record) => {
   return creators;
 };
 
+// Helper function to filter out URLs and meaningless content
+const isUrlOrMeaningless = (text) => {
+  if (!text || typeof text !== 'string') return true;
+  
+  // Filter out URLs
+  if (text.startsWith('http://') || text.startsWith('https://')) return true;
+  
+  // Filter out very short or meaningless text
+  if (text.trim().length < 2) return true;
+  
+  // Filter out pure numeric IDs
+  if (/^\d+$/.test(text.trim())) return true;
+  
+  return false;
+};
 
 const extractDescriptions = (record) => {
   const notes = [];
