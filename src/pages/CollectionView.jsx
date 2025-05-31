@@ -27,7 +27,6 @@ export default function CollectionView() {
     }
   }, [collectionId, collections, setActiveCollection, navigate]);
 
-
   const getSortedItems = () => {
     if (!collection || !collection.items) return [];
 
@@ -36,7 +35,6 @@ export default function CollectionView() {
 
     return items.sort((a, b) => {
       let valueA, valueB;
-
 
       switch (field) {
         case "title":
@@ -54,7 +52,6 @@ export default function CollectionView() {
           break;
       }
 
-   
       if (direction === "asc") {
         return valueA.localeCompare(valueB);
       } else {
@@ -62,7 +59,6 @@ export default function CollectionView() {
       }
     });
   };
-
 
   const formatDate = (isoDate) => {
     if (!isoDate) return "";
@@ -239,17 +235,15 @@ export default function CollectionView() {
       {/* Items Grid */}
       <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0">
         {sortedItems.map((item) => (
-          <div key={item.id}>
+          <div key={item.id} role="listitem">
             <ItemCard
               item={item}
               actionButtons={
                 <RemoveFromCollectionButton
                   item={item}
                   collectionId={collectionId}
-             
                 />
               }
-                
             />
           </div>
         ))}

@@ -8,7 +8,7 @@ import {
 import CollectionModal from "../components/collections/CollectionModal";
 
 /**
- * Context for managing user collections 
+ * Context for managing user collections
  */
 const CollectionsContext = createContext();
 
@@ -139,7 +139,7 @@ export function CollectionsProvider({ children }) {
           },
           museum: pendingItem.museum,
           source: pendingItem.source,
-          datePublished: pendingItem.datePublished,
+          dateCreated: pendingItem.dateCreated,
           url: pendingItem.url,
           // Add any other specific fields you need, but avoid complex objects
           dateAdded: new Date().toISOString(),
@@ -241,13 +241,13 @@ export function CollectionsProvider({ children }) {
             // Avoid circular references by only including necessary fields
             thumbnail: item.media?.thumbnail,
             primaryImage: item.media?.primaryImage,
-            fullImage: item.media?.fullImage
+            fullImage: item.media?.fullImage,
           },
           // thumbnailUrl: item.thumbnailUrl,
           // imageUrl: item.imageUrl,
           museum: item.museum,
           source: item.source,
-          datePublished: item.datePublished,
+          dateCreated: item.dateCreated,
           url: item.url,
           dateAdded: new Date().toISOString(),
         };
