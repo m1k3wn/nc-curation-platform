@@ -134,19 +134,43 @@ const getFirst = (value) => {
   return Array.isArray(value) ? value[0] : value;
 };
 
-const getMultilingual = (field, preferredLangs = ['en', 'def']) => {
-  if (!field || typeof field !== 'object') {
-    return getFirst(field);
+// extracts languages starting with preferred languages 
+const getMultilingual = (languageMap, returnArray = false) => {
+  if (!languageMap || typeof languageMap !== 'object') {
+    const value = getFirst(languageMap);
+    return returnArray ? (value ? [value] : []) : value;
   }
 
+  const preferredLangs = ['en', 'def'];
+  const results = [];
+
   for (const lang of preferredLangs) {
-    if (field[lang]) {
-      const value = getFirst(field[lang]);
-      if (value && value.trim()) return value;
+    if (languageMap[lang]) {
+      const values = Array.isArray(languageMap[lang]) ? languageMap[lang] : [languageMap[lang]];
+      const validValues = values.filter(v => v && v.trim());
+      
+      if (returnArray) {
+        results.push(...validValues);
+      } else if (validValues.length > 0) {
+        return validValues[0];
+      } 
     }
   }
 
-  return null;
+  for (const [lang, values] of Object.entries(languageMap)) {
+    if (!preferredLangs.includes(lang)) {
+      const valueArray = Array.isArray(values) ? values : [values];
+      const validValues = valueArray.filter(v => v && v.trim());
+      
+      if (returnArray) {
+        results.push(...validValues);
+      } else if (validValues.length > 0) {
+        return validValues[0];
+      }
+    }
+  }
+
+  return returnArray ? results : null;
 };
 
 
@@ -171,22 +195,6 @@ const extractFromProxies = (record, extractorFn) => {
 };
 
 
-const extractLanguageAwareEntries = (field, preferredLangs = ['en', 'def']) => {
-  if (!field || typeof field !== 'object') return [];
-
-  const results = [];
-  const entries = Object.entries(field);
-
-  for (const [lang, values] of entries) {
-    if (preferredLangs.includes(lang)) {
-      const valueArray = Array.isArray(values) ? values : [values];
-      results.push(...valueArray.filter(v => v && v.trim()));
-    }
-  }
-
-  return results;
-};
-
 const getFirstAggregation = (record) => {
   if (!record.aggregations || !Array.isArray(record.aggregations)) {
     return null;
@@ -199,6 +207,8 @@ const safeExtract = (obj, field, extractor = getFirst) => {
   if (!obj || !obj[field]) return null;
   return extractor(obj[field]);
 };
+
+
 const extractRecordTitle = (record) => {
   const title = extractFromProxies(record, (proxy) => {
     return safeExtract(proxy, 'dcTitle', getMultilingual);
@@ -237,7 +247,7 @@ const extractRecordImages = (record) => {
   return images;
 };
 
-//  For Search API response
+//  For Search API response items
 const extractSearchDates = (record) => {
   let dateStr = getFirst(record.year) || 
                 getFirst(record.dcDate) || 
@@ -256,7 +266,7 @@ const extractSearchDates = (record) => {
   return year || "";
 };
 
-//  For Records API response
+//  For Records API response item
 const extractRecordDates = (record) => {
   let dateStr = extractFromProxies(record, (proxy) => {
     return safeExtract(proxy, 'dcDate', getMultilingual) ||
@@ -293,12 +303,13 @@ const extractYear = (dateStr) => {
   return yearMatch?.[0] || "";
 };
 
+
 const extractCreators = (record) => {
   const creators = [];
 
   extractFromProxies(record, (proxy) => {
     if (proxy.dcCreator) {
-      const creatorNames = extractLanguageAwareEntries(proxy.dcCreator);
+      const creatorNames = getMultilingual(proxy.dcCreator, true);
       
       creatorNames.forEach(name => {
         if (!isUrlOrMeaningless(name)) {
@@ -316,6 +327,7 @@ const extractCreators = (record) => {
   return removeDuplicates(creators, creator => `${creator.role}:${creator.displayText}`);
 };
 
+
 const isUrlOrMeaningless = (text) => {
   if (!text || typeof text !== 'string') return true;
     if (text.startsWith('http://') || text.startsWith('https://')) return true;
@@ -327,40 +339,35 @@ const isUrlOrMeaningless = (text) => {
 
 const extractDescriptions = (record) => {
   const notes = [];
-  const descriptions = [];
-
-  extractFromProxies(record, (proxy) => {
-    if (proxy.dcDescription?.en) {
-      const descArray = Array.isArray(proxy.dcDescription.en) ? 
-        proxy.dcDescription.en : [proxy.dcDescription.en];
+  
+  // Get descriptions using standard "first match wins" pattern
+  const descriptions = extractFromProxies(record, (proxy) => {
+    if (proxy.dcDescription) {
+      const descriptionText = getMultilingual(proxy.dcDescription);
       
-      descArray.forEach(desc => {
-        if (desc && desc.trim()) {
-          descriptions.push({
-            title: "Description",
-            content: desc,
-            paragraphs: desc.split("\n\n").filter(p => p.trim())
-          });
-        }
-      });
+      if (descriptionText && descriptionText.trim()) {
+        return [{
+          title: "Description",
+          content: descriptionText,
+          paragraphs: descriptionText.split("\n\n").filter(p => p.trim())
+        }];
+      }
     }
-    return null; 
-  });
+    return null; // Continue to next proxy if no description found
+  }) || []; // Default to empty array if no descriptions found
 
+  // Handle notes from concepts (separate from proxy logic)
   if (record.concepts?.length > 0) {
     record.concepts.forEach(concept => {
-      if (concept.note?.en) {
-        const noteArray = Array.isArray(concept.note.en) ? 
-          concept.note.en : [concept.note.en];
+      if (concept.note) {
+        const noteText = getMultilingual(concept.note);
         
-        noteArray.forEach(note => {
-          if (note && note.trim()) {
-            notes.push({
-              text: note,
-              conceptLabel: getMultilingual(concept.prefLabel) || ""
-            });
-          }
-        });
+        if (noteText && noteText.trim()) {
+          notes.push({
+            text: noteText,
+            conceptLabel: getMultilingual(concept.prefLabel) || ""
+          });
+        }
       }
     });
   }
@@ -409,7 +416,7 @@ const extractIdentifiers = (record) => {
 
   extractFromProxies(record, (proxy) => {
     if (proxy.dcIdentifier) {
-      const identifierValues = extractLanguageAwareEntries(proxy.dcIdentifier);
+      const identifierValues = getMultilingual(proxy.dcIdentifier, true); 
       
       identifierValues.forEach(identifier => {
         identifiers.push({

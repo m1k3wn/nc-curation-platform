@@ -182,13 +182,13 @@ export default function SingleItemCard({ item, isLoading, error }) {
                   </p>
                 )}
                 {hasData(item.creators) && (
-                  <p className="text-gray-600 font-medium">
+                  <div className="space-y-1">
                     {item.creators.map((creator, index) => (
                       <p key={index} className="text-gray-600 font-medium">
                         {creator.role}: {creator.displayText}
                       </p>
                     ))}
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
