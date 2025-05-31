@@ -12,7 +12,6 @@ export default function ItemCard({ item, actionButtons }) {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    // Get current page from URL
     const currentUrl = new URL(window.location);
     const currentPage = currentUrl.searchParams.get("page") || "1";
 
@@ -21,7 +20,6 @@ export default function ItemCard({ item, actionButtons }) {
     );
   };
 
-  // Default image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
@@ -31,18 +29,18 @@ export default function ItemCard({ item, actionButtons }) {
   return (
     <div className="break-inside-avoid mb-4">
       <div
-        className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
+        className="group border border-gray-200 rounded-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer relative"
         onClick={handleCardClick}
         tabIndex="0"
         role="button"
         aria-label={`View details for ${item.title}`}
         onKeyDown={(e) => e.key === "Enter" && handleCardClick()}
       >
-        {/* Image Container with fixed aspect ratio */}
-        <div className="relative bg-gray-100 aspect-[4/3]">
-          {/* Loading spinner shown until image loads */}
+        {/* Image Container */}
+        <div className="relative bg-gray-100 max-h-96 w-full">
+          {/* Loading spinner */}
           {!imageLoaded && !imageError && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center min-h-32">
               <div
                 className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"
                 role="status"
@@ -52,12 +50,12 @@ export default function ItemCard({ item, actionButtons }) {
             </div>
           )}
 
-          {/* Item image*/}
+          {/* Item image */}
           <img
             src={imgSrc}
             alt={item.title || "Museum item"}
             loading="lazy"
-            className={`w-full h-full object-cover transition-opacity duration-500 ease-in ${
+            className={`w-full h-auto max-h-96 object-cover transition-opacity duration-500 ease-in ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
             onLoad={() => setImageLoaded(true)}
@@ -69,48 +67,47 @@ export default function ItemCard({ item, actionButtons }) {
             }}
           />
 
-          {/* Display error if image fails to load */}
+          {/* Display error */}
           {imageError && imgSrc !== defaultImage && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center min-h-32">
               <span className="text-sm text-gray-500">Image unavailable</span>
             </div>
           )}
-        </div>
 
-        {/* Content section */}
-        <div className="p-4">
-          {/* Title */}
-          <h3
-            className="font-semibold text-base mb-1 overflow-hidden text-ellipsis line-clamp-3"
-            title={item.title}
-          >
-            {item.title || "Untitled Item"}
-          </h3>
+          {/* Hover Overlay */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out">
+            {/* Add to Collection Button */}
+            <div className="absolute top-3 right-3">
+              <AddToCollectionButton item={item} />
+            </div>
 
-          {/* Description
-          {item.description && (
-            <p
-              className="text-gray-600 text-sm mb-2 line-clamp-2"
-              title={item.description}
-            >
-              {item.description}
-            </p>
-          )} */}
+            {/* Title, Source & Date */}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4">
+              {/* Title */}
+              <h3
+                className="font-semibold text-white text-base mb-2 line-clamp-2"
+                title={item.title}
+              >
+                {item.title || "Untitled Item"}
+              </h3>
 
-          {/* Source & Date */}
-          <div className="flex justify-between text-xs text-gray-500 mb-3">
-            <span>{item.museum || item.source?.institution}</span>
-            <span>{item.dateCreated || ""}</span>
-          </div>
+              {/* Source & Date */}
+              <div className="flex justify-between text-xs text-gray-200">
+                <span className="truncate mr-2">
+                  {item.museum || item.source?.institution}
+                </span>
+                {item.dateCreated && (
+                  <span className="whitespace-nowrap">{item.dateCreated}</span>
+                )}
+              </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-between items-center">
-            <AddToCollectionButton item={item} />
-
-            {/* Additional action buttons - remove? */}
-            {actionButtons && (
-              <div className="flex items-center space-x-1">{actionButtons}</div>
-            )}
+              {/* action buttons */}
+              {actionButtons && (
+                <div className="flex items-center space-x-1 mt-2">
+                  {actionButtons}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

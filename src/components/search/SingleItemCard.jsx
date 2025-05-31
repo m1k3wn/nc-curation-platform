@@ -13,20 +13,21 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const [showFullImage, setShowFullImage] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [imageTimeout, setImageTimeout] = useState(false);
-
   const [showDebug, setShowDebug] = useState(false);
 
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  // Placeholder image
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
   if (!item) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <p>Loading item details...</p>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading item details...</p>
+        </div>
       </div>
     );
   }
@@ -34,17 +35,21 @@ export default function SingleItemCard({ item, isLoading, error }) {
   if (!item && error) {
     return (
       <div
-        className="bg-white rounded-lg shadow-md p-8 text-center"
+        className="min-h-screen bg-white flex items-center justify-center"
         role="alert"
       >
-        <div className="text-red-500 mb-4">❌</div>
-        <p className="text-red-600 font-medium">{error}</p>
-        <p className="text-gray-500 mt-2">Please try again later</p>
+        <div className="text-center max-w-md">
+          <div className="text-4xl mb-4">❌</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Error Loading Item
+          </h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500">Please try again later</p>
+        </div>
       </div>
     );
   }
 
-  // Image selection
   const displayImage =
     item.media?.primaryImage || item.media?.fullImage || defaultImage;
   const zoomImage =
@@ -63,9 +68,11 @@ export default function SingleItemCard({ item, isLoading, error }) {
     }
 
     return (
-      <div className={`mb-3 ${className}`}>
-        <h3 className="text-sm font-semibold text-gray-600">{label}</h3>
-        <p className="text-gray-800">{displayValue}</p>
+      <div className={`mb-6 ${className}`}>
+        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
+          {label}
+        </h3>
+        <p className="text-gray-900 leading-relaxed">{displayValue}</p>
       </div>
     );
   };
@@ -78,21 +85,18 @@ export default function SingleItemCard({ item, isLoading, error }) {
     return true;
   };
 
-  // timeout handler
   useEffect(() => {
     if (!imageLoaded && !imageError) {
       const timeoutId = setTimeout(() => {
         setImageTimeout(true);
         setImageError(true);
       }, 6000);
-
       return () => clearTimeout(timeoutId);
     }
   }, [imageLoaded, imageError]);
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Image Zoom Modal */}
+    <div className="min-h-screen bg-white">
       <ImageZoomModal
         isOpen={showFullImage}
         onClose={() => setShowFullImage(false)}
@@ -100,142 +104,148 @@ export default function SingleItemCard({ item, isLoading, error }) {
         alt={item.title || "Item image"}
       />
 
-      <div className="md:flex">
-        {/* Image Section */}
-        <div className="md:w-3/5 lg:w-1/2">
-          <div
-            className="relative bg-gray-100 aspect-square cursor-pointer"
-            onClick={() => setShowFullImage(true)}
-            role="button"
-            aria-label="Click to see fullsize image"
-          >
-            {/* Loading spinner */}
-            {!imageLoaded && !imageError && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
-              </div>
-            )}
+      <div className="max-w-7xl mx-auto">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-16">
+          {/* Image Section */}
+          <div className="lg:sticky lg:top-8 lg:h-fit">
+            <div
+              className="relative bg-gray-50 aspect-square cursor-pointer group"
+              onClick={() => setShowFullImage(true)}
+              role="button"
+              aria-label="Click to see fullsize image"
+            >
+              {!imageLoaded && !imageError && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                </div>
+              )}
 
-            {/* Item image */}
-            <img
-              src={displayImage}
-              alt={item.title || "Item image"}
-              className={`w-full h-full object-contain ${
-                imageLoaded ? "opacity-100" : "opacity-0"
-              } transition-opacity duration-300`}
-              onLoad={() => setImageLoaded(true)}
-              onError={() => {
-                setImageError(true);
-                setImageLoaded(true);
-              }}
-            />
-
-            {/* Show BrokenImage component when image fails or times out */}
-            {(imageError || imageTimeout) && (
-              <BrokenImage
-                thumbnailUrl={item.media?.thumbnail}
-                sourceUrl={item.url}
-                sourceName={item.museum || "source"}
+              <img
+                src={displayImage}
+                // alt={item.title || "Item image"}
+                className={`w-full h-full object-contain ${
+                  imageLoaded ? "opacity-100" : "opacity-0"
+                } transition-all duration-300 group-hover:scale-105`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoaded(true);
+                }}
               />
-            )}
 
-            {/* Zoom indicator */}
-            {imageLoaded && !imageError && (
-              <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white p-1 rounded text-xs">
-                View Fullsize Image
+              {(imageError || imageTimeout) && (
+                <BrokenImage
+                  thumbnailUrl={item.media?.thumbnail}
+                  sourceUrl={item.url}
+                  sourceName={item.museum || "source"}
+                />
+              )}
+
+              {imageLoaded && !imageError && (
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-sm font-medium text-gray-900">
+                      View Fullsize
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Details Section */}
+          <div className="lg:py-0 px-6 lg:px-0">
+            {isLoading && (
+              <div className="absolute top-4 right-4">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Details Section */}
-        <div className="md:w-2/5 lg:w-1/2 p-6">
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="absolute top-2 right-2">
-              <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-            </div>
-          )}
+            {/* Header */}
+            <div className="mb-12">
+              <div className="flex justify-between items-start gap-6 mb-4">
+                <h1 className="text-2xl mt--10 lg:text-5xl font-light text-gray-900 leading-tight flex-1">
+                  {item.title || "Mystery Item"}
+                </h1>
+                <div className="flex-shrink-0">
+                  <AddToCollectionButton item={item} />
+                </div>
+              </div>
 
-          {/* Title and "Add to Collection" button */}
-          <div className="flex justify-between items-start mb-2">
-            <h1 className="text-2xl font-bold">
-              {item.title || "Untitled Item"}
-            </h1>
-            <AddToCollectionButton item={item} />
-          </div>
-
-          {/* Date created (unified format) */}
-          {item.dateCreated && (
-            <div className="mb-3 text-gray-600">
-              <span className="font-medium">Created: </span>
-              {item.dateCreated}
-            </div>
-          )}
-
-          {/* Creator Information (unified format) */}
-          {hasData(item.creators) && (
-            <div className="mb-4">
-              {item.creators.map((creator, index) => (
-                <DisplayField
-                  key={index}
-                  label={creator.role || "Creator"}
-                  value={creator.displayText}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Descriptions (unified format) */}
-          {hasData(item.descriptions) && (
-            <div className="col-span-1 md:col-span-2 mb-4">
-              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Description
-              </h2>
-              {item.descriptions.map((description, index) => (
-                <div key={index} className="mb-4">
-                  {description.paragraphs &&
-                  description.paragraphs.length > 0 ? (
-                    description.paragraphs.map((paragraph, i) => (
-                      <p key={i} className="text-gray-800 mb-2">
-                        {paragraph}
+              <div className="space-y-4">
+                {hasData(item.museum) && (
+                  <p className="text-gray-600 font-medium">{item.museum}</p>
+                )}
+                {item.dateCreated && (
+                  <p className="text-gray-600 font-medium">
+                    {item.dateCreated}
+                  </p>
+                )}
+                {hasData(item.creators) && (
+                  <p className="text-gray-600 font-medium">
+                    {item.creators.map((creator, index) => (
+                      <p key={index} className="text-gray-600 font-medium">
+                        {creator.role}: {creator.displayText}
                       </p>
-                    ))
-                  ) : (
-                    <p className="text-gray-800">{description.content}</p>
-                  )}
-                </div>
-              ))}
+                    ))}
+                  </p>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Notes (for Europeana concept notes) */}
-          {hasData(item.notes) && (
-            <div className="col-span-1 md:col-span-2 mb-4">
-              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Additional Notes
-              </h2>
-              {item.notes.map((note, index) => (
-                <div key={index} className="mb-3">
-                  {note.conceptLabel && (
-                    <h4 className="text-sm font-medium text-gray-600 mb-1">
-                      {note.conceptLabel}
-                    </h4>
-                  )}
-                  <p className="text-gray-800">{note.text}</p>
-                </div>
-              ))}
-            </div>
-          )}
+            {/* Creator Information - removed as now shown in header */}
 
-          {/* Main content sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-            {/* Location Section (unified format) */}
-            {hasData(item.location?.place) && (
-              <div className="col-span-1 md:col-span-2 mb-4">
-                <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                  Location
+            {/* Descriptions */}
+            {hasData(item.descriptions) && (
+              <section className="mb-12">
+                <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
+                  Description
                 </h2>
+                {item.descriptions.map((description, index) => (
+                  <div key={index} className="mb-6">
+                    {description.paragraphs &&
+                    description.paragraphs.length > 0 ? (
+                      description.paragraphs.map((paragraph, i) => (
+                        <p
+                          key={i}
+                          className="text-gray-900 leading-relaxed mb-4"
+                        >
+                          {paragraph}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-gray-900 leading-relaxed">
+                        {description.content}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {/* Notes */}
+            {/* {hasData(item.notes) && (
+              <section className="mb-12">
+        
+                {item.notes.map((note, index) => (
+                  <div key={index} className="mb-6">
+                    {note.conceptLabel && (
+                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
+                        {note.conceptLabel}
+                      </h4>
+                    )}
+                    <p className="text-gray-900 leading-relaxed">{note.text}</p>
+                  </div>
+                ))}
+              </section>
+            )} */}
+
+            {/* Location */}
+            {hasData(item.location?.place) && (
+              <section className="mb-12">
+                {/* <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
+                  Location
+                </h2> */}
                 <DisplayField label="Place" value={item.location.place} />
                 {hasData(item.location?.geoLocation) && (
                   <DisplayField
@@ -243,19 +253,16 @@ export default function SingleItemCard({ item, isLoading, error }) {
                     value={item.location.geoLocation}
                   />
                 )}
-              </div>
+              </section>
             )}
 
             {/* Collection Information */}
-            <div className="col-span-1 mb-4">
-              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
-                Collection
-              </h2>
-              <DisplayField label="Source" value={item.museum} />
-
-              {/* Smithsonian-specific collection info */}
-              {item.collection && (
-                <>
+            {item.collection && (
+              <section className="mb-12">
+                {/* <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
+                  Collection Details
+                </h2> */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DisplayField
                     label="Collection Name"
                     value={item.collection.name}
@@ -276,69 +283,81 @@ export default function SingleItemCard({ item, isLoading, error }) {
                     label="Biogeographical Region"
                     value={item.collection.bioRegion}
                   />
-                </>
-              )}
-            </div>
+                </div>
+              </section>
+            )}
 
-            {/* Identifiers (unified format) */}
-            <div className="col-span-1 md:col-span-2 mb-4">
-              <h2 className="text-lg font-semibold border-b border-gray-200 pb-1 mb-3">
+            {/* Identifiers */}
+            <section className="mb-12">
+              {/* <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
                 Identifiers
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              </h2> */}
+              <div className="space-y-2">
                 {hasData(item.identifiers) &&
                   item.identifiers.map((identifier, index) => (
-                    <DisplayField
-                      key={index}
-                      label={identifier.label || "Identifier"}
-                      value={identifier.content}
-                      className="col-span-1"
-                    />
+                    <div key={index} className="bg-black px-3 py-2">
+                      <div className="text-xs text-white">
+                        <span className="text-gray-400">
+                          {identifier.label || "Identifier"}:
+                        </span>
+                        <span className="ml-2">{identifier.content}</span>
+                      </div>
+                    </div>
                   ))}
-                <DisplayField
-                  label="Record ID"
-                  value={item.id}
-                  className="col-span-1"
-                />
+                <div className="bg-black px-3 py-2">
+                  <div className="text-xs text-white">
+                    <span className="text-gray-400">Record ID:</span>
+                    <span className="ml-2">{item.id}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* External Link */}
-          {item.url && (
-            <div className="mt-6">
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-              >
-                View on {item.museum || "Original Site"}
-              </a>
-            </div>
-          )}
+            {/* External Link */}
+            {item.url && (
+              <div className="pt-8 border-t border-gray-200">
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-6 py-3 bg-green-800 text-white font-medium rounded-none hover:bg-green-600 duration-200"
+                >
+                  View on {item.museum || "Original Site"}
+                  <svg
+                    className="ml-2 w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Development-only debugging section */}
+      {/* Development Debug Section */}
       {isDev && (
-        <div className="mt-8 pt-4 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-gray-200">
           <button
             onClick={() => setShowDebug(!showDebug)}
-            className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded font-medium"
+            className="px-4 py-2 bg-gray-900 text-white font-medium rounded-none hover:bg-gray-800 transition-colors"
           >
             {showDebug ? "Hide" : "Show"} Debug Data
           </button>
 
           {showDebug && (
-            <div className="mt-4">
-              <div className="mb-2 flex gap-2">
-                <div className="border border-gray-300 rounded">
-                  <pre className="bg-gray-100 p-3 text-xs overflow-auto max-h-96">
-                    {JSON.stringify(item, null, 2)}
-                  </pre>
-                </div>
-              </div>
+            <div className="mt-6">
+              <pre className="bg-gray-50 p-6 text-xs overflow-auto max-h-96 border border-gray-200">
+                {JSON.stringify(item, null, 2)}
+              </pre>
             </div>
           )}
         </div>
