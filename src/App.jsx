@@ -2,17 +2,14 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 
-// Page components
+// Pages
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import CollectionsPage from "./pages/CollectionsPage";
 import CollectionView from "./pages/CollectionView";
 import SearchResultsPage from "./pages/SearchResultsPage";
-import ExplorePage from "./pages/ExplorePage";
 import ItemPage from "./pages/ItemPage";
-// Test page
-import EuropeanaTestPage from "./pages/EuropeanaTestPage";
 
 // Context providers
 import { AuthProvider } from "./context/AuthContext";
@@ -41,14 +38,8 @@ export default function App() {
                     path="/collections/:collectionId"
                     element={<CollectionView />}
                   />
-                  <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/search" element={<SearchResultsPage />} />
                   <Route path="/item/:source/:id" element={<ItemPage />} />
-                  {/* For testing */}
-                  <Route
-                    path="/europeana-test"
-                    element={<EuropeanaTestPage />}
-                  />
                   {/* Catch-all route for 404 errors */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

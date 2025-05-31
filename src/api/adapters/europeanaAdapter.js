@@ -15,8 +15,7 @@ export const adaptEuropeanaSearchResults = (apiData) => {
 
   const processedItems = items
     .map((item) => {
-      // debug
-      console.log("full item from searh api:", item)
+
       try {
         const thumbnailUrl = getFirst(item.edmPreview);
         if (!thumbnailUrl || thumbnailUrl.trim() === '') {
@@ -108,6 +107,27 @@ export const adaptEuropeanaItemDetails = (apiData) => {
 
 // ================ UTILITY FUNCTIONS ================
 
+// const removeDuplicates = (array, keyField = 'content') => {
+//   const seen = new Set();
+//   return array.filter(item => {
+//     const key = item[keyField];
+//     if (seen.has(key)) {
+//       return false;
+//     }
+//     seen.add(key);
+//     return true;
+//   });
+// };
+
+const removeDuplicates = (array, keyFn) => {
+  const seen = new Set();
+  return array.filter(item => {
+    const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 const getFirst = (value) => {
   if (!value) return null;
@@ -217,7 +237,7 @@ const extractRecordImages = (record) => {
   return images;
 };
 
-//  For search API response
+//  For Search API response
 const extractSearchDates = (record) => {
   let dateStr = getFirst(record.year) || 
                 getFirst(record.dcDate) || 
@@ -226,7 +246,6 @@ const extractSearchDates = (record) => {
   
   let year = extractYear(dateStr);
   
-  // Fallback to year from digitisation timestamp
   if (!year && record.timestamp_created && 
     //  filter out Unix epoch placeholders
       record.timestamp_created !== "1970-01-01T00:00:00.000Z") {
@@ -282,7 +301,6 @@ const extractCreators = (record) => {
       const creatorNames = extractLanguageAwareEntries(proxy.dcCreator);
       
       creatorNames.forEach(name => {
-        // Filter out URLs and empty/meaningless names
         if (!isUrlOrMeaningless(name)) {
           creators.push({
             role: "Creator",
@@ -295,21 +313,14 @@ const extractCreators = (record) => {
     return null; 
   });
 
-  return creators;
+  return removeDuplicates(creators, creator => `${creator.role}:${creator.displayText}`);
 };
 
-// Helper function to filter out URLs and meaningless content
 const isUrlOrMeaningless = (text) => {
   if (!text || typeof text !== 'string') return true;
-  
-  // Filter out URLs
-  if (text.startsWith('http://') || text.startsWith('https://')) return true;
-  
-  // Filter out very short or meaningless text
-  if (text.trim().length < 2) return true;
-  
-  // Filter out pure numeric IDs
-  if (/^\d+$/.test(text.trim())) return true;
+    if (text.startsWith('http://') || text.startsWith('https://')) return true;
+    if (text.trim().length < 2) return true;
+    if (/^\d+$/.test(text.trim())) return true;
   
   return false;
 };
@@ -410,7 +421,7 @@ const extractIdentifiers = (record) => {
     return null; 
   });
 
-  return identifiers;
+  return removeDuplicates(identifiers, 'content');
 };
 
 

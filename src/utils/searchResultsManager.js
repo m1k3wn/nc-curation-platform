@@ -1,14 +1,11 @@
-/* Handles all caching of stored search results for multiple sources */
 const CACHE_PREFIX = "museum_search_";
 const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
 const normalizeQuery = (query) => query?.trim().toLowerCase() || "";
 
-// Generates a cache key
 const getCacheKey = (query, source = "smithsonian") =>
   `${CACHE_PREFIX}${source}_${normalizeQuery(query)}`;
 
-//Safely access localStorage 
 const safeLocalStorage = {
   get: (key) => {
     try {
@@ -50,9 +47,7 @@ const safeLocalStorage = {
   },
 };
 
-// Manages caching and retrieval of results
 const searchResultsManager = {
-
   storeResults(query, items, totalResults, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery, source);
@@ -65,15 +60,12 @@ const searchResultsManager = {
       source,
     };
 
-    // Try to cache, but don't let failure break the search
     let success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-
     if (!success) {
       this.clearOldCaches();
       success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
       
       if (!success) {
-        // If still failing, clear all old caches and try once more
         this.clearAllCaches();
         success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
         
@@ -81,10 +73,6 @@ const searchResultsManager = {
           console.warn(`Failed to cache ${items.length} results for ${source} query: ${normalizedQuery} - continuing without cache`);
         }
       }
-    }
-//  debugging
-    if (success) {
-      console.log(`✅ Cached ${items.length} ${source} results for "${normalizedQuery}"`);
     }
   },
 
@@ -118,10 +106,6 @@ const searchResultsManager = {
     const normalizedQuery = normalizeQuery(query);
     const cacheKey = getCacheKey(normalizedQuery, source);
     safeLocalStorage.remove(cacheKey);
-
-    // Debugging output
-      console.log(`Cleared ${source} cache for "${normalizedQuery}"`);
-   
   },
 
   clearSourceCaches(source) {
@@ -131,10 +115,6 @@ const searchResultsManager = {
       .filter((key) => key.startsWith(sourcePrefix));
 
     keysToRemove.forEach((key) => safeLocalStorage.remove(key));
-
-   // debugging
-      console.log(`Cleared ${keysToRemove.length} cached ${source} searches`);
-   
   },
 
   clearAllCaches() {
@@ -143,10 +123,6 @@ const searchResultsManager = {
       .filter((key) => key.startsWith(CACHE_PREFIX));
 
     keysToRemove.forEach((key) => safeLocalStorage.remove(key));
-
-    // debugging
-      console.log(`Cleared ${keysToRemove.length} cached searches`);
-   
   },
 
   clearOldCaches() {
@@ -174,17 +150,12 @@ const searchResultsManager = {
 
     cacheEntries.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Remove 75% of old caches to free up more space
+    // Remove 75% of old caches
     const entriesToRemove = cacheEntries.slice(
       0,
       Math.floor(cacheEntries.length * 0.75)
     );
-
     entriesToRemove.forEach((entry) => safeLocalStorage.remove(entry.key));
-
-   // debugging
-      console.log(`Cleared ${entriesToRemove.length} old cache entries`);
-
   },
 
   getCacheStats() {

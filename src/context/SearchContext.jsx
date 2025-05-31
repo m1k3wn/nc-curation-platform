@@ -109,8 +109,6 @@ export function SearchProvider({ children }) {
 
   const handleSearchProgress = useCallback(
     (progressData) => {
-      // debugging
-      console.log("🔍 Progress Data:", progressData);
       setProgress(progressData);
 
       if (
