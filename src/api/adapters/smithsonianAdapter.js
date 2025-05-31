@@ -18,6 +18,7 @@ export const adaptSmithsonianSearchResults = (apiData) => {
   if (!apiData || !apiData.response) {
     return { total: 0, items: [] };
   }
+  console.log("lands in adapter")
 
   const totalResults = apiData.response.rowCount || 0;
   const items = apiData.response.rows || [];

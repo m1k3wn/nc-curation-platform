@@ -99,7 +99,7 @@ const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
       if (smithsonianResponse.items?.length > 0) {
         results.items.push(...smithsonianResponse.items);
       }
-      
+      console.log(`Smithsonian search complete: ${smithsonianResponse.total} results found`);
       return smithsonianResponse;
     })
     .catch((error) => {

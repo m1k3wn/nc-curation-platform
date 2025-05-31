@@ -41,8 +41,9 @@ export default function BrokenImage({
         Oops! Couldn't fetch that image...
       </p>
       <p className="text-gray-500 text-sm mb-4">
-        Archives can be funny, try checking the source
+        Archives can be funny; try checking the source
       </p>
+      <p className="text-gray-500 text-sm mb-4">try checking the source</p>
 
       <a
         href={sourceUrl}
