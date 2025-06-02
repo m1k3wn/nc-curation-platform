@@ -4,7 +4,7 @@ import * as smithsonianRepository from "./repositories/smithsonianRepository";
 import * as smithsonianAdapter from "./adapters/smithsonianAdapter";
 import { europeanaRepository } from "./repositories/europeanaRepository";
 import { adaptEuropeanaItemDetails, adaptEuropeanaSearchResults } from "./adapters/europeanaAdapter";
-
+import searchResultsManager from "../utils/searchResultsManager";
 
 /**
  * Error Handling
@@ -88,11 +88,11 @@ export const searchAllSources = async (query, progressCallback = null) => {
       return { total: 0, items: [] };
     });
 
-const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
-  if (progress.itemsFound > 0) {
-    updateProgress(`Found ${results.items.length + progress.itemsFound} results, searching for more...`);
-  }
-})
+  const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
+    if (progress.itemsFound > 0) {
+      updateProgress(`Found ${results.items.length + progress.itemsFound} results, searching for more...`);
+    }
+  })
     .then((smithsonianResponse) => {
       results.totalSmithsonian = smithsonianResponse.total || 0;
       
@@ -111,6 +111,26 @@ const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
   if (results.items.length > 0) {
     smithsonianPromise.then(() => {
       updateProgress(`Search complete: ${results.items.length} results found`);
+      
+      // Cache final unified results after everything is complete
+      searchResultsManager.storeResults(
+        query,
+        results.items,
+        results.total,
+        "unified"
+      );
+      
+      // Also cache individual source results for future source-specific searches
+      const smithsonianItems = results.items.filter(item => item.source === "smithsonian");
+      const europeanaItems = results.items.filter(item => item.source === "europeana");
+      
+      if (smithsonianItems.length > 0) {
+        searchResultsManager.storeResults(query, smithsonianItems, results.totalSmithsonian, "smithsonian");
+      }
+      
+      if (europeanaItems.length > 0) {
+        searchResultsManager.storeResults(query, europeanaItems, results.totalEuropeana, "europeana");
+      }
     });
 
     return {
@@ -122,6 +142,14 @@ const smithsonianPromise = searchSmithsonianComplete(query, (progress) => {
 
   await smithsonianPromise;
   updateProgress(`Search complete: ${results.items.length} results found`);
+  
+  // Cache final unified results
+  searchResultsManager.storeResults(
+    query,
+    results.items,
+    results.total,
+    "unified"
+  );
 
   return {
     total: results.total,
@@ -200,7 +228,7 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
     profile: "rich",
   });
   const adaptedData = adaptEuropeanaItemDetails(rawData);
-    // Debugging - raw response 
+  // Debugging - raw response 
   adaptedData.rawData = rawData;
   return adaptedData;
 }
@@ -219,12 +247,12 @@ async function searchEuropeanaComplete(query, progressCallback = null) {
     for (let batch = 0; batch < totalBatches; batch++) {
       const start = batch * batchSize;
       const searchOptions = {
-      rows: batchSize,
-    };
+        rows: batchSize,
+      };
 
-  if (start > 0) {
-    searchOptions.start = start;
-  }
+      if (start > 0) {
+        searchOptions.start = start;
+      }
       
       const response = await europeanaRepository.search(query, searchOptions);
 
@@ -248,10 +276,17 @@ async function searchEuropeanaComplete(query, progressCallback = null) {
       }
     }
 
-    return {
+    const finalResult = {
       total: totalResults,
       items: allItems,
     };
+    
+    // Cache the filtered results
+    if (allItems.length > 0) {
+      searchResultsManager.storeResults(query, allItems, totalResults, "europeana");
+    }
+    
+    return finalResult;
   } catch (error) {
     throw error;
   }
@@ -319,10 +354,17 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
       }
     }
 
-    return {
+    const finalResult = {
       total: totalResults,
-      items: allItemsWithImages,
+      items: allItemsWithImages, // These are already filtered!
     };
+    
+    // Cache the filtered results
+    if (allItemsWithImages.length > 0) {
+      searchResultsManager.storeResults(query, allItemsWithImages, totalResults, "smithsonian");
+    }
+    
+    return finalResult;
   } catch (error) {
     throw error;
   }
@@ -346,11 +388,9 @@ async function fetchBatch(query, offset, batchSize, batchNum) {
       batchResponse
     );
 
-
     return adaptedBatch.items || [];
   } catch (error) {
-        console.log(`❌ Batch ${batchNum + 1} failed:`, error.message);
-
+    console.log(`❌ Batch ${batchNum + 1} failed:`, error.message);
     return [];
   }
 }
