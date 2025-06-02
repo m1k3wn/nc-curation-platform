@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import ItemCard from "./ItemCard";
 import Pagination from "./Pagination";
 import { useSearch } from "../../context/SearchContext";
@@ -17,20 +18,29 @@ const CacheIndicator = ({ itemCount, onRefresh }) => (
   </div>
 );
 
-export default function SearchResultsGrid() {
-  const {
-    results,
-    allResults,
-    isFromCache,
-    page,
-    totalPages,
-    changePage,
-    refreshSearch,
-  } = useSearch();
+/**
+ * @param {Array} results - Pre-filtered and sorted results to display - any sorting/filtering orchestrated in the parent component
+ */
+export default function SearchResultsGrid({ results = [] }) {
+  const { isFromCache, page, changePage, refreshSearch, pageSize, allResults } =
+    useSearch();
+
+  const totalFilteredPages = Math.ceil(results.length / pageSize);
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+  const paginatedResults = results.slice(startIdx, endIdx);
+
+  const validPage = page > totalFilteredPages ? 1 : page;
+
+  useEffect(() => {
+    if (page > totalFilteredPages && totalFilteredPages > 0) {
+      changePage(1);
+    }
+  }, [page, totalFilteredPages, changePage]);
 
   return (
     <div>
-      {/* Cache indicator and refresh button */}
+      {/* Cache indicator */}
       {isFromCache && (
         <CacheIndicator
           itemCount={allResults?.length || 0}
@@ -38,13 +48,24 @@ export default function SearchResultsGrid() {
         />
       )}
 
+      {/* Results count */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {paginatedResults.length} of {results.length} results
+        {results.length !== allResults?.length && (
+          <span className="text-gray-500">
+            {" "}
+            (filtered from {allResults?.length} total)
+          </span>
+        )}
+      </div>
+
       {/* Results Grid */}
       <div
         className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0"
         role="list"
         aria-label="Search results"
       >
-        {results.map((item) => (
+        {paginatedResults.map((item) => (
           <div key={item.id} role="listitem">
             <ItemCard item={item} />
           </div>
@@ -52,10 +73,10 @@ export default function SearchResultsGrid() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalFilteredPages > 1 && (
         <Pagination
-          currentPage={page}
-          totalPages={totalPages}
+          currentPage={validPage}
+          totalPages={totalFilteredPages}
           onPageChange={changePage}
         />
       )}

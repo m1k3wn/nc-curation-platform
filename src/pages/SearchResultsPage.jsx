@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import {
+  parseYearForFiltering,
+  categoriseYear,
+  calculateCenturyCounts,
+} from "../utils/dateUtils";
+import FilterMenu from "../components/search/FilterMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import SearchProgress from "../components/search/SearchProgress";
@@ -25,8 +32,34 @@ const EmptyResults = () => (
   </div>
 );
 
+const sortByDate = (items, sortOrder) => {
+  if (sortOrder === "relevance") return items;
+
+  return [...items].sort((a, b) => {
+    const yearA = parseYearForFiltering(a.dateCreated);
+    const yearB = parseYearForFiltering(b.dateCreated);
+
+    if (!yearA && !yearB) return 0;
+    if (!yearA) return 1;
+    if (!yearB) return -1;
+
+    return sortOrder === "newest" ? yearB - yearA : yearA - yearB;
+  });
+};
+
+const filterByDate = (items, selectedCentury) => {
+  if (selectedCentury === "all") return items;
+
+  return items.filter((item) => {
+    const year = parseYearForFiltering(item.dateCreated);
+    const category = categoriseYear(year);
+    return category === selectedCentury;
+  });
+};
+
 export default function SearchResultsPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const queryParam = searchParams.get("q") || "";
 
@@ -46,7 +79,46 @@ export default function SearchResultsPage() {
     page,
   } = useSearch();
 
-  // Handle search query changes
+  const [filters, setFilters] = useState({
+    sortOrder: searchParams.get("sort") || "relevance",
+    selectedCentury: searchParams.get("century") || "all",
+  });
+
+  // Update URL when filters change
+  useEffect(() => {
+    if (window.location.pathname === "/search") {
+      const newParams = new URLSearchParams(location.search);
+
+      if (filters.sortOrder === "relevance") {
+        newParams.delete("sort");
+      } else {
+        newParams.set("sort", filters.sortOrder);
+      }
+
+      if (filters.selectedCentury === "all") {
+        newParams.delete("century");
+      } else {
+        newParams.set("century", filters.selectedCentury);
+      }
+
+      const newUrl = `/search?${newParams}`;
+      if (newUrl !== location.pathname + location.search) {
+        navigate(newUrl, { replace: true });
+      }
+    }
+  }, [filters, navigate, location]);
+
+  const handleFiltersChange = (newFilters) => {
+    // If filters changed, reset to page 1
+    if (
+      newFilters.sortOrder !== filters.sortOrder ||
+      newFilters.selectedCentury !== filters.selectedCentury
+    ) {
+      setPage(1);
+    }
+    setFilters(newFilters);
+  };
+
   useEffect(() => {
     if (queryParam && queryParam !== lastSearchedQuery.current) {
       lastSearchedQuery.current = queryParam;
@@ -54,7 +126,7 @@ export default function SearchResultsPage() {
     }
   }, [queryParam, performUnifiedSearch]);
 
-  // Sync URL pagination with context state (runs once on mount)
+  // Sync URL pagination with context state
   useEffect(() => {
     const pageParam = searchParams.get("page");
     if (pageParam) {
@@ -65,7 +137,6 @@ export default function SearchResultsPage() {
     }
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (loading) {
@@ -73,6 +144,33 @@ export default function SearchResultsPage() {
       }
     };
   }, []);
+
+  // Process results with filters
+  const { processedResults, resultCounts } = useMemo(() => {
+    if (!allResults || allResults.length === 0) {
+      return {
+        processedResults: [],
+        resultCounts: { centuries: { all: 0 } },
+      };
+    }
+
+    // 1. Sort all results first
+    const sortedResults = sortByDate(allResults, filters.sortOrder);
+
+    // 2. Filter the sorted results
+    const filteredResults = filterByDate(
+      sortedResults,
+      filters.selectedCentury
+    );
+
+    // 3. Calculate counts for filter buttons
+    const counts = calculateCenturyCounts(allResults);
+
+    return {
+      processedResults: filteredResults,
+      resultCounts: counts,
+    };
+  }, [allResults, filters]);
 
   const getResultsMessage = () => {
     if (loading) {
@@ -118,7 +216,7 @@ export default function SearchResultsPage() {
           {/* Error State */}
           {error && <ErrorMessage message={error} />}
 
-          {/* Initial Loading State - spinner */}
+          {/* Initial Loading State */}
           {loading && (!results || results.length === 0) && (
             <SearchProgress progress={progress} />
           )}
@@ -131,9 +229,16 @@ export default function SearchResultsPage() {
             <EmptyResults />
           )}
 
-          {/* Results Grid */}
+          {/* Filter Menu & Results */}
           {!loading && !error && results && results.length > 0 && (
-            <SearchResultsGrid />
+            <>
+              <FilterMenu
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                resultCounts={resultCounts}
+              />
+              <SearchResultsGrid results={processedResults} />
+            </>
           )}
         </div>
       </div>
