@@ -131,17 +131,6 @@ export function SearchProvider({ children }) {
 
         setTotalResults(progressData.totalResults || 0);
       }
-
-      if (progressData.message && progressData.message.includes("complete")) {
-        if (progressData.currentResults && progressData.query) {
-          searchResultsManager.storeResults(
-            progressData.query,
-            progressData.currentResults,
-            progressData.totalResults,
-            "unified"
-          );
-        }
-      }
     },
     [query]
   );
@@ -224,32 +213,7 @@ export function SearchProvider({ children }) {
           setProgress(null);
         }
 
-        if (response.items?.length > 0) {
-          const smithsonianItems = response.items.filter(
-            (item) => item.source === "smithsonian"
-          );
-          const europeanaItems = response.items.filter(
-            (item) => item.source === "europeana"
-          );
-
-          if (smithsonianItems.length > 0) {
-            searchResultsManager.storeResults(
-              normalizedQuery,
-              smithsonianItems,
-              smithsonianItems.length,
-              "smithsonian"
-            );
-          }
-
-          if (europeanaItems.length > 0) {
-            searchResultsManager.storeResults(
-              normalizedQuery,
-              europeanaItems,
-              europeanaItems.length,
-              "europeana"
-            );
-          }
-        }
+        // debug: Removed the entire caching block - now handled in museumService
       } catch (error) {
         if (axios.isCancel(error)) {
           return;
