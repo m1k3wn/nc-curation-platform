@@ -165,15 +165,26 @@ export function SearchProvider({ children }) {
           setIsFromCache(false);
         }
 
-        // Check for unified cache
-        const unifiedCache = searchResultsManager.getCachedResults(
+        const smithsonianCache = searchResultsManager.getCachedResults(
           normalizedQuery,
-          "unified"
+          "smithsonian"
+        );
+        const europeanaCache = searchResultsManager.getCachedResults(
+          normalizedQuery,
+          "europeana"
         );
 
-        if (unifiedCache?.items?.length > 0) {
-          setResults(unifiedCache.items);
-          setTotalResults(unifiedCache.totalResults);
+        if (smithsonianCache && europeanaCache) {
+          const mergedResults = [
+            ...europeanaCache.items,
+            ...smithsonianCache.items,
+          ];
+          const totalResults =
+            (smithsonianCache.totalResults || 0) +
+            (europeanaCache.totalResults || 0);
+
+          setResults(mergedResults);
+          setTotalResults(totalResults);
           setIsFromCache(true);
           setLoading(false);
           return;

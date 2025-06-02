@@ -110,27 +110,8 @@ export const searchAllSources = async (query, progressCallback = null) => {
 
   if (results.items.length > 0) {
     smithsonianPromise.then(() => {
+      // search completes after smithsonian results return
       updateProgress(`Search complete: ${results.items.length} results found`);
-      
-      // Cache final unified results after everything is complete
-      searchResultsManager.storeResults(
-        query,
-        results.items,
-        results.total,
-        "unified"
-      );
-      
-      // Also cache individual source results for future source-specific searches
-      const smithsonianItems = results.items.filter(item => item.source === "smithsonian");
-      const europeanaItems = results.items.filter(item => item.source === "europeana");
-      
-      if (smithsonianItems.length > 0) {
-        searchResultsManager.storeResults(query, smithsonianItems, results.totalSmithsonian, "smithsonian");
-      }
-      
-      if (europeanaItems.length > 0) {
-        searchResultsManager.storeResults(query, europeanaItems, results.totalEuropeana, "europeana");
-      }
     });
 
     return {
