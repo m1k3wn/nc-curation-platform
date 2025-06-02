@@ -43,14 +43,25 @@ export default function SearchResultsPage() {
     progress,
     clearSearch,
     setPage,
+    page,
   } = useSearch();
 
+  // Handle search query changes
   useEffect(() => {
     if (queryParam && queryParam !== lastSearchedQuery.current) {
       lastSearchedQuery.current = queryParam;
       performUnifiedSearch(queryParam);
     }
-  }, [queryParam]);
+  }, [queryParam, performUnifiedSearch]);
+
+  // Sync URL pagination with context state
+  useEffect(() => {
+    const pageParam = searchParams.get("page");
+    const pageNumber = pageParam ? parseInt(pageParam, 10) : 1;
+    if (pageNumber > 0 && pageNumber !== page) {
+      setPage(pageNumber);
+    }
+  }, [location.search, setPage, page]);
 
   useEffect(() => {
     return () => {
@@ -58,17 +69,7 @@ export default function SearchResultsPage() {
         clearSearch();
       }
     };
-  }, []);
-
-  useEffect(() => {
-    const pageParam = searchParams.get("page");
-    if (pageParam) {
-      const pageNumber = parseInt(pageParam, 10);
-      if (pageNumber > 0) {
-        setPage(pageNumber);
-      }
-    }
-  }, []);
+  }, [loading, clearSearch]);
 
   const getResultsMessage = () => {
     if (loading) {
@@ -119,7 +120,7 @@ export default function SearchResultsPage() {
             <SearchProgress progress={progress} />
           )}
 
-          {/* Progressive status bar (hopefully) */}
+          {/* Progressive status bar */}
           {!error && <SearchInfo progress={progress} />}
 
           {/* Empty State */}
@@ -127,7 +128,7 @@ export default function SearchResultsPage() {
             <EmptyResults />
           )}
 
-          {/* Results Grid  */}
+          {/* Results Grid */}
           {!loading && !error && results && results.length > 0 && (
             <SearchResultsGrid />
           )}
