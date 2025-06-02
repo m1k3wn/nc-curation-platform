@@ -54,22 +54,25 @@ export default function SearchResultsPage() {
     }
   }, [queryParam, performUnifiedSearch]);
 
-  // Sync URL pagination with context state
+  // Sync URL pagination with context state (runs once on mount)
   useEffect(() => {
     const pageParam = searchParams.get("page");
-    const pageNumber = pageParam ? parseInt(pageParam, 10) : 1;
-    if (pageNumber > 0 && pageNumber !== page) {
-      setPage(pageNumber);
+    if (pageParam) {
+      const pageNumber = parseInt(pageParam, 10);
+      if (pageNumber > 0) {
+        setPage(pageNumber);
+      }
     }
-  }, [location.search, setPage, page]);
+  }, []);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (loading) {
         clearSearch();
       }
     };
-  }, [loading, clearSearch]);
+  }, []);
 
   const getResultsMessage = () => {
     if (loading) {
