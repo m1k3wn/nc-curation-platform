@@ -350,14 +350,18 @@ export function SearchProvider({ children }) {
       if (pageNumber < 1) return;
       setPage(pageNumber);
 
-      const currentUrl = new URL(window.location);
-      if (pageNumber === 1) {
-        currentUrl.searchParams.delete("page");
-      } else {
-        currentUrl.searchParams.set("page", pageNumber.toString());
+      // Only update URL if on the search page
+      if (window.location.pathname === "/search") {
+        const currentUrl = new URL(window.location);
+        if (pageNumber === 1) {
+          currentUrl.searchParams.delete("page");
+        } else {
+          currentUrl.searchParams.set("page", pageNumber.toString());
+        }
+
+        navigate(currentUrl.pathname + currentUrl.search, { replace: true });
       }
 
-      navigate(currentUrl.pathname + currentUrl.search, { replace: true });
       window.scrollTo(0, 0);
     },
     [navigate]

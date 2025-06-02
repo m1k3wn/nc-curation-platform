@@ -12,12 +12,7 @@ export default function ItemCard({ item, actionButtons }) {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
-    const currentUrl = new URL(window.location);
-    const currentPage = currentUrl.searchParams.get("page") || "1";
-
-    navigate(
-      `/item/${item.source}/${encodeURIComponent(item.id)}?page=${currentPage}`
-    );
+    navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
   };
 
   const defaultImage =

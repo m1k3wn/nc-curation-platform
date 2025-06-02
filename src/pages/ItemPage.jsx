@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import SingleItemCard from "../components/search/SingleItemCard";
 import { useSearch } from "../context/SearchContext";
 
@@ -7,24 +7,16 @@ import { useSearch } from "../context/SearchContext";
  * Displays detailed information about a single item
  */
 export default function ItemPage() {
-//  Source from URL parameters
   const { source, id } = useParams();
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-const recordId = searchParams.get('recordId') || id; // Fallback to id if no recordId
-
   const navigate = useNavigate();
 
   const { currentItem, itemLoading, itemError, fetchItemDetails } = useSearch();
 
-  const isDev =
-    import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
-
   useEffect(() => {
     if (id) {
-      fetchItemDetails(source, recordId);
+      fetchItemDetails(source, id);
     }
-  }, [id, fetchItemDetails]);
+  }, [id, source, fetchItemDetails]);
 
   const handleBackClick = () => {
     navigate(-1);
