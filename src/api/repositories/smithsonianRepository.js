@@ -55,8 +55,8 @@ export const getSmithsonianItemDetails = async (id, cancelToken = null) => {
  */
 export const searchSmithsonianItems = async (
   query,
-  start = 0,
-  rows = 10,
+  start ,
+  rows,
   additionalParams = {}
 ) => {
   if (!query) {
@@ -70,6 +70,7 @@ export const searchSmithsonianItems = async (
         start,
         rows,
         online_media_type: "Images",
+        "content.descriptiveNonRepeating.online_media.media.idsId": "*", // Only items with idsId
         ...additionalParams,
       },
     });

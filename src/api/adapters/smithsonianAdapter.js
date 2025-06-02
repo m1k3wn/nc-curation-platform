@@ -172,11 +172,41 @@ const extractBestImages = (item) => {
   try {
     const mediaContent = item.content?.descriptiveNonRepeating?.online_media?.media;
 
+    
+
     if (!mediaContent || mediaContent.length === 0) {
       return { thumbnail: "", screenImage: "", fullImage: "" };
     }
 
     const media = mediaContent[0];
+    const extractBestImages = (item) => {
+  try {
+    const mediaContent = item.content?.descriptiveNonRepeating?.online_media?.media;
+
+    if (!mediaContent || mediaContent.length === 0) {
+      return { thumbnail: "", screenImage: "", fullImage: "" };
+    }
+
+    const media = mediaContent[0];
+
+    if (media.idsId) {
+      return {
+        fullImage: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}`,
+        screenImage: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_screen`,
+        thumbnail: `https://ids.si.edu/ids/deliveryService?id=${media.idsId}_thumb`,
+      };
+    }
+
+    // Fallback to direct content URLs
+    return {
+      fullImage: media.content || "",
+      screenImage: media.content || "",
+      thumbnail: media.thumbnail || media.content || "",
+    };
+  } catch {
+    return { thumbnail: "", screenImage: "", fullImage: "" };
+  }
+};
 
     if (media.idsId) {
       return {
