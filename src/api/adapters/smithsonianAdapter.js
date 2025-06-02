@@ -1,11 +1,5 @@
-const isDevelopment = () => {
-  return (
-    import.meta.env?.DEV === true ||
-    (typeof process !== "undefined" && process.env?.NODE_ENV === "development")
-  );
-};
-
 import { getMuseumName } from "./smithsonianMuseumCodes";
+import { parseYearForFiltering, categoriseYear } from "../../utils/dateUtils";
 
 // ================ MAIN ADAPTER FUNCTIONS ================
 
@@ -18,7 +12,6 @@ export const adaptSmithsonianSearchResults = (apiData) => {
   if (!apiData || !apiData.response) {
     return { total: 0, items: [] };
   }
-  console.log("lands in adapter")
 
   const totalResults = apiData.response.rowCount || 0;
   const items = apiData.response.rows || [];
@@ -28,6 +21,9 @@ export const adaptSmithsonianSearchResults = (apiData) => {
       try {
         const imageData = extractBestImages(item);
         const id = item.id || item.url || "";
+        const dateCreated = getSearchDate(item);
+        const filterDate = parseYearForFiltering(dateCreated);
+        const century = categoriseYear(filterDate);
 
         if (!imageData.thumbnail) {
           return null;
@@ -38,7 +34,9 @@ export const adaptSmithsonianSearchResults = (apiData) => {
           title: cleanHtmlTags(item.title) || "Untitled",
           source: "smithsonian",
           museum: getMuseumName(item.unitCode) || "Smithsonian Institution",
-          dateCreated: getSearchDate(item),
+          dateCreated,
+          filterDate,
+          century,
           media: {
             thumbnail: imageData.thumbnail,
             primaryImage: imageData.screenImage || imageData.fullImage,
@@ -73,6 +71,8 @@ export const adaptSmithsonianItemDetails = (apiData) => {
     const creators = extractCreators(freetext);
     const descriptions = extractDescriptions(freetext);
     const dateCreated = extractItemDate(data, freetext);
+    const filterDate = parseYearForFiltering(dateCreated);
+    const century = categoriseYear(filterDate);
     const place = extractPlace(data, freetext);
 
     return {
@@ -89,6 +89,8 @@ export const adaptSmithsonianItemDetails = (apiData) => {
         data.unitCode || data.content?.descriptiveNonRepeating?.unit_code
       ) || "Smithsonian Institution",
       dateCreated,
+      filterDate,
+      century,
 
       media: {
         thumbnail: imageData.thumbnail,
@@ -108,16 +110,21 @@ export const adaptSmithsonianItemDetails = (apiData) => {
     };
 
   } catch (error) {
-    if (isDevelopment()) {
       console.error("Error adapting Smithsonian record:", error);
     }
+
+    const basicDateCreated = apiData.title || apiData.response?.title || "";
+    const basicFilterDate = parseYearForFiltering(basicDateCreated);
+    const basicCentury = categoriseYear(basicFilterDate);
 
     return {
       id: apiData.id || apiData.response?.id || "",
       title: apiData.title || apiData.response?.title || "Untitled Item",
       source: "smithsonian",
       museum: "Smithsonian Institution",
-      dateCreated: "",
+      dateCreated: basicDateCreated,
+      filterDate: basicFilterDate,
+      century: basicCentury,
       media: {
         thumbnail: "",
         primaryImage: "",
@@ -131,7 +138,7 @@ export const adaptSmithsonianItemDetails = (apiData) => {
       collection: {},
     };
   }
-};
+
 
 // ================ UTILITY FUNCTIONS ================
 
@@ -242,7 +249,6 @@ const extractItemDate = (data, freetext) => {
   }
 };
 
-
 const extractPlace = (data, freetext) => {
   try {
     const freetextPlace = getFreetextContent(freetext, "place");
@@ -259,7 +265,6 @@ const extractPlace = (data, freetext) => {
     return "";
   }
 };
-
 
 const processGeoLocation = (geoLocation) => {
   try {
@@ -368,7 +373,6 @@ const extractDescriptions = (freetext) => {
   }
 };
 
-
 const extractIdentifiers = (freetext) => {
   try {
     return getFreetextContent(freetext, "identifier").map(item => ({
@@ -379,7 +383,6 @@ const extractIdentifiers = (freetext) => {
     return [];
   }
 };
-
 
 const extractCollectionInfo = (data, freetext) => {
   try {

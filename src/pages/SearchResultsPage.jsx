@@ -1,11 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
-import {
-  parseYearForFiltering,
-  categoriseYear,
-  calculateCenturyCounts,
-} from "../utils/dateUtils";
+import { calculateCenturyCounts } from "../utils/dateUtils";
 import FilterMenu from "../components/search/FilterMenu";
 import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
@@ -36,8 +32,8 @@ const sortByDate = (items, sortOrder) => {
   if (sortOrder === "relevance") return items;
 
   return [...items].sort((a, b) => {
-    const yearA = parseYearForFiltering(a.dateCreated);
-    const yearB = parseYearForFiltering(b.dateCreated);
+    const yearA = a.filterDate;
+    const yearB = b.filterDate;
 
     if (!yearA && !yearB) return 0;
     if (!yearA) return 1;
@@ -49,12 +45,7 @@ const sortByDate = (items, sortOrder) => {
 
 const filterByDate = (items, selectedCentury) => {
   if (selectedCentury === "all") return items;
-
-  return items.filter((item) => {
-    const year = parseYearForFiltering(item.dateCreated);
-    const category = categoriseYear(year);
-    return category === selectedCentury;
-  });
+  return items.filter((item) => item.century === selectedCentury);
 };
 
 export default function SearchResultsPage() {
@@ -79,6 +70,7 @@ export default function SearchResultsPage() {
     page,
   } = useSearch();
 
+  // Read filters from URL
   const [filters, setFilters] = useState({
     sortOrder: searchParams.get("sort") || "relevance",
     selectedCentury: searchParams.get("century") || "all",
@@ -109,7 +101,6 @@ export default function SearchResultsPage() {
   }, [filters, navigate, location]);
 
   const handleFiltersChange = (newFilters) => {
-    // If filters changed, reset to page 1
     if (
       newFilters.sortOrder !== filters.sortOrder ||
       newFilters.selectedCentury !== filters.selectedCentury
@@ -126,7 +117,7 @@ export default function SearchResultsPage() {
     }
   }, [queryParam, performUnifiedSearch]);
 
-  // Sync URL pagination with context state
+  // Sync URL pagination with context state - bidirectional to changePage() in searchContext
   useEffect(() => {
     const pageParam = searchParams.get("page");
     if (pageParam) {
@@ -145,7 +136,6 @@ export default function SearchResultsPage() {
     };
   }, []);
 
-  // Process results with filters
   const { processedResults, resultCounts } = useMemo(() => {
     if (!allResults || allResults.length === 0) {
       return {
@@ -154,16 +144,13 @@ export default function SearchResultsPage() {
       };
     }
 
-    // 1. Sort all results first
     const sortedResults = sortByDate(allResults, filters.sortOrder);
 
-    // 2. Filter the sorted results
     const filteredResults = filterByDate(
       sortedResults,
       filters.selectedCentury
     );
 
-    // 3. Calculate counts for filter buttons
     const counts = calculateCenturyCounts(allResults);
 
     return {
