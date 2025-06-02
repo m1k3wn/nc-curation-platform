@@ -27,8 +27,14 @@ app.get("/", (req, res) => {
 });
 
 // Smithsonian search proxy
+//debug
 app.get("/api/smithsonian/search", async (req, res) => {
   console.log('Search request received:', req.query);
+  console.log('Full params being sent to Smithsonian API:', { 
+    ...req.query, 
+    api_key: '[HIDDEN]' 
+  });
+  
   try {
     const response = await axios.get("https://api.si.edu/openaccess/api/v1.0/search", {
       params: { 
@@ -37,7 +43,12 @@ app.get("/api/smithsonian/search", async (req, res) => {
       },
       timeout: 30000,
     });
-    console.log('Smithsonian API responded successfully');
+    
+    console.log('Smithsonian API response summary:', {
+      status: response.status,
+      totalResults: response.data?.response?.rowCount,
+      itemsReturned: response.data?.response?.rows?.length
+    });
     res.json(response.data);
   } catch (error) {
     console.error("Smithsonian search error:", error.message);
