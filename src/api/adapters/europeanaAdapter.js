@@ -1,3 +1,5 @@
+import { parseYearForFiltering, categoriseYear } from "../../utils/dateUtils";
+
 // ================ MAIN ADAPTER FUNCTIONS ================
 
 /**
@@ -22,12 +24,18 @@ export const adaptEuropeanaSearchResults = (apiData) => {
           return null;
         }
 
+        const dateCreated = extractSearchDates(item);
+        const filterDate = parseYearForFiltering(dateCreated);
+        const century = categoriseYear(filterDate);
+
         return {
           id: cleanId(item.id),
           title: getMultilingual(item.dcTitleLangAware) || getFirst(item.title) || "Untitled",
           source: "europeana",
           museum: getFirst(item.dataProvider) || "European Institution",
-          dateCreated: extractSearchDates(item),
+          dateCreated,
+          filterDate,
+          century,
           media: {
             thumbnail: thumbnailUrl,
             primaryImage: thumbnailUrl,
@@ -64,6 +72,8 @@ export const adaptEuropeanaItemDetails = (apiData) => {
     const creators = extractCreators(record);
     const { notes, descriptions } = extractDescriptions(record);
     const place = extractLocation(record);
+    const filterDate = parseYearForFiltering(dates.created);
+    const century = categoriseYear(filterDate);
 
     return {
       id: cleanId(record.about) || "",
@@ -72,6 +82,8 @@ export const adaptEuropeanaItemDetails = (apiData) => {
       source: "europeana",
       museum: extractRecordMuseum(record),
       dateCreated: dates.created,
+      filterDate,
+      century,
       media: {
         thumbnail: images.thumbnailUrl,
         primaryImage: images.screenImageUrl || images.imageUrl,
@@ -85,12 +97,19 @@ export const adaptEuropeanaItemDetails = (apiData) => {
     };
 
   } catch (error) {
+    const basicTitle = extractRecordTitle(apiData.object) || "Untitled Item";
+    const basicDateCreated = "";
+    const basicFilterDate = parseYearForFiltering(basicDateCreated);
+    const basicCentury = categoriseYear(basicFilterDate);
+
     return {
       id: cleanId(apiData.object?.about) || "",
-      title: extractRecordTitle(apiData.object) || "Untitled Item",
+      title: basicTitle,
       source: "europeana",
       museum: "European Institution",
-      dateCreated: "",
+      dateCreated: basicDateCreated,
+      filterDate: basicFilterDate,
+      century: basicCentury,
       media: {
         thumbnail: "",
         primaryImage: "",
@@ -106,18 +125,6 @@ export const adaptEuropeanaItemDetails = (apiData) => {
 };
 
 // ================ UTILITY FUNCTIONS ================
-
-// const removeDuplicates = (array, keyField = 'content') => {
-//   const seen = new Set();
-//   return array.filter(item => {
-//     const key = item[keyField];
-//     if (seen.has(key)) {
-//       return false;
-//     }
-//     seen.add(key);
-//     return true;
-//   });
-// };
 
 const removeDuplicates = (array, keyFn) => {
   const seen = new Set();
@@ -173,7 +180,6 @@ const getMultilingual = (languageMap, returnArray = false) => {
   return returnArray ? results : null;
 };
 
-
 const cleanId = (id) => {
   if (!id || typeof id !== 'string') return '';
   return id.startsWith('/') ? id.substring(1) : id;
@@ -194,7 +200,6 @@ const extractFromProxies = (record, extractorFn) => {
   return null;
 };
 
-
 const getFirstAggregation = (record) => {
   if (!record.aggregations || !Array.isArray(record.aggregations)) {
     return null;
@@ -202,12 +207,10 @@ const getFirstAggregation = (record) => {
   return record.aggregations[0];
 };
 
-
 const safeExtract = (obj, field, extractor = getFirst) => {
   if (!obj || !obj[field]) return null;
   return extractor(obj[field]);
 };
-
 
 const extractRecordTitle = (record) => {
   const title = extractFromProxies(record, (proxy) => {
@@ -225,7 +228,6 @@ const extractRecordTitle = (record) => {
 
   return "Untitled";
 };
-
 
 const extractRecordImages = (record) => {
   const images = { imageUrl: "", screenImageUrl: "", thumbnailUrl: "" };
@@ -303,7 +305,6 @@ const extractYear = (dateStr) => {
   return yearMatch?.[0] || "";
 };
 
-
 const extractCreators = (record) => {
   const creators = [];
 
@@ -326,7 +327,6 @@ const extractCreators = (record) => {
 
   return removeDuplicates(creators, creator => `${creator.role}:${creator.displayText}`);
 };
-
 
 const isUrlOrMeaningless = (text) => {
   if (!text || typeof text !== 'string') return true;
@@ -375,7 +375,6 @@ const extractDescriptions = (record) => {
   return { notes, descriptions };
 };
 
-
 const extractLocation = (record) => {
   let place = extractFromProxies(record, (proxy) => {
     return safeExtract(proxy, 'dctermsSpatial', getMultilingual);
@@ -389,7 +388,6 @@ const extractLocation = (record) => {
 
   return place || "";
 };
-
 
 const extractRecordMuseum = (record) => {
   if (record.organizations?.length > 0) {
@@ -410,7 +408,6 @@ const extractRecordMuseum = (record) => {
   return "European Institution";
 };
 
-
 const extractIdentifiers = (record) => {
   const identifiers = [];
 
@@ -430,7 +427,6 @@ const extractIdentifiers = (record) => {
 
   return removeDuplicates(identifiers, 'content');
 };
-
 
 const extractExternalUrl = (record) => {
   if (record.europeanaAggregation?.edmLandingPage) {
