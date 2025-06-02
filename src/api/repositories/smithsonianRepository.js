@@ -55,7 +55,7 @@ export const getSmithsonianItemDetails = async (id, cancelToken = null) => {
  */
 export const searchSmithsonianItems = async (
   query,
-  start ,
+  start,
   rows,
   additionalParams = {}
 ) => {
@@ -63,16 +63,18 @@ export const searchSmithsonianItems = async (
     throw new Error("Search query is required");
   }
 
+  const params = {
+    q: query,
+    start,
+    rows,
+    online_media_type: "Images",
+    ...additionalParams,
+  };
+
+
   try {
     const response = await smithsonianAPI.get("/api/smithsonian/search", {
-      params: {
-        q: query,
-        start,
-        rows,
-        online_media_type: "Images",
-        "content.descriptiveNonRepeating.online_media.media.idsId": "*", // Only items with idsId
-        ...additionalParams,
-      },
+      params
     });
 
     return response.data;

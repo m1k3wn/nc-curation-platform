@@ -51,53 +51,9 @@ const safeLocalStorage = {
 
 const searchResultsManager = {
 
-  // storeResults(query, items, totalResults, source = "smithsonian") {
-  //   const normalizedQuery = normalizeQuery(query);
-  //   const cacheKey = getCacheKey(normalizedQuery, source);
-
-  //   const cacheData = {
-  //     items,
-  //     totalResults,
-  //     timestamp: Date.now(),
-  //     query: normalizedQuery,
-  //     source,
-  //   };
-
-  //   let success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-  //   if (!success) {
-  //     this.clearOldCaches();
-  //     success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-      
-  //     if (!success) {
-  //       this.clearAllCaches();
-  //       success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-        
-  //       if (!success) {
-  //         console.warn(`Failed to cache ${items.length} results for ${source} query: ${normalizedQuery} - continuing without cache`);
-  //       }
-  //     }
-  //   }
-  // },
-
-  // debug
-  // Update the storeResults function with detailed logging:
 storeResults(query, items, totalResults, source = "smithsonian") {
   const normalizedQuery = normalizeQuery(query);
   const cacheKey = getCacheKey(normalizedQuery, source);
-
-  // Log what we're caching
-  console.log(`🗄️ CACHING [${source}]:`, {
-    query: normalizedQuery,
-    itemCount: items.length,
-    totalResults,
-    sampleItem: items[0] ? {
-      id: items[0].id,
-      title: items[0].title?.substring(0, 50) + '...',
-      source: items[0].source,
-      hasMedia: !!items[0].media
-    } : 'No items',
-    estimatedSize: `${Math.round(JSON.stringify(items).length / 1024)}KB`
-  });
 
   const cacheData = {
     items,
