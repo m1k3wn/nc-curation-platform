@@ -1,26 +1,16 @@
-// src/components/search/SearchBar.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearch } from "../../context/SearchContext";
 
-/**
- * Reusable search bar component that navigates to search results
- *
- * @param {string} initialValue - Initial search term (optional)
- */
 export default function SearchBar({ initialValue = "" }) {
   const [inputValue, setInputValue] = useState(initialValue);
   const navigate = useNavigate();
   const { loading } = useSearch();
 
-  // Update input value when initialValue changes
   useEffect(() => {
     setInputValue(initialValue);
   }, [initialValue]);
 
-  /**
-   * Handle form submission
-   */
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmedValue = inputValue.trim();
@@ -39,10 +29,10 @@ export default function SearchBar({ initialValue = "" }) {
         <input
           id="search-input"
           type="text"
-          placeholder="Search museum collections..."
+          placeholder="Find something amazing..."
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          className="text-body w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
           disabled={loading}
           aria-label="Search term"
         />
@@ -53,7 +43,7 @@ export default function SearchBar({ initialValue = "" }) {
           className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${
             loading
               ? "bg-gray-300 cursor-not-allowed"
-              : "bg-black hover:bg-gray-800"
+              : "bg-black hover:bg-accent-primary"
           } text-white p-2 rounded-lg transition-colors`}
         >
           {loading ? (
@@ -62,6 +52,7 @@ export default function SearchBar({ initialValue = "" }) {
               aria-hidden="true"
             />
           ) : (
+            // SVG icon for search
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5"

@@ -1,48 +1,48 @@
+/* Font Imports */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom base styles */
 @layer base {
   html {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-      Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
-      sans-serif;
-    @apply text-gray-900 bg-white;
-  }
-
-  body {
-    @apply antialiased;
-  }
-
-  h1 {
-    @apply text-3xl font-bold mb-4;
-  }
-
-  h2 {
-    @apply text-2xl font-semibold mb-3;
-  }
-
-  h3 {
-    @apply text-xl font-medium mb-2;
-  }
-
-  p {
-    @apply mb-4;
-  }
-
-  a {
-    @apply text-black hover:text-gray-700 transition-colors;
-  }
-
-  button {
-    @apply px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors;
+    @apply font-body text-gray-900 bg-white antialiased;
   }
 }
 
-/* Custom utility classes */
-@layer utilities {
-  .container-narrow {
-    @apply max-w-3xl mx-auto px-4;
+@layer components {
+  .text-title {
+    @apply font-title text-4xl font-semibold text-main;
   }
+  
+  .text-subtitle {
+    @apply font-title text-2xl font-bold text-main;
+  }
+  
+  .text-body {
+    @apply font-body text-base text-gray-700 leading-relaxed;
+  }
+  
+  .text-modal {
+    @apply font-body text-sm text-gray-600;
+  }
+   .text-icon {
+    @apply font-title font-bold text-2xl text-main;
+  }
+  .nav-link {
+  @apply text-subtitle text-white  hover:text-accent-primary transition-colors duration-300;
+}
+  .btn-base {
+  @apply text-body font-medium px-6 py-2 rounded-md transition-colors duration-200;
+}
+  .btn-action {
+    @apply btn-base bg-accent-primary hover:bg-accent-secondary text-white font-medium;
+  }
+   .btn-black {
+    @apply btn-base bg-main hover:bg-mid text-white text-subtitle;
+  }
+  .icon-circle {
+  @apply w-10 h-10 bg-accent-primary rounded-full flex items-center justify-center hover:bg-white transition-colors duration-300;
+}
 }
