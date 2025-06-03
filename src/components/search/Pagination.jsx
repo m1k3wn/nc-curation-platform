@@ -101,12 +101,12 @@ function PaginationButton({
       onClick={onClick}
       disabled={disabled}
       className={`
-        px-3 py-1 rounded ${
+        px-3 py-1.5 rounded font-body text-sm transition-colors duration-200 ${
           active
-            ? "bg-blue-500 text-white"
+            ? "bg-accent-primary hover:bg-accent-secondary text-white"
             : disabled
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+            : "bg-main hover:bg-main/70 text-white"
         } ${className}
       `}
       {...props}

@@ -119,7 +119,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
       <div className="max-w-7xl mx-auto">
         <div className="lg:grid lg:grid-cols-2 lg:gap-16">
           {/* Image Section */}
-          <div className="lg:sticky lg:top-8 lg:h-fit">
+          <div className="lg:sticky lg:top-8 lg:h-fit mb-4">
             <div
               className="relative bg-gray-50 aspect-square cursor-pointer group"
               onClick={() => setShowFullImage(true)}
@@ -134,7 +134,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
 
               <img
                 src={displayImage}
-                // alt={item.title || "Item image"}
+                alt={item.title || "Item image"}
                 className={`w-full h-full object-contain ${
                   imageLoaded ? "opacity-100" : "opacity-0"
                 } transition-all duration-300 group-hover:scale-105`}
@@ -166,7 +166,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
           </div>
 
           {/* Details Section */}
-          <div className="lg:py-0 px-6 lg:px-0">
+          <div className="lg:py-0 px-2 lg:px-0">
             {isLoading && (
               <div className="absolute top-4 right-4">
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
@@ -175,8 +175,8 @@ export default function SingleItemCard({ item, isLoading, error }) {
 
             {/* Header */}
             <div className="mb-12">
-              <div className="flex justify-between items-start gap-6 mb-4">
-                <h1 className="text-2xl mt--10 lg:text-5xl font-light text-gray-900 leading-tight flex-1">
+              <div className="flex justify-between items-start gap-6 mb-8">
+                <h1 className="text-subtitle text-4xl">
                   {item.title || "Mystery Item"}
                 </h1>
                 <div className="flex-shrink-0">
@@ -184,7 +184,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {hasData(item.museum) && (
                   <p className="text-gray-600 font-medium">{item.museum}</p>
                 )}
@@ -205,12 +205,10 @@ export default function SingleItemCard({ item, isLoading, error }) {
               </div>
             </div>
 
-            {/* Creator Information - removed as now shown in header */}
-
             {/* Descriptions */}
             {hasData(item.descriptions) && (
-              <section className="mb-12">
-                <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
+              <section className="mb-10">
+                <h2 className="text-subtitle font-light text-gray-800 mb-4 pb-2 border-b border-gray-200">
                   Description
                 </h2>
                 {item.descriptions.map((description, index) => (
@@ -235,10 +233,10 @@ export default function SingleItemCard({ item, isLoading, error }) {
               </section>
             )}
 
+            {/* debug - not filtering correctly  */}
             {/* Notes */}
             {/* {hasData(item.notes) && (
               <section className="mb-12">
-        
                 {item.notes.map((note, index) => (
                   <div key={index} className="mb-6">
                     {note.conceptLabel && (
@@ -301,9 +299,6 @@ export default function SingleItemCard({ item, isLoading, error }) {
 
             {/* Identifiers */}
             <section className="mb-12">
-              {/* <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Identifiers
-              </h2> */}
               <div className="space-y-2">
                 {hasData(item.identifiers) &&
                   item.identifiers.map((identifier, index) => (
@@ -327,12 +322,12 @@ export default function SingleItemCard({ item, isLoading, error }) {
 
             {/* External Link */}
             {item.url && (
-              <div className="pt-8 border-t border-gray-200">
+              <div>
                 <a
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center px-6 py-3 bg-green-800 text-white font-medium rounded-none hover:bg-green-600 duration-200"
+                  className="inline-flex items-center btn-action"
                 >
                   View on {item.museum || "Original Site"}
                   <svg
