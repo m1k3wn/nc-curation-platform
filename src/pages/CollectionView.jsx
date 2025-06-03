@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useCollections } from "../context/CollectionsContext";
 import ItemCard from "../components/search/ItemCard";
 import RemoveFromCollectionButton from "../components/collections/RemoveFromCollectionButton";
+import EmptyCollectionCard from "../components/collections/EmptyCollectionCard";
+import CustomDropdown from "../components/common/CustomDropdown";
 
 export default function CollectionView() {
   const { collectionId } = useParams();
@@ -41,10 +43,10 @@ export default function CollectionView() {
           valueA = (a.title || "").toLowerCase();
           valueB = (b.title || "").toLowerCase();
           break;
-        case "datePublished":
-          valueA = a.datePublished || "";
-          valueB = b.datePublished || "";
-          break;
+        case "filterDate":
+          valueA = a.filterDate || 0;
+          valueB = b.filterDate || 0;
+          return direction === "asc" ? valueA - valueB : valueB - valueA;
         case "dateAdded":
         default:
           valueA = a.dateAdded || "";
@@ -52,11 +54,11 @@ export default function CollectionView() {
           break;
       }
 
-      if (direction === "asc") {
-        return valueA.localeCompare(valueB);
-      } else {
-        return valueB.localeCompare(valueA);
-      }
+      // if (direction === "asc") {
+      //   return valueA.localeCompare(valueB);
+      // } else {
+      //   return valueB.localeCompare(valueA);
+      // }
     });
   };
 
@@ -72,89 +74,30 @@ export default function CollectionView() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center py-12">
           <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
-          <span className="ml-2 text-gray-600">Loading collection...</span>
+          <span className="ml-2 text-title">Loading collection...</span>
         </div>
       </div>
     );
   }
 
-  // Get sorted items for display
   const sortedItems = getSortedItems();
 
   if (sortedItems.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center mb-6">
-          <button
-            className="mr-2 p-2 rounded-full hover:bg-gray-100"
-            onClick={() => navigate("/collections")}
-            aria-label="Back to collections"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-          <h1 className="text-2xl font-bold">{collection.name}</h1>
-
-          <button
-            className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-            onClick={() => openEditModal(collection)}
-            aria-label="Edit collection"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {collection.description && (
-          <p className="text-gray-600 mb-6 ml-9">{collection.description}</p>
-        )}
-
-        <div className="text-center py-12 bg-gray-50 rounded-md">
-          <p className="text-gray-500 mb-4">
-            This collection is empty. Search for items to add them to this
-            collection.
-          </p>
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            onClick={() => navigate("/")}
-          >
-            Search Items
-          </button>
-        </div>
-      </div>
-    );
+    return <EmptyCollectionCard collection={collection} />;
   }
+  const sortOptions = [
+    { value: "dateAdded-desc", label: "Recently Added" },
+    { value: "dateAdded-asc", label: "First Added" },
+    { value: "filterDate-desc", label: "Newest First" },
+    { value: "filterDate-asc", label: "Oldest First" },
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header section */}
       <div className="flex items-center mb-2">
         <button
-          className="mr-2 p-2 rounded-full hover:bg-gray-100"
+          className="icon-circle text-inverse hover:bg-accent-secondary hover:text-main mr-4"
           onClick={() => navigate("/collections")}
           aria-label="Back to collections"
         >
@@ -173,10 +116,10 @@ export default function CollectionView() {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold">{collection.name}</h1>
+        <h1 className="text-subtitle text-4xl font-bold">{collection.name}</h1>
 
         <button
-          className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+          className="icon-circle bg-main hover:bg-main/60 hover:text-inverse ml-4"
           onClick={() => openEditModal(collection)}
           aria-label="Edit collection"
         >
@@ -185,7 +128,7 @@ export default function CollectionView() {
             className="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
-            stroke="currentColor"
+            stroke="white"
           >
             <path
               strokeLinecap="round"
@@ -199,36 +142,37 @@ export default function CollectionView() {
 
       {/* Description */}
       {collection.description && (
-        <p className="text-gray-600 mb-4 ml-9">{collection.description}</p>
+        <p className="text-body text-lg mb-2 ml-9">{collection.description}</p>
       )}
 
       {/* Collection metadata */}
-      <div className="flex text-sm text-gray-500 mb-6 ml-9">
+      <div className="flex text-sm text-gray-500 mb-4 ml-9">
         <span>{collection.items.length} items</span>
         <span className="mx-2">•</span>
         <span>Last updated: {formatDate(collection.dateModified)}</span>
       </div>
 
       {/* Toolbar */}
-      <div className="flex justify-between items-center mb-6 bg-gray-50 p-3 rounded-md">
+      <div className="flex justify-between items-center mb-6 bg-main p-3 rounded-md">
         {/* Sort dropdown */}
         <div className="flex items-center">
-          <label htmlFor="sort-select" className="mr-2 text-sm">
+          <label
+            htmlFor="sort-select"
+            className="mr-4 ml-2 text-subtitle text-m text-inverse"
+          >
             Sort by:
           </label>
-          <select
-            id="sort-select"
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-            className="border border-gray-300 rounded p-1 text-sm"
-          >
-            <option value="dateAdded-desc">Recently Added</option>
-            <option value="dateAdded-asc">Oldest First</option>
-            <option value="title-asc">Title A-Z</option>
-            <option value="title-desc">Title Z-A</option>
-            <option value="datePublished-desc">Newest (Published)</option>
-            <option value="datePublished-asc">Oldest (Published)</option>
-          </select>
+          <div className="w-48">
+            <CustomDropdown
+              options={sortOptions}
+              value={sortOption}
+              onChange={(newValue) => {
+                console.log("Dropdown changed to:", newValue);
+                setSortOption(newValue);
+              }}
+              placeholder="Sort by..."
+            />
+          </div>
         </div>
       </div>
 

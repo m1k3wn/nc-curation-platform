@@ -238,16 +238,15 @@ export function CollectionsProvider({ children }) {
           title: item.title,
           description: item.description,
           media: {
-            // Avoid circular references by only including necessary fields
             thumbnail: item.media?.thumbnail,
             primaryImage: item.media?.primaryImage,
             fullImage: item.media?.fullImage,
           },
-          // thumbnailUrl: item.thumbnailUrl,
-          // imageUrl: item.imageUrl,
           museum: item.museum,
           source: item.source,
           dateCreated: item.dateCreated,
+          filterDate: item.filterDate,
+          century: item.century,
           url: item.url,
           dateAdded: new Date().toISOString(),
         };
