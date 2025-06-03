@@ -7,7 +7,7 @@ export default function EmptyCollectionsList() {
       <p className="text-body text-gray-500 mb-4">
         You haven't created any collections yet.
       </p>
-      <button className="btn-action" onClick={openCreateModal}>
+      <button className="btn-action" onClick={() => openCreateModal(null)}>
         Create Your First Collection
       </button>
     </div>
