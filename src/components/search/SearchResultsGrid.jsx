@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ItemCard from "./ItemCard";
 import Pagination from "./Pagination";
 import { useSearch } from "../../context/SearchContext";
+import MasonryGrid from "../layout/MasonryGrid";
 
 const CacheIndicator = ({ itemCount, onRefresh }) => (
   <div className="flex justify-between items-center mb-3 py-1 px-2 bg-accent-primary rounded">
@@ -60,17 +61,11 @@ export default function SearchResultsGrid({ results = [] }) {
       </div>
 
       {/* Results Grid */}
-      <div
-        className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0"
-        role="list"
-        aria-label="Search results"
-      >
-        {paginatedResults.map((item) => (
-          <div key={item.id} role="listitem">
-            <ItemCard item={item} />
-          </div>
-        ))}
-      </div>
+      <MasonryGrid
+        items={paginatedResults}
+        renderItem={(item) => <ItemCard item={item} />}
+        minItemWidth={250}
+      />
 
       {/* Pagination */}
       {totalFilteredPages > 1 && (
