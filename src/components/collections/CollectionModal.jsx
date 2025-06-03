@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { useCollections } from "../../context/CollectionsContext";
 
 /**
- * Modal for creating/editing collections
- *
  * @param {Object} collection - The collection to edit (null for create)
  * @param {Function} onClose - Function to call when closing the modal
  * @param {boolean} isOpen - Whether the modal is open
@@ -22,7 +20,6 @@ export default function CollectionModal({
 
   const { createCollection, updateCollection, pendingItem } = useCollections();
 
-  // Reset form when collection changes
   useEffect(() => {
     if (collection) {
       setName(collection.name);
@@ -32,11 +29,9 @@ export default function CollectionModal({
       setDescription("");
     }
 
-    // Clear any existing feedback when modal opens/closes
     setFeedback({ show: false, message: "" });
   }, [collection, isOpen]);
 
-  // Clear feedback after timeout
   useEffect(() => {
     if (feedback.show) {
       const timer = setTimeout(() => {
@@ -117,12 +112,12 @@ export default function CollectionModal({
         className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold">
+        <div className="flex justify-between items-center p-4 border-b bg-main rounded-t-lg">
+          <h2 className="text-subtitle text-inverse">
             {isEditing ? "Edit Collection" : "Create New Collection"}
           </h2>
           <button
-            className="text-gray-400 hover:text-gray-600"
+            className="text-inverse hover:text-accent-primary transition-colors"
             onClick={onClose}
             aria-label="Close"
           >
@@ -145,10 +140,10 @@ export default function CollectionModal({
 
         {/* Success feedback */}
         {feedback.show && (
-          <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+          <div className="mx-4 mt-4 p-3 bg-accent-secondary rounded-md">
             <div className="flex items-center">
               <svg
-                className="h-4 w-4 text-green-400 mr-2"
+                className="h-4 w-4 text-inverse mr-2"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -160,7 +155,7 @@ export default function CollectionModal({
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              <span className="text-green-800 text-sm">{feedback.message}</span>
+              <span className="text-inverse text-sm">{feedback.message}</span>
             </div>
           </div>
         )}
@@ -174,7 +169,7 @@ export default function CollectionModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-secondary"
               required
               autoFocus
               disabled={feedback.show}
@@ -188,7 +183,7 @@ export default function CollectionModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-secondary"
               rows="3"
               disabled={feedback.show}
             />
@@ -196,13 +191,13 @@ export default function CollectionModal({
 
           {/* Show item being added (if any) */}
           {!isEditing && pendingItem && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-center text-sm text-blue-800">
+            <div className="mb-4 p-3 bg-main border rounded-md">
+              <div className="flex items-center text-sm">
                 <svg
                   className="h-4 w-4 mr-2"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
+                  stroke="text-inverse"
                 >
                   <path
                     strokeLinecap="round"
@@ -211,7 +206,7 @@ export default function CollectionModal({
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span>
+                <span className="text-inverse">
                   "{pendingItem.title || "Item"}" will be added to this
                   collection
                 </span>
@@ -222,7 +217,7 @@ export default function CollectionModal({
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50"
+              className="btn-black disabled:opacity-50"
               onClick={onClose}
               disabled={feedback.show}
             >
@@ -230,12 +225,12 @@ export default function CollectionModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="btn-action disabled:opacity-50"
               disabled={!name.trim() || feedback.show}
             >
               {feedback.show ? (
                 <div className="flex items-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <div className="w-4 h-4 bg-accent-secondary rounded-full animate-spin mr-2"></div>
                   {isEditing ? "Saving..." : "Creating..."}
                 </div>
               ) : isEditing ? (

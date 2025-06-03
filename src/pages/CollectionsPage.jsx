@@ -1,5 +1,5 @@
 import { useCollections } from "../context/CollectionsContext";
-import { AuthProvider, useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import CollectionCard from "../components/collections/CollectionCard";
 import EmptyCollectionsList from "../components/collections/EmptyCollectionsList";
 
@@ -7,15 +7,14 @@ export default function CollectionsPage() {
   const { collections, loading, error, openCreateModal } = useCollections();
   const { currentUser } = useAuth();
 
+  // debug
   console.log("Current User:", currentUser);
 
   // Loading state
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">
-          {currentUser.username} Collections
-        </h1>
+        <h1 className="text-title">{currentUser.username} Collections</h1>
         <div className="flex justify-center items-center py-12">
           <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"></div>
           <span className="ml-2 text-gray-600">Loading collections...</span>
@@ -39,13 +38,8 @@ export default function CollectionsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">
-          {currentUser.username}'s Collections
-        </h1>
-        <button
-          className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-600"
-          onClick={openCreateModal}
-        >
+        <h1 className="text-title">{currentUser.username}'s Collections</h1>
+        <button className="btn-action" onClick={() => openCreateModal(null)}>
           + New Collection
         </button>
       </div>
