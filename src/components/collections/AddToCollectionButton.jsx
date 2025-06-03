@@ -122,49 +122,38 @@ export default function AddToCollectionButton({ item }) {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-lg font-semibold">Add to Collection</h2>
+            <div className="flex justify-between items-center p-4 border-inverse bg-main rounded-t-lg">
+              <h2 className="text-subtitle text-inverse">Add to Collection</h2>
               <button
-                className="text-gray-400 hover:text-gray-600"
+                className="btn-action text-xl"
                 onClick={handleCloseModal}
                 aria-label="Close"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                X
               </button>
             </div>
 
             {/* Collections list */}
-            <div className="max-h-64 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto border-t">
               {collections.length > 0 ? (
                 collections.map((collection) => (
                   <div
                     key={collection.id}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-100 flex items-center justify-between border-b border-gray-100 last:border-b-0"
+                    className={
+                      itemExistsInCollection(collection.id, item.id)
+                        ? "menu-item-added"
+                        : "menu-item"
+                    }
                   >
                     {itemExistsInCollection(collection.id, item.id) ? (
                       <>
-                        <span className="truncate text-gray-600">
+                        <span className="truncate menu-text">
                           {collection.name}
                         </span>
-                        <div className="flex items-center">
-                          <span className="text-green-600 text-sm mr-3">
-                            ✓ Added
-                          </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-inverse text-sm">✓ Added</span>
                           <button
-                            className="text-blue-600 text-sm hover:underline mr-2"
+                            className="menu-action-view"
                             onClick={(e) =>
                               handleViewCollection(e, collection.id)
                             }
@@ -172,7 +161,7 @@ export default function AddToCollectionButton({ item }) {
                             View
                           </button>
                           <button
-                            className="text-red-600 text-sm hover:underline"
+                            className="menu-action-remove"
                             onClick={(e) =>
                               handleCollectionAction(
                                 e,
@@ -187,7 +176,7 @@ export default function AddToCollectionButton({ item }) {
                       </>
                     ) : (
                       <button
-                        className="w-full text-left flex items-center justify-between"
+                        className="menu-item-button"
                         onClick={(e) =>
                           handleCollectionAction(
                             e,
@@ -196,25 +185,23 @@ export default function AddToCollectionButton({ item }) {
                           )
                         }
                       >
-                        <span className="truncate">{collection.name}</span>
-                        <span className="text-gray-400 text-sm ml-2">
-                          Add →
+                        <span className="truncate menu-text">
+                          {collection.name}
                         </span>
+                        <span className="menu-add-text">Add →</span>
                       </button>
                     )}
                   </div>
                 ))
               ) : (
-                <div className="px-4 py-6 text-center text-gray-500">
-                  No collections yet
-                </div>
+                <div className="menu-empty">No collections yet</div>
               )}
             </div>
 
             {/* Create new collection button */}
             <div className="border-t p-4">
               <button
-                className="w-full text-left px-3 py-2 text-blue-600 hover:bg-blue-50 rounded flex items-center justify-center"
+                className="btn-action w-full flex items-center justify-center"
                 onClick={handleCreateCollectionClick}
               >
                 <svg
