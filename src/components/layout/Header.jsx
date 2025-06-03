@@ -5,26 +5,24 @@ export default function Header() {
   const { currentUser, isAuthenticated, logout } = useAuth();
 
   return (
-    <header className="bg-black border-b border-gray-200 py-4">
+    <header className="bg-main border-b py-3">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
-          {/* Logo placeholder*/}
-          <div className="font-bold text-xl">
-            <Link to="/" className="text-white hover:text-green-600">
-              CURA
-            </Link>
+          {/* Logo */}
+          <div className="text-title text-accent-primary hover:text-inverse transition-colors duration-300">
+            <Link to="/">CURA</Link>
           </div>
 
           {/* Navigation */}
           <nav>
             <ul className="flex space-x-6 ">
               <li>
-                <Link to="/" className="text-white hover:text-green-600 ">
+                <Link to="/" className="nav-link">
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="text-white hover:text-green-600 ">
+                <Link to="/about" className="nav-link">
                   About
                 </Link>
               </li>
@@ -36,24 +34,21 @@ export default function Header() {
             {isAuthenticated ? (
               <>
                 {/* Collections icon */}
-                <Link
-                  to="/collections"
-                  className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center hover:bg-white transition-colors"
-                >
-                  <span className="font-bold">C</span>
+                <Link to="/collections" className="icon-circle ">
+                  <span className="text-icon">C</span>
                 </Link>
 
                 {/* User account icon */}
                 <Link
                   to={`/user/${currentUser.username}`}
-                  className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                  className="icon-circle"
                 >
-                  <span className="font-bold">U</span>
+                  <span className="text-icon">U</span>
                 </Link>
               </>
             ) : (
               <button
-                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
+                className="btn-action"
                 onClick={() => alert("Sign in functionality would open here")}
               >
                 Sign In
