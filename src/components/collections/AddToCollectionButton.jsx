@@ -93,7 +93,7 @@ export default function AddToCollectionButton({ item }) {
     <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
       {/* Add to collection button */}
       <button
-        className="p-3 bg-green-800 hover:bg-green-600 rounded-full hover:bg-gray-100 text-white"
+        className="p-3 bg-accent-primary hover:bg-accent-secondary rounded-full text-white"
         onClick={handleOpenModal}
         aria-label="Add to collection"
         title="Add to collection"

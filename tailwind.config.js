@@ -13,7 +13,8 @@ export default {
         }
       },
       fontFamily: {
-        'title': ['Crimson Text', 'serif'],
+        'hero': ['Crimson Text', 'serif'],
+        'title': ['Fjalla One', 'sans-serif'],
         'body': ['Inter', 'system-ui', 'sans-serif'],
       }
     },

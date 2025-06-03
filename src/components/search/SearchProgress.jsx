@@ -4,11 +4,11 @@ import loadSpinnerGreen from "../../assets/load-spinner-green.lottie";
 export default function SearchProgress({ progress }) {
   if (!progress) return null;
 
-  const message = progress?.message || "Searching...";
+  const message = progress?.message || "Digging into the archives...";
 
   return (
     <div
-      className="bg-blue-50 p-6 rounded-lg mb-6 text-center"
+      className="bg-inverse p-6 rounded-lg mb-6 text-center"
       role="status"
       aria-live="polite"
     >
@@ -18,12 +18,12 @@ export default function SearchProgress({ progress }) {
           src={loadSpinnerGreen}
           loop
           autoplay
-          className="w-32 h-32"
+          className="w-44 h-44"
         />
       </div>
 
       {/* Simple message */}
-      <div className="text-blue-800 font-medium text-lg">{message}</div>
+      <div className="text-subtitle font-medium text-xl">{message}</div>
     </div>
   );
 }

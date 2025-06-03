@@ -17,8 +17,8 @@ export default function FilterMenu({ filters, onFiltersChange, resultCounts }) {
   };
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-      <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+    <div className="bg-main border rounded-lg p-4 mb-4">
+      <div className="flex flex-col gap-1">
         {/* Sort Controls */}
         <div className="flex-shrink-0">
           <DateSort
