@@ -23,7 +23,6 @@ export default function CollectionView() {
         setCollection(foundCollection);
         setActiveCollection(foundCollection);
       } else {
-        // Collection not found fallback
         navigate("/collections");
       }
     }
@@ -53,12 +52,6 @@ export default function CollectionView() {
           valueB = b.dateAdded || "";
           break;
       }
-
-      // if (direction === "asc") {
-      //   return valueA.localeCompare(valueB);
-      // } else {
-      //   return valueB.localeCompare(valueA);
-      // }
     });
   };
 
@@ -68,7 +61,6 @@ export default function CollectionView() {
     return date.toLocaleDateString();
   };
 
-  // Loading state
   if (loading || !collection) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -95,31 +87,53 @@ export default function CollectionView() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header section */}
-      <div className="flex items-center mb-2">
-        <button
-          className="icon-circle text-inverse hover:bg-accent-secondary hover:text-main mr-4"
-          onClick={() => navigate("/collections")}
-          aria-label="Back to collections"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+      <div className="flex items-start justify-between mb-6">
+        {/* Left side - Back button and title info */}
+        <div className="flex items-start">
+          <button
+            className="icon-circle text-inverse hover:bg-accent-secondary hover:text-main mr-4 mt-1"
+            onClick={() => navigate("/collections")}
+            aria-label="Back to collections"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </button>
-        <h1 className="text-subtitle text-4xl font-bold">{collection.name}</h1>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
 
+          <div className="flex items-center gap-6">
+            <h1 className="text-subtitle text-4xl font-bold">
+              {collection.name}
+            </h1>
+
+            <div className="flex flex-col">
+              {collection.description && (
+                <p className="text-body text-gray-600 mb-1">
+                  {collection.description}
+                </p>
+              )}
+              <div className="flex text-sm text-gray-500">
+                <span>{collection.items.length} items</span>
+                <span className="mx-2">•</span>
+                <span>Last updated: {formatDate(collection.dateModified)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Edit button */}
         <button
-          className="icon-circle bg-main hover:bg-main/60 hover:text-inverse ml-4"
+          className="icon-circle bg-main hover:bg-main/60 hover:text-inverse mt-1"
           onClick={() => openEditModal(collection)}
           aria-label="Edit collection"
         >
@@ -139,19 +153,6 @@ export default function CollectionView() {
           </svg>
         </button>
       </div>
-
-      {/* Description */}
-      {collection.description && (
-        <p className="text-body text-lg mb-2 ml-9">{collection.description}</p>
-      )}
-
-      {/* Collection metadata */}
-      <div className="flex text-sm text-gray-500 mb-4 ml-9">
-        <span>{collection.items.length} items</span>
-        <span className="mx-2">•</span>
-        <span>Last updated: {formatDate(collection.dateModified)}</span>
-      </div>
-
       {/* Toolbar */}
       <div className="flex justify-between items-center mb-6 bg-main p-3 rounded-md">
         {/* Sort dropdown */}
@@ -167,7 +168,6 @@ export default function CollectionView() {
               options={sortOptions}
               value={sortOption}
               onChange={(newValue) => {
-                console.log("Dropdown changed to:", newValue);
                 setSortOption(newValue);
               }}
               placeholder="Sort by..."

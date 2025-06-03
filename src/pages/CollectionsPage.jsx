@@ -7,9 +7,6 @@ export default function CollectionsPage() {
   const { collections, loading, error, openCreateModal } = useCollections();
   const { currentUser } = useAuth();
 
-  // debug
-  console.log("Current User:", currentUser);
-
   // Loading state
   if (loading) {
     return (
