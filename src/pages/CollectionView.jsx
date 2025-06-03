@@ -5,6 +5,7 @@ import ItemCard from "../components/search/ItemCard";
 import RemoveFromCollectionButton from "../components/collections/RemoveFromCollectionButton";
 import EmptyCollectionCard from "../components/collections/EmptyCollectionCard";
 import CustomDropdown from "../components/common/CustomDropdown";
+import MasonryGrid from "../components/layout/MasonryGrid";
 
 export default function CollectionView() {
   const { collectionId } = useParams();
@@ -177,21 +178,21 @@ export default function CollectionView() {
       </div>
 
       {/* Items Grid */}
-      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-0">
-        {sortedItems.map((item) => (
-          <div key={item.id} role="listitem">
-            <ItemCard
-              item={item}
-              actionButtons={
-                <RemoveFromCollectionButton
-                  item={item}
-                  collectionId={collectionId}
-                />
-              }
-            />
-          </div>
-        ))}
-      </div>
+      <MasonryGrid
+        items={sortedItems}
+        renderItem={(item) => (
+          <ItemCard
+            item={item}
+            actionButtons={
+              <RemoveFromCollectionButton
+                item={item}
+                collectionId={collectionId}
+              />
+            }
+          />
+        )}
+        minItemWidth={250}
+      />
     </div>
   );
 }
