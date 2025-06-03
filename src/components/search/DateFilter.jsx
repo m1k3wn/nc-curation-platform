@@ -1,7 +1,6 @@
 import { getCenturyLabel } from "../../utils/dateUtils";
 
 /**
- * Date filtering for search results
  * @param {string} selectedCentury - Currently selected century filter
  * @param {function} onCenturyChange - Callback when century selection changes
  * @param {object} resultCounts - Count of results for each century
@@ -39,10 +38,10 @@ export default function DateFilter({
   ];
 
   return (
-    <div className="mb-4">
+    <div className="mb-0">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-gray-700 mr-2">
-          Filter by period:
+        <span className="text-subtitle text-xl text-inverse mr-2">
+          Filter by:
         </span>
 
         {centuries.map((century) => {
@@ -55,10 +54,10 @@ export default function DateFilter({
             <button
               key={century}
               onClick={() => onCenturyChange(century)}
-              className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+              className={`px-2 py-1 text-sm rounded-full transition-colors ${
                 isActive
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-accent-primary text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-300"
               }`}
             >
               {getCenturyLabel(century)} ({count})

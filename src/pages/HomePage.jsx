@@ -24,10 +24,9 @@ export default function HomePage() {
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-4 mt-0">
-          <h1 className="text-title text-5xl">Search The Collection</h1>
+          <h1 className="text-title text-5xl mb-2 ">Search the Archives</h1>
           <p className="text-body text-xl max-w-xl mx-auto">
-            Explore highlights from over 900 museums and archives around the
-            world
+            Explore over -900- international museums and collections
           </p>
         </div>
 

@@ -4,13 +4,13 @@ import Pagination from "./Pagination";
 import { useSearch } from "../../context/SearchContext";
 
 const CacheIndicator = ({ itemCount, onRefresh }) => (
-  <div className="flex justify-between items-center mb-4 p-2 bg-blue-50 rounded">
-    <span className="text-blue-800">
+  <div className="flex justify-between items-center mb-3 py-1 px-2 bg-accent-primary rounded">
+    <span className="text-body text-inverse">
       Showing cached results ({itemCount} {itemCount === 1 ? "item" : "items"})
     </span>
     <button
       onClick={onRefresh}
-      className="px-4 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-sm"
+      className="btn-base text-sm text-inverse py-1 px-3 bg-main hover:bg-inverse hover:text-main"
       aria-label="Refresh search results"
     >
       Refresh

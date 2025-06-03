@@ -1,5 +1,7 @@
 /* Font Imports */
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Inter:wght@400;500;600&display=swap'); */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Inter:wght@400;500;600&family=Fjalla+One&display=swap');
+
 
 @tailwind base;
 @tailwind components;
@@ -12,8 +14,9 @@
 }
 
 @layer components {
+  /* Text */
   .text-title {
-    @apply font-title text-4xl font-semibold text-main;
+    @apply font-hero text-4xl font-semibold text-main;
   }
   
   .text-subtitle {
@@ -30,11 +33,12 @@
    .text-icon {
     @apply font-title font-bold text-2xl text-main;
   }
+  /* Buttons / icons */
   .nav-link {
-  @apply text-subtitle text-white  hover:text-accent-primary transition-colors duration-300;
+  @apply text-subtitle text-xl text-white  hover:text-accent-primary transition-colors duration-300;
 }
   .btn-base {
-  @apply text-body font-medium px-6 py-2 rounded-md transition-colors duration-200;
+  @apply text-body font-medium px-6 py-2 rounded-md transition-colors duration-300;
 }
   .btn-action {
     @apply btn-base bg-accent-primary hover:bg-accent-secondary text-white font-medium;
@@ -45,4 +49,29 @@
   .icon-circle {
   @apply w-10 h-10 bg-accent-primary rounded-full flex items-center justify-center hover:bg-white transition-colors duration-300;
 }
+/* Custom Dropdown */
+     .dropdown-button {
+    @apply w-full px-2 py-1.5 text-sm font-body border border-gray-300 rounded-md bg-white text-gray-700 
+           focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary 
+           transition-colors duration-200 cursor-pointer hover:border-gray-400
+           flex items-center justify-between;
+  }
+  
+  .dropdown-arrow {
+    @apply w-4 h-4 text-gray-400 transition-transform duration-200;
+  }
+  
+  .dropdown-menu {
+    @apply absolute top-full left-0 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg z-10
+           max-h-60 overflow-auto;
+  }
+  
+  .dropdown-option {
+    @apply w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-accent-primary hover:text-white 
+           transition-colors duration-150 cursor-pointer;
+  }
+  
+  .dropdown-option-selected {
+    @apply bg-accent-secondary text-white;
+  }
 }

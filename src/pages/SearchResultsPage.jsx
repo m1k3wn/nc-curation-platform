@@ -21,10 +21,10 @@ const ErrorMessage = ({ message }) => (
 
 const EmptyResults = () => (
   <div className="text-center py-16" role="status" aria-live="polite">
-    <p className="text-gray-500 text-lg">No results with images found</p>
-    <p className="text-gray-400">
-      Try adjusting your search terms or browse another category
+    <p className="text-body text-gray-500 text-lg">
+      No results with images found
     </p>
+    <p className="text-gray-400">Try adjusting your search terms</p>
   </div>
 );
 
@@ -161,7 +161,7 @@ export default function SearchResultsPage() {
 
   const getResultsMessage = () => {
     if (loading) {
-      return "Searching...";
+      return "";
     }
 
     if (totalResults === 0) {
@@ -176,7 +176,7 @@ export default function SearchResultsPage() {
 
     return `Found ${itemsWithImages.toLocaleString()} ${
       itemsWithImages === 1 ? "item" : "items"
-    } with images (from ${totalResults.toLocaleString()} total results)`;
+    } with images (from ${totalResults.toLocaleString()} total archive items)`;
   };
 
   return (
@@ -190,11 +190,11 @@ export default function SearchResultsPage() {
 
           {/* Header */}
           {queryParam && (
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold mb-2">
-                Results for "{queryParam}"
+            <div className="mb-4">
+              <h1 className="text-subtitle font-bold mb-0">
+                You searched for "{queryParam}"
               </h1>
-              <p className="text-gray-600" aria-live="polite">
+              <p className="text-body" aria-live="polite">
                 {getResultsMessage()}
               </p>
             </div>
