@@ -49,6 +49,47 @@
   .icon-circle {
   @apply w-10 h-10 bg-accent-primary rounded-full flex items-center justify-center hover:bg-white transition-colors duration-300;
 }
+/* Menus */
+.menu-text {
+  @apply font-title text-lg font-medium;
+}
+.menu-add-text {
+  @apply text-gray-400 text-sm ml-2 transition-colors duration-200 hover:text-inverse;
+}
+.menu-item:hover {
+  @apply text-accent-secondary;
+}
+  .menu-item {
+    @apply px-4 py-3 hover:bg-accent-primary hover:text-white
+           transition-colors duration-200 flex items-center justify-between;
+  }
+  .menu-item:last-child {
+    @apply border-b-0;
+  }
+  
+  .menu-item-added {
+    @apply menu-item bg-accent-secondary text-inverse;
+  }
+  
+  .menu-item-button {
+   @apply w-full text-left;
+  }
+  
+  .menu-action-btn {
+    @apply text-sm hover:underline transition-colors duration-200;
+  }
+  
+  .menu-action-view {
+    @apply menu-action-btn text-main hover:text-main/60;
+  }
+  
+  .menu-action-remove {
+    @apply menu-action-btn text-red-800 hover:text-red-600;
+  }
+  
+  .menu-empty {
+    @apply px-4 py-6 text-center text-gray-500 text-body;
+  }
 /* Custom Dropdown */
      .dropdown-button {
     @apply w-full px-2 py-1.5 text-sm font-body border border-gray-300 rounded-md bg-white text-gray-700 
