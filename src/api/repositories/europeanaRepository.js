@@ -117,39 +117,74 @@ export const europeanaRepository = {
    * @returns {Promise<Object>} - API response
    */
   async getRecord(recordId, options = {}) {
-    const { profile = europeanaConfig.defaultProfile || "rich" } = options;
+  const { profile = europeanaConfig.defaultProfile || "rich" } = options;
 
-    const cleanedId = recordId.startsWith("/")
-      ? recordId.substring(1)
-      : recordId;
+  const cleanedId = recordId.startsWith("/")
+    ? recordId.substring(1)
+    : recordId;
 
-    const url = new URL(`${EUROPEANA_API_BASE}/record/v2/${cleanedId}.json`);
+  const url = new URL(`${EUROPEANA_API_BASE}/record/v2/${cleanedId}.json`);
 
-    const params = {
-      wskey: import.meta.env.VITE_EUROPEANA_API_KEY,
-      profile,
-    };
+  const params = {
+    wskey: import.meta.env.VITE_EUROPEANA_API_KEY,
+    profile,
+  };
 
-    url.search = new URLSearchParams(params).toString();
+  url.search = new URLSearchParams(params).toString();
 
-    try {
-      const response = await fetch(url, {
-        timeout: europeanaConfig.requestTimeout,
-      });
+  try {
+    const response = await fetch(url, {
+      timeout: europeanaConfig.requestTimeout,
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log("Record Error Response:", errorText);
-        throw new Error(
-          `HTTP error! status: ${response.status}, body: ${errorText}`
-        );
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Europeana record error:", error);
-      throw error;
+    // Handle 504 Gateway Timeout and other server errors gracefully
+    if (!response.ok) {
+      console.warn(`Europeana record ${recordId} failed with status ${response.status} (${response.statusText})`);
+      return null;
     }
-  },
-};
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.warn(`Europeana record ${recordId} failed:`, error.message);
+    return null;
+  }
+}
+}
+//   async getRecord(recordId, options = {}) {
+//     const { profile = europeanaConfig.defaultProfile || "rich" } = options;
+
+//     const cleanedId = recordId.startsWith("/")
+//       ? recordId.substring(1)
+//       : recordId;
+
+//     const url = new URL(`${EUROPEANA_API_BASE}/record/v2/${cleanedId}.json`);
+
+//     const params = {
+//       wskey: import.meta.env.VITE_EUROPEANA_API_KEY,
+//       profile,
+//     };
+
+//     url.search = new URLSearchParams(params).toString();
+
+//     try {
+//       const response = await fetch(url, {
+//         timeout: europeanaConfig.requestTimeout,
+//       });
+
+//       if (!response.ok) {
+//         const errorText = await response.text();
+//         console.log("Record Error Response:", errorText);
+//         throw new Error(
+//           `HTTP error! status: ${response.status}, body: ${errorText}`
+//         );
+//       }
+
+//       const data = await response.json();
+//       return data;
+//     } catch (error) {
+//       console.error("Europeana record error:", error);
+//       throw error;
+//     }
+//   },
+// };

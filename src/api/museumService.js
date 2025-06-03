@@ -208,6 +208,9 @@ async function getEuropeanaItemDetails(id, cancelToken = null) {
   const rawData = await europeanaRepository.getRecord(id, {
     profile: "rich",
   });
+    if (!rawData) {
+    return null;
+  }
   const adaptedData = adaptEuropeanaItemDetails(rawData);
   // Debugging - raw response 
   adaptedData.rawData = rawData;

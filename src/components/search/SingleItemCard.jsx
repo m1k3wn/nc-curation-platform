@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
 import BrokenImage from "../common/BrokenImage";
+import RecordUnavailable from "../common/RecordUnavailable";
 
 /**
  * @param {Object} item - The item data (unified format)
@@ -13,6 +14,8 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const [showFullImage, setShowFullImage] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [imageTimeout, setImageTimeout] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  // debug
   const [showDebug, setShowDebug] = useState(false);
 
   const isDev =
@@ -21,33 +24,42 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const defaultImage =
     "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
 
-  if (!item) {
+  // loading timeout
+  useEffect(() => {
+    if (isLoading && !item) {
+      const timeoutId = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 7000); // 7 second timeout
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [isLoading, item]);
+
+  // Loading state (only show while actively loading)
+  if (!item && isLoading && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading item details...</p>
         </div>
       </div>
     );
   }
 
+  // Error states - use RecordUnavailable component
+  if (!item && loadingTimeout) {
+    return <RecordUnavailable type="timeout" />;
+  }
+
   if (!item && error) {
-    return (
-      <div
-        className="min-h-screen bg-white flex items-center justify-center"
-        role="alert"
-      >
-        <div className="text-center max-w-md">
-          <div className="text-4xl mb-4">❌</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Error Loading Item
-          </h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <p className="text-sm text-gray-500">Please try again later</p>
-        </div>
-      </div>
-    );
+    return <RecordUnavailable type="error" error={error} />;
+  }
+
+  if (!item) {
+    return <RecordUnavailable type="not-found" />;
   }
 
   const displayImage =

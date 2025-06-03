@@ -45,18 +45,18 @@ export default function ItemPage() {
       </button>
 
       {/* Error message */}
-      {itemError && (
+      {/* {itemError && (
         <div
           className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
           role="alert"
         >
           <p className="font-medium">Error loading item</p>
           <p>{itemError}</p>
-        </div>
-      )}
+        </div>git status
+      )} */}
 
       {/* Loading state */}
-      {itemLoading && !currentItem && (
+      {/* {itemLoading && !currentItem && (
         <div
           className="flex justify-center items-center p-12"
           aria-live="polite"
@@ -68,7 +68,7 @@ export default function ItemPage() {
             <span className="sr-only">Loading...</span>
           </div>
         </div>
-      )}
+      )} */}
 
       {currentItem && (
         <SingleItemCard

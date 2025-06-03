@@ -16,10 +16,23 @@ export default function ItemCard({ item, actionButtons }) {
   };
 
   const defaultImage =
-    "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
+    "https://via.placeholder.com/400x300/f3f4f6/6b7280?text=Image+Unavailable";
 
-  const imgSrc =
-    item.media?.thumbnail || item.media?.primaryImage || defaultImage;
+  // Try thumbnail first, then primary image, then default
+  const primaryImageSrc = item.media?.thumbnail || item.media?.primaryImage;
+
+  // Show default image if error occurred, otherwise show the primary image or default
+  const imgSrc = imageError ? defaultImage : primaryImageSrc || defaultImage;
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true); // Stop showing spinner
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false); // Reset error state on successful load
+  };
 
   return (
     <div className="break-inside-avoid mb-4">
@@ -53,21 +66,9 @@ export default function ItemCard({ item, actionButtons }) {
             className={`w-full h-auto max-h-96 object-cover transition-opacity duration-500 ease-in ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => {
-              setImageError(true);
-              if (imgSrc !== defaultImage) {
-                setImageLoaded(true);
-              }
-            }}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
-
-          {/* Display error */}
-          {imageError && imgSrc !== defaultImage && (
-            <div className="absolute inset-0 flex items-center justify-center min-h-32">
-              <span className="text-sm text-gray-500">Image unavailable</span>
-            </div>
-          )}
 
           {/* Hover Overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out">
