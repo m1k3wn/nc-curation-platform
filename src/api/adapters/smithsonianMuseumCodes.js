@@ -32,17 +32,17 @@ export const SMITHSONIAN_MUSEUMS = {
   SIL: "Smithsonian Libraries",
 
   // NMNH Departmental Collections
-  NMNHANTHRO: "NMNH - Anthropology Dept.",
-  NMNHBIRDS: "NMNH - Vertebrate Zoology - Birds Division",
-  NMNHBOTANY: "NMNH - Botany Dept.",
-  NMNHEDUCATION: "NMNH - Education & Outreach",
-  NMNHENTO: "NMNH - Entomology Dept.",
-  NMNHFISHES: "NMNH - Vertebrate Zoology - Fishes Division",
-  NMNHHERPS: "NMNH - Vertebrate Zoology - Herpetology Division",
-  NMNHINV: "NMNH - Invertebrate Zoology Dept.",
-  NMNHMAMMALS: "NMNH - Vertebrate Zoology - Mammals Division",
-  NMNHMINSCI: "NMNH - Mineral Sciences Dept.",
-  NMNHPALEO: "NMNH - Paleobiology Dept.",
+  NMNHANTHRO: "National Museum of Natural History - Anthropology Dept.",
+  NMNHBIRDS: "National Museum of Natural History - Birds Division",
+  NMNHBOTANY: "National Museum of Natural History - Botany Dept.",
+  NMNHEDUCATION: "National Museum of Natural History- Education & Outreach",
+  NMNHENTO: "National Museum of Natural History - Entomology Dept.",
+  NMNHFISHES: "National Museum of Natural History - Fishes Division",
+  NMNHHERPS: "National Museum of Natural History - Herpetology Division",
+  NMNHINV: "National Museum of Natural History - Invertebrate Zoology Dept.",
+  NMNHMAMMALS: "National Museum of Natural History - Mammals Division",
+  NMNHMINSCI: "National Museum of Natural History - Mineral Sciences Dept.",
+  NMNHPALEO: "National Museum of Natural History - Paleobiology Dept.",
 };
 
 /**
