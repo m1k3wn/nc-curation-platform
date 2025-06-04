@@ -1,5 +1,9 @@
+// ================ CONFIG ================
+// Handles caching, clearance and retrieval of formatted search results
 const CACHE_PREFIX = "museum_search_";
 const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
+const MAX_CACHE_ENTRIES = 8;
+const CACHE_RETENTION_RATIO = 0.5; // % of cache entries retained when clearing
 
 const normalizeQuery = (query) => query?.trim().toLowerCase() || "";
 
@@ -11,7 +15,6 @@ const safeLocalStorage = {
     try {
       return localStorage.getItem(key);
     } catch (e) {
-      console.warn("localStorage access failed:", e);
       return null;
     }
   },
@@ -20,7 +23,6 @@ const safeLocalStorage = {
       localStorage.setItem(key, value);
       return true;
     } catch (e) {
-      console.warn("localStorage write failed:", e);
       return false;
     }
   },
@@ -29,7 +31,6 @@ const safeLocalStorage = {
       localStorage.removeItem(key);
       return true;
     } catch (e) {
-      console.warn("localStorage remove failed:", e);
       return false;
     }
   },
@@ -41,51 +42,42 @@ const safeLocalStorage = {
       }
       return keys;
     } catch (e) {
-      console.warn("localStorage keys access failed:", e);
       return [];
     }
   },
 };
 
-/* Hanldes caching of formatted search results */
-
 const searchResultsManager = {
+  getCacheCount() {
+    return safeLocalStorage
+      .keys()
+      .filter(key => key.startsWith(CACHE_PREFIX))
+      .length;
+  },
 
-storeResults(query, items, totalResults, source = "smithsonian") {
-  const normalizedQuery = normalizeQuery(query);
-  const cacheKey = getCacheKey(normalizedQuery, source);
+  storeResults(query, items, totalResults, source = "smithsonian") {
+    const normalizedQuery = normalizeQuery(query);
+    const cacheKey = getCacheKey(normalizedQuery, source);
 
-  const cacheData = {
-    items,
-    totalResults,
-    timestamp: Date.now(),
-    query: normalizedQuery,
-    source,
-  };
-
-  let success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-  if (!success) {
-    console.warn(`❌ Cache storage failed for ${source} - trying cleanup...`);
-    this.clearOldCaches();
-    success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-    
-    if (!success) {
-      console.warn(`❌ Cache storage failed again - clearing all caches...`);
-      this.clearAllCaches();
-      success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
-      
-      if (!success) {
-        console.warn(`❌ Failed to cache ${items.length} results for ${source} query: ${normalizedQuery} - continuing without cache`);
-      } else {
-        console.log(`✅ Cache stored successfully after cleanup`);
-      }
-    } else {
-      console.log(`✅ Cache stored successfully after old cache cleanup`);
+    // Check cache limit 
+    if (this.getCacheCount() >= MAX_CACHE_ENTRIES) {
+      this.clearOldCaches();
     }
-  } else {
-    console.log(`✅ Cache stored successfully`);
-  }
-},
+
+    const cacheData = {
+      items,
+      totalResults,
+      timestamp: Date.now(),
+      query: normalizedQuery,
+      source,
+    };
+
+    let success = safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
+    if (!success) {
+      this.clearAllCaches();
+      safeLocalStorage.set(cacheKey, JSON.stringify(cacheData));
+    }
+  },
 
   getCachedResults(query, source = "smithsonian") {
     const normalizedQuery = normalizeQuery(query);
@@ -107,7 +99,6 @@ storeResults(query, items, totalResults, source = "smithsonian") {
 
       return parsedData;
     } catch (error) {
-      console.error("Error parsing cached results:", error);
       safeLocalStorage.remove(cacheKey); 
       return null;
     }
@@ -119,15 +110,6 @@ storeResults(query, items, totalResults, source = "smithsonian") {
     safeLocalStorage.remove(cacheKey);
   },
 
-  clearSourceCaches(source) {
-    const sourcePrefix = `${CACHE_PREFIX}${source}_`;
-    const keysToRemove = safeLocalStorage
-      .keys()
-      .filter((key) => key.startsWith(sourcePrefix));
-
-    keysToRemove.forEach((key) => safeLocalStorage.remove(key));
-  },
-
   clearAllCaches() {
     const keysToRemove = safeLocalStorage
       .keys()
@@ -137,6 +119,13 @@ storeResults(query, items, totalResults, source = "smithsonian") {
   },
 
   clearOldCaches() {
+    this.clearExpiredCaches();
+    const currentCount = this.getCacheCount();
+    const targetCount = Math.floor(MAX_CACHE_ENTRIES * CACHE_RETENTION_RATIO);
+    const entriesToRemove = currentCount - targetCount;
+    
+    if (entriesToRemove <= 0) return;
+    
     const cacheEntries = [];
 
     safeLocalStorage
@@ -161,12 +150,28 @@ storeResults(query, items, totalResults, source = "smithsonian") {
 
     cacheEntries.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Remove 75% of old caches
-    const entriesToRemove = cacheEntries.slice(
-      0,
-      Math.floor(cacheEntries.length * 0.75)
-    );
-    entriesToRemove.forEach((entry) => safeLocalStorage.remove(entry.key));
+    const entriesToRemoveArray = cacheEntries.slice(0, entriesToRemove);
+    entriesToRemoveArray.forEach((entry) => safeLocalStorage.remove(entry.key));
+  },
+
+  clearExpiredCaches() {
+    const expiredKeys = [];
+    
+    safeLocalStorage
+      .keys()
+      .filter(key => key.startsWith(CACHE_PREFIX))
+      .forEach(key => {
+        try {
+          const data = JSON.parse(safeLocalStorage.get(key));
+          if (Date.now() - data.timestamp > CACHE_EXPIRY) {
+            expiredKeys.push(key);
+          }
+        } catch (e) {
+          expiredKeys.push(key);
+        }
+      });
+
+    expiredKeys.forEach(key => safeLocalStorage.remove(key));
   },
 
   getCacheStats() {

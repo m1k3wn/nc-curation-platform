@@ -6,15 +6,8 @@ import { europeanaRepository } from "./repositories/europeanaRepository";
 import { adaptEuropeanaItemDetails, adaptEuropeanaSearchResults } from "./adapters/europeanaAdapter";
 import searchResultsManager from "../utils/searchResultsManager";
 
-/**
- * Error Handling
- * @param {Error} error - The error object
- * @param {string} source - The API source ("smithsonian" or "europeana")
- * @param {string} operation - The operation being performed ("fetching", "searching", etc.)
- * @param {string|null} id - Optional ID for item-specific operations
- * @returns {Object} - Standardised error response object
- */
-const handleApiError = (error, source, operation, id = null) => {
+
+const handleApiError = (error, source, id = null) => {
   if (axios.isCancel(error)) {
     throw error;
   }
@@ -42,8 +35,8 @@ const handleApiError = (error, source, operation, id = null) => {
 
 /**
  * UNIFIED FETCH FUNCTION 
- * Search all museum sources with progressive results
- * Europeana results come first, then Smithsonian results are added
+ * Search all museum sources with progressive results (Caching happens in respective repositories)
+ * Europeana results come first, then Smithsonian results are added 
  */
 export const searchAllSources = async (query, progressCallback = null) => {
   if (!query) {
@@ -124,13 +117,13 @@ export const searchAllSources = async (query, progressCallback = null) => {
   await smithsonianPromise;
   updateProgress(`Search complete: ${results.items.length} results found`);
   
-  // Cache final unified results
-  searchResultsManager.storeResults(
-    query,
-    results.items,
-    results.total,
-    "unified"
-  );
+  // Cache final unified results - REDUNDANT! INDIVIDUALLY CACHED
+  // searchResultsManager.storeResults(
+  //   query,
+  //   results.items,
+  //   results.total,
+  //   "unified"
+  // );
 
   return {
     total: results.total,
@@ -340,10 +333,10 @@ async function searchSmithsonianComplete(query, progressCallback = null) {
 
     const finalResult = {
       total: totalResults,
-      items: allItemsWithImages, // These are already filtered!
+      items: allItemsWithImages, 
     };
     
-    // Cache the filtered results
+  
     if (allItemsWithImages.length > 0) {
       searchResultsManager.storeResults(query, allItemsWithImages, totalResults, "smithsonian");
     }
