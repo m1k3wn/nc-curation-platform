@@ -175,8 +175,8 @@ export default function SearchResultsPage() {
     }
 
     return `Found ${itemsWithImages.toLocaleString()} ${
-      itemsWithImages === 1 ? "item" : "items"
-    } with images (from ${totalResults.toLocaleString()} total archive items)`;
+      itemsWithImages === 1 ? "interesting thing" : "interesting things"
+    } (from ${totalResults.toLocaleString()} archive items)`;
   };
 
   return (
