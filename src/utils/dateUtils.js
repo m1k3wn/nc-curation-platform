@@ -15,6 +15,13 @@ export const parseYearForFiltering = (dateCreated) => {
     return year ? -year : null;
   }
   
+  // Handle BC dates: "900 BC" or "BC 900"  
+  const bcMatch = dateStr.match(/(?:BC\s+(\d+)|(\d+)\s+BC)/i);
+  if (bcMatch) {
+    const year = parseInt(bcMatch[1] || bcMatch[2]);
+    return year ? -year : null;
+  }
+  
   // Handle CE dates: "200 CE" or "CE 200" 
   const ceMatch = dateStr.match(/(?:CE\s+(\d+)|(\d+)\s+CE)/i);
   if (ceMatch) {
@@ -27,6 +34,14 @@ export const parseYearForFiltering = (dateCreated) => {
   if (centuryMatch) {
     const century = parseInt(centuryMatch[1]);
     return (century - 1) * 100 + 50; // midpoint of century
+  }
+  
+  // Handle ranges with BC: "4000-2500BC" -> calculate midpoint and make negative
+  const bcRangeMatch = dateStr.match(/(\d+)(?:s)?[-–—](\d+)(?:s)?\s*BC/i);
+  if (bcRangeMatch) {
+    const start = parseInt(bcRangeMatch[1]);
+    const end = parseInt(bcRangeMatch[2]);
+    return -Math.round((start + end) / 2);
   }
   
   // Handle ranges: "1850s–1900s" or "1850-1900" -> calculate midpoint
@@ -79,6 +94,28 @@ export const parseYearForFiltering = (dateCreated) => {
 };
 
 /**
+ * Format display date from filterDate
+ * @param {number} filterDate - Numeric year (negative for BCE)
+ * @returns {string} - Formatted display date
+ */
+export const formatDisplayDate = (filterDate) => {
+  if (!filterDate && filterDate !== 0) return "";
+  
+  // Handle BCE dates (negative numbers)
+  if (filterDate < 0) {
+    return `${Math.abs(filterDate)} BCE`;
+  }
+  
+  // Handle early CE dates (1-999) 
+  if (filterDate >= 1 && filterDate <= 999) {
+    return `${filterDate} CE`;
+  }
+  
+  // Modern dates don't need CE suffix
+  return filterDate.toString();
+};
+
+/**
  * Categorise year into century periods
  * @param {number} year - Year as integer (negative for BCE)
  * @returns {string} - Century category
@@ -87,7 +124,7 @@ export const categoriseYear = (year) => {
   if (!year || typeof year !== 'number') return 'unknown';
   
   // BCE dates (negative years)
-  if (year < 1) return 'ancient';
+  if (year < 0) return 'ancient';
   
   // CE dates
   if (year >= 1 && year <= 99) return '1st';
