@@ -3,7 +3,7 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
 import BrokenImage from "../common/BrokenImage";
 import RecordUnavailable from "../common/RecordUnavailable";
-import missingRecordImage from "../../assets/missingRecordImg.png";
+import missingRecordImage from "../../assets/missing-image.png";
 
 /**
  * @param {Object} item - The item data (unified format)

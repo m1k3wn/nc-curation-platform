@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AddToCollectionButton from "../collections/AddToCollectionButton";
+import missingRecordImage from "../../assets/missing-image.png";
 
 /**
  * @param {Object} item - The item to display
@@ -8,24 +9,69 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
  */
 export default function ItemCard({ item, actionButtons }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [currentImageSrc, setCurrentImageSrc] = useState(null);
+  const [finalError, setFinalError] = useState(false);
   const navigate = useNavigate();
 
   const handleCardClick = () => {
     navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
   };
 
-  const primaryImageSrc = item.media?.thumbnail || item.media?.primaryImage;
+  const defaultImage = missingRecordImage;
+
+  // Initialize image source when component mounts or item changes
+  useEffect(() => {
+    const initialSrc =
+      item.media?.thumbnail ||
+      item.media?.primaryImage ||
+      item.media?.fullImage;
+    setCurrentImageSrc(initialSrc);
+    setImageLoaded(false);
+    setFinalError(false);
+  }, [item.id]);
+
+  const handleImageError = () => {
+    // If thumbnail failed, try primaryImage
+    if (
+      currentImageSrc === item.media?.thumbnail &&
+      item.media?.primaryImage &&
+      item.media?.primaryImage !== item.media?.thumbnail
+    ) {
+      setCurrentImageSrc(item.media.primaryImage);
+      setImageLoaded(false);
+      return;
+    }
+
+    // If primaryImage failed, try fullImage
+    if (
+      currentImageSrc === item.media?.primaryImage &&
+      item.media?.fullImage &&
+      item.media?.fullImage !== item.media?.primaryImage
+    ) {
+      setCurrentImageSrc(item.media.fullImage);
+      setImageLoaded(false);
+      return;
+    }
+
+    // All real images failed - use placeholder (but only if we're not already showing it)
+    if (currentImageSrc !== defaultImage) {
+      setCurrentImageSrc(defaultImage);
+      setFinalError(true);
+      setImageLoaded(false); // Let the placeholder image load properly
+      return;
+    }
+
+    // Even placeholder failed somehow - just show the broken state
+    setFinalError(true);
+    setImageLoaded(true);
+  };
 
   const handleImageLoad = () => {
     setImageLoaded(true);
   };
 
-  const handleImageError = () => {
-    setImageLoaded(true); // Still show card, just without image
-  };
-
-  // Don't render card if no image source exists
-  if (!primaryImageSrc) {
+  // Don't render if no image sources at all
+  if (!currentImageSrc) {
     return null;
   }
 
@@ -55,7 +101,7 @@ export default function ItemCard({ item, actionButtons }) {
 
           {/* Item image */}
           <img
-            src={primaryImageSrc}
+            src={currentImageSrc}
             alt={item.title || "Museum item"}
             loading="lazy"
             className={`w-full h-auto max-h-96 object-cover transition-opacity duration-500 ease-in ${

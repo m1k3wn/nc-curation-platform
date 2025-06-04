@@ -24,6 +24,8 @@ export const adaptEuropeanaSearchResults = (apiData) => {
           return null;
         }
 
+        const directImageUrl = getFirst(item.edmIsShownBy);
+
         const dateCreated = extractSearchDates(item);
         const filterDate = parseYearForFiltering(dateCreated);
         const century = categoriseYear(filterDate);
@@ -38,8 +40,8 @@ export const adaptEuropeanaSearchResults = (apiData) => {
           century,
           media: {
             thumbnail: thumbnailUrl,
-            primaryImage: thumbnailUrl,
-            fullImage: thumbnailUrl
+            primaryImage: directImageUrl,
+            fullImage: directImageUrl
           },
           country: getFirst(item.country) || "",
         };
