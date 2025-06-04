@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
 /**
- * Full-screen image zoom modal with zoom controls and pan functionality
- *
  * @param {boolean} isOpen - Whether the modal is open
  * @param {Function} onClose - Function to call when closing
  * @param {string} imageUrl - URL of the image to display

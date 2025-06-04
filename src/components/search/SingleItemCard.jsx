@@ -3,6 +3,7 @@ import AddToCollectionButton from "../collections/AddToCollectionButton";
 import ImageZoomModal from "../common/ImageZoomModal";
 import BrokenImage from "../common/BrokenImage";
 import RecordUnavailable from "../common/RecordUnavailable";
+import missingRecordImage from "../../assets/missingRecordImg.png";
 
 /**
  * @param {Object} item - The item data (unified format)
@@ -21,8 +22,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
   const isDev =
     import.meta.env?.DEV === true || process.env.NODE_ENV === "development";
 
-  const defaultImage =
-    "https://toppng.com/uploads/preview/red-x-red-x-11563060665ltfumg5kvi.png";
+  const defaultImage = missingRecordImage;
 
   // loading timeout
   useEffect(() => {
@@ -121,10 +121,20 @@ export default function SingleItemCard({ item, isLoading, error }) {
           {/* Image Section */}
           <div className="lg:sticky lg:top-8 lg:h-fit mb-4">
             <div
-              className="relative bg-gray-50 aspect-square cursor-pointer group"
-              onClick={() => setShowFullImage(true)}
-              role="button"
-              aria-label="Click to see fullsize image"
+              className={`relative bg-gray-50 aspect-square ${
+                imageError || imageTimeout ? "" : "cursor-pointer group"
+              }`}
+              onClick={
+                imageError || imageTimeout
+                  ? undefined
+                  : () => setShowFullImage(true)
+              }
+              role={imageError || imageTimeout ? undefined : "button"}
+              aria-label={
+                imageError || imageTimeout
+                  ? undefined
+                  : "Click to see fullsize image"
+              }
             >
               {!imageLoaded && !imageError && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -137,7 +147,9 @@ export default function SingleItemCard({ item, isLoading, error }) {
                 alt={item.title || "Item image"}
                 className={`w-full h-full object-contain ${
                   imageLoaded ? "opacity-100" : "opacity-0"
-                } transition-all duration-300 group-hover:scale-105`}
+                } transition-all duration-300 group-hover:scale-105 ${
+                  imageError || imageTimeout ? "hidden" : "" // ← Add this
+                }`}
                 onLoad={() => setImageLoaded(true)}
                 onError={() => {
                   setImageError(true);
@@ -149,6 +161,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
                 <BrokenImage
                   thumbnailUrl={item.media?.thumbnail}
                   sourceUrl={item.url}
+                  imageUrl={item.media?.primaryImage || item.media?.fullImage}
                   sourceName={item.museum || "source"}
                 />
               )}

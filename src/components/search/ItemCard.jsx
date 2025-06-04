@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AddToCollectionButton from "../collections/AddToCollectionButton";
-import missingRecordImage from "../../assets/missing-record-image.png";
 
 /**
  * @param {Object} item - The item to display
@@ -9,26 +8,26 @@ import missingRecordImage from "../../assets/missing-record-image.png";
  */
 export default function ItemCard({ item, actionButtons }) {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
 
   const handleCardClick = () => {
     navigate(`/item/${item.source}/${encodeURIComponent(item.id)}`);
   };
 
-  const defaultImage = missingRecordImage;
   const primaryImageSrc = item.media?.thumbnail || item.media?.primaryImage;
-  const imgSrc = imageError ? defaultImage : primaryImageSrc || defaultImage;
-
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoaded(true);
-  };
 
   const handleImageLoad = () => {
     setImageLoaded(true);
-    setImageError(false);
   };
+
+  const handleImageError = () => {
+    setImageLoaded(true); // Still show card, just without image
+  };
+
+  // Don't render card if no image source exists
+  if (!primaryImageSrc) {
+    return null;
+  }
 
   return (
     <div className="break-inside-avoid mb-4">
@@ -43,7 +42,7 @@ export default function ItemCard({ item, actionButtons }) {
         {/* Image Container */}
         <div className="relative bg-gray-100 max-h-96 w-full">
           {/* Loading spinner */}
-          {!imageLoaded && !imageError && (
+          {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center min-h-32">
               <div
                 className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin"
@@ -56,7 +55,7 @@ export default function ItemCard({ item, actionButtons }) {
 
           {/* Item image */}
           <img
-            src={imgSrc}
+            src={primaryImageSrc}
             alt={item.title || "Museum item"}
             loading="lazy"
             className={`w-full h-auto max-h-96 object-cover transition-opacity duration-500 ease-in ${

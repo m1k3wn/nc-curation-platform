@@ -1,15 +1,16 @@
 import { useState } from "react";
 
 /**
- * Fallback component shown when primary images fail to load
  * @param {string} thumbnailUrl - Thumbnail URL to show as fallback preview
  * @param {string} sourceUrl - URL to link to original source
+ * @param {string} imageUrl - URL to link to source's Primary or Full image URL
  * @param {string} sourceName - Name of the source (museum/institution)
  * @param {string} className - CSS classes to apply to the container
  */
 export default function BrokenImage({
   thumbnailUrl,
   sourceUrl,
+  imageUrl,
   sourceName = "source",
   className = "",
 }) {
@@ -43,17 +44,32 @@ export default function BrokenImage({
       <p className="text-gray-500 text-sm mb-4">
         Archives can be funny; try checking the source
       </p>
-      <p className="text-gray-500 text-sm mb-4">try checking the source</p>
 
-      <a
-        href={sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-        onClick={(e) => e.stopPropagation()}
-      >
-        View on {sourceName}
-      </a>
+      <div className="flex flex-col gap-2">
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block btn-action"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Try Original Source: {sourceName}
+          </a>
+        )}
+
+        {imageUrl && (
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block btn-action"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Try Original Image Link
+          </a>
+        )}
+      </div>
     </div>
   );
 }
