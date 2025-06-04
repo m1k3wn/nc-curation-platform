@@ -4,6 +4,8 @@ const CACHE_PREFIX = "museum_search_";
 const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 const MAX_CACHE_ENTRIES = 8;
 const CACHE_RETENTION_RATIO = 0.5; // % of cache entries retained when clearing
+// ========================================
+
 
 const normalizeQuery = (query) => query?.trim().toLowerCase() || "";
 
