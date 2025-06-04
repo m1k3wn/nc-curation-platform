@@ -1,11 +1,9 @@
-import { parseYearForFiltering, categoriseYear } from "../../utils/dateUtils";
+import { parseYearForFiltering, categoriseYear, formatDisplayDate } from "../../utils/dateUtils";
 
 // ================ MAIN ADAPTER FUNCTIONS ================
 
 /**
  * Adapt search results from Europeana Search API
- * @param {Object} apiData - Raw API response from Europeana Search API
- * @returns {Object} - Adapted search results for ItemCard
  */
 export const adaptEuropeanaSearchResults = (apiData) => {
   if (!apiData || !apiData.items) {
@@ -26,9 +24,15 @@ export const adaptEuropeanaSearchResults = (apiData) => {
 
         const directImageUrl = getFirst(item.edmIsShownBy);
 
-        const dateCreated = extractSearchDates(item);
-        const filterDate = parseYearForFiltering(dateCreated);
+        // Get raw date for proper parsing
+        const rawDateStr = getFirst(item.year) || 
+                          getFirst(item.dcDate) || 
+                          getFirst(item.date) || 
+                          getFirst(item.edmTimespanLabel);
+
+        const filterDate = parseYearForFiltering(rawDateStr);
         const century = categoriseYear(filterDate);
+        const dateCreated = formatDisplayDate(filterDate);
 
         return {
           id: cleanId(item.id),
@@ -59,8 +63,6 @@ export const adaptEuropeanaSearchResults = (apiData) => {
 
 /**
  * Adapt single item details from Europeana Record API
- * @param {Object} apiData - Raw API response from Europeana Record API
- * @returns {Object} - Adapted item details for SingleItemCard
  */
 export const adaptEuropeanaItemDetails = (apiData) => {
   if (!apiData || !apiData.object) {
@@ -74,8 +76,10 @@ export const adaptEuropeanaItemDetails = (apiData) => {
     const creators = extractCreators(record);
     const { notes, descriptions } = extractDescriptions(record);
     const place = extractLocation(record);
+    
     const filterDate = parseYearForFiltering(dates.created);
     const century = categoriseYear(filterDate);
+    const dateCreated = formatDisplayDate(filterDate);
 
     return {
       id: cleanId(record.about) || "",
@@ -83,7 +87,7 @@ export const adaptEuropeanaItemDetails = (apiData) => {
       url: extractExternalUrl(record),
       source: "europeana",
       museum: extractRecordMuseum(record),
-      dateCreated: dates.created,
+      dateCreated,
       filterDate,
       century,
       media: {
@@ -100,8 +104,7 @@ export const adaptEuropeanaItemDetails = (apiData) => {
 
   } catch (error) {
     const basicTitle = extractRecordTitle(apiData.object) || "Untitled Item";
-    const basicDateCreated = "";
-    const basicFilterDate = parseYearForFiltering(basicDateCreated);
+    const basicFilterDate = null;
     const basicCentury = categoriseYear(basicFilterDate);
 
     return {
@@ -109,7 +112,7 @@ export const adaptEuropeanaItemDetails = (apiData) => {
       title: basicTitle,
       source: "europeana",
       museum: "European Institution",
-      dateCreated: basicDateCreated,
+      dateCreated: "",
       filterDate: basicFilterDate,
       century: basicCentury,
       media: {
@@ -251,26 +254,7 @@ const extractRecordImages = (record) => {
   return images;
 };
 
-//  For Search API response items
-const extractSearchDates = (record) => {
-  let dateStr = getFirst(record.year) || 
-                getFirst(record.dcDate) || 
-                getFirst(record.date) || 
-                getFirst(record.edmTimespanLabel);
-  
-  let year = extractYear(dateStr);
-  
-  if (!year && record.timestamp_created && 
-    //  filter out Unix epoch placeholders
-      record.timestamp_created !== "1970-01-01T00:00:00.000Z") {
-    const timestampYear = new Date(record.timestamp_created).getFullYear();
-    if (timestampYear > 1970) year = `${timestampYear} (digitised)`;
-  }
-  
-  return year || "";
-};
-
-//  For Records API response item
+// For Records API response item
 const extractRecordDates = (record) => {
   let dateStr = extractFromProxies(record, (proxy) => {
     return safeExtract(proxy, 'dcDate', getMultilingual) ||
@@ -278,26 +262,24 @@ const extractRecordDates = (record) => {
            safeExtract(proxy, 'dctermsIssued', getMultilingual);
   });
 
-  let year = extractYear(dateStr);
-
-  if (!year && record.timespans?.[0]?.prefLabel) {
-    year = extractYear(getMultilingual(record.timespans[0].prefLabel));
+  if (!dateStr && record.timespans?.[0]?.prefLabel) {
+    dateStr = getMultilingual(record.timespans[0].prefLabel);
   }
 
-  if (!year) {
+  if (!dateStr) {
     const title = extractFromProxies(record, (proxy) => {
       return safeExtract(proxy, 'dcTitle', getMultilingual);
     });
-    year = extractYear(title);
+    dateStr = title;
   }
 
-  if (!year && record.timestamp_created && 
+  if (!dateStr && record.timestamp_created && 
       record.timestamp_created !== "1970-01-01T00:00:00.000Z") {
     const timestampYear = new Date(record.timestamp_created).getFullYear();
-    if (timestampYear > 1970) year = `${timestampYear} (digitised)`;
+    if (timestampYear > 1970) dateStr = `${timestampYear} (digitised)`;
   }
 
-  return { created: year || "" };
+  return { created: dateStr || "" };
 };
 
 const extractYear = (dateStr) => {
@@ -342,7 +324,6 @@ const isUrlOrMeaningless = (text) => {
 const extractDescriptions = (record) => {
   const notes = [];
   
-  // Get descriptions using standard "first match wins" pattern
   const descriptions = extractFromProxies(record, (proxy) => {
     if (proxy.dcDescription) {
       const descriptionText = getMultilingual(proxy.dcDescription);
@@ -355,10 +336,10 @@ const extractDescriptions = (record) => {
         }];
       }
     }
-    return null; // Continue to next proxy if no description found
-  }) || []; // Default to empty array if no descriptions found
+    return null; 
+  }) || []; 
 
-  // Handle notes from concepts (separate from proxy logic)
+
   if (record.concepts?.length > 0) {
     record.concepts.forEach(concept => {
       if (concept.note) {
