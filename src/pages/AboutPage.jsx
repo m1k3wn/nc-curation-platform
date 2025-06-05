@@ -1,32 +1,65 @@
+import CollectionCascade from "../components/collections/CollectionCascade";
+
 export default function AboutPage() {
   return (
-    <div className="py-12">
+    <div className="py-6">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
-          {/* Page Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Shonk</h1>
-            <p className="text-xl text-gray-600">topline summary copy</p>
+          {/* Header */}
+          <div className="text-center mb-4">
+            <h1 className="text-title text-6xl">CURA</h1>
+            <p className="text-subtitle">Curating the World's Collections</p>
           </div>
-
-          {/* Mission Section */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-semibold mb-6 border-b pb-2">INFO</h2>
-            <p className="mb-4">some info copy</p>
-            <p className="mb-4">copy copy copy xxxx</p>
+        </div>
+        <div>
+          {/* Info */}
+          <section className="text-center max-w-2xl mx-auto mb-2">
+            <p>
+              A platform for artists, designers, researches and curious minds.
+              CURA searches millions of archive entries from the World's leading
+              collections, to find only the most fascinating objects, artworks
+              and images.
+            </p>
           </section>
-
-          {/* Contact Section */}
-          <section>
-            <h2 className="text-2xl font-semibold mb-6 border-b pb-2">
-              Get In Touch
-            </h2>
-            <p className="mb-6">some more info</p>
-            <button className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors">
-              Contact Us
-            </button>
+          {/* Links */}
+          <section className="text-center text-body max-w-2xl mx-auto bg-main text-inverse mt-4 px-2 py-4 rounded-lg">
+            <p>
+              Built by
+              <a
+                href="https://github.com/m1k3wn"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-accent-primary"
+              >
+                {" "}
+                Mike Winnard
+              </a>{" "}
+              for
+              <a
+                href="https://www.techreturners.com/about-us/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-accent-primary"
+              >
+                {" "}
+                Northcoders / Tech Returners.
+              </a>
+            </p>
+            <p className="text-body  text-inverse">
+              Explore the source code{" "}
+              <a
+                href="https://github.com/m1k3wn/nc-curation-platform"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-accent-primary"
+              >
+                HERE
+              </a>
+            </p>
           </section>
         </div>
+        {/* Collections List */}
+        <CollectionCascade />
       </div>
     </div>
   );
