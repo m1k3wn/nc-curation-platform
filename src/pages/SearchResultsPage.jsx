@@ -192,7 +192,10 @@ export default function SearchResultsPage() {
           {queryParam && (
             <div className="mb-4">
               <h1 className="text-subtitle font-bold mb-0">
-                You searched for "{queryParam}"
+                {loading || !totalResults
+                  ? "Searching for"
+                  : "You searched for"}{" "}
+                "{queryParam}"
               </h1>
               <p className="text-body" aria-live="polite">
                 {getResultsMessage()}

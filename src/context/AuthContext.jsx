@@ -1,16 +1,13 @@
 import { createContext, useContext, useState } from "react";
 
-// Create the context
 const AuthContext = createContext();
 
-// Custom hook for using the auth context
 export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Provider component
 export function AuthProvider({ children }) {
-  // Mock user state (in a real app, this would check localStorage/session)
+  // Mock user state (in future, this will be fetched from a Firebase backend)
   const [currentUser, setCurrentUser] = useState({
     id: "user123",
     username: "johnsmith",
@@ -20,9 +17,8 @@ export function AuthProvider({ children }) {
 
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
-  // Mock auth functions
+  // Mock auth function
   const login = (email, password) => {
-    // In a real app, this would make an API call
     console.log(`Login attempt with ${email}`);
     setIsAuthenticated(true);
     setCurrentUser({

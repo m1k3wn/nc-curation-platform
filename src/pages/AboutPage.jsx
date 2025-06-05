@@ -22,7 +22,7 @@ export default function AboutPage() {
             </p>
           </section>
           {/* Links */}
-          <section className="text-center text-body max-w-2xl mx-auto bg-main text-inverse mt-4 px-2 py-4 rounded-lg">
+          <section className="text-center text-subtitle text-base max-w-2xl mx-auto bg-main text-inverse mt-4 px-2 py-4 rounded-lg">
             <p>
               Built by
               <a
@@ -45,15 +45,14 @@ export default function AboutPage() {
                 Northcoders / Tech Returners.
               </a>
             </p>
-            <p className="text-body  text-inverse">
-              Explore the source code{" "}
+            <p className="text-subtitle text-base  text-inverse pt-4">
               <a
                 href="https://github.com/m1k3wn/nc-curation-platform"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-accent-primary"
               >
-                HERE
+                Explore the source code{" "}
               </a>
             </p>
           </section>

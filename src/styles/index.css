@@ -1,7 +1,5 @@
 /* Font Imports */
-/* @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Inter:wght@400;500;600&display=swap'); */
 @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Inter:wght@400;500;600&family=Fjalla+One&display=swap');
-
 
 @tailwind base;
 @tailwind components;
@@ -33,7 +31,7 @@
    .text-icon {
     @apply font-title font-bold text-2xl text-main;
   }
-  /* Buttons / icons */
+  /* Buttons - icons */
   .nav-link {
   @apply text-subtitle text-xl text-white  hover:text-accent-primary transition-colors duration-300;
 }

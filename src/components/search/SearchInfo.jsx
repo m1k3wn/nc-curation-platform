@@ -65,16 +65,16 @@ export default function SearchInfo({ progress }) {
                   <span className="text-bold">
                     {itemsFound.toLocaleString()}
                   </span>{" "}
-                  items, fetching more...
+                  items, fetching more (may take a while)...
                 </>
               )}
             </div>
             {/* Subtitle with total available */}
-            {totalResults > itemsFound && (
+            {/* {totalResults > itemsFound && (
               <div className="text-body text-inverse">
                 From {totalResults.toLocaleString()} archvie items
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
