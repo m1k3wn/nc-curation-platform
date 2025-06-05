@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import collectionData from "../../utils/CollectionsList.json";
+import collectionData from "../../utils/collectionsList.json";
 
 const collections = collectionData.collections;
 
