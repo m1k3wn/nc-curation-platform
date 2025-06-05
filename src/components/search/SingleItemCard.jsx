@@ -29,7 +29,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
     if (isLoading && !item) {
       const timeoutId = setTimeout(() => {
         setLoadingTimeout(true);
-      }, 7000); // 7 second timeout
+      }, 7000);
 
       return () => clearTimeout(timeoutId);
     } else {
@@ -37,7 +37,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
     }
   }, [isLoading, item]);
 
-  // Loading state (only show while actively loading)
+  // Loading state
   if (!item && isLoading && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -49,7 +49,7 @@ export default function SingleItemCard({ item, isLoading, error }) {
     );
   }
 
-  // Error states - use RecordUnavailable component
+  // Error states
   if (!item && loadingTimeout) {
     return <RecordUnavailable type="timeout" />;
   }
@@ -246,45 +246,16 @@ export default function SingleItemCard({ item, isLoading, error }) {
               </section>
             )}
 
-            {/* debug - not filtering correctly  */}
-            {/* Notes */}
-            {/* {hasData(item.notes) && (
-              <section className="mb-12">
-                {item.notes.map((note, index) => (
-                  <div key={index} className="mb-6">
-                    {note.conceptLabel && (
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
-                        {note.conceptLabel}
-                      </h4>
-                    )}
-                    <p className="text-gray-900 leading-relaxed">{note.text}</p>
-                  </div>
-                ))}
-              </section>
-            )} */}
-
             {/* Location */}
             {hasData(item.location?.place) && (
               <section className="mb-12">
-                {/* <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                  Location
-                </h2> */}
                 <DisplayField label="Place" value={item.location.place} />
-                {hasData(item.location?.geoLocation) && (
-                  <DisplayField
-                    label="Geographic Location"
-                    value={item.location.geoLocation}
-                  />
-                )}
               </section>
             )}
 
             {/* Collection Information */}
             {item.collection && (
               <section className="mb-12">
-                {/* <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                  Collection Details
-                </h2> */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <DisplayField
                     label="Collection Name"
