@@ -24,7 +24,6 @@ export const adaptEuropeanaSearchResults = (apiData) => {
 
         const directImageUrl = getFirst(item.edmIsShownBy);
 
-        // Get raw date for proper parsing
         const rawDateStr = getFirst(item.year) || 
                           getFirst(item.dcDate) || 
                           getFirst(item.date) || 
@@ -282,34 +281,72 @@ const extractRecordDates = (record) => {
   return { created: dateStr || "" };
 };
 
+// ================ CREATOR UTILITIES ================
+
+export const cleanCreatorName = (name, forDisplay = true) => {
+  if (!name || typeof name !== 'string') return '';
+  
+  const cleaned = name
+    .replace(/^#/, '')                     // Remove hashtags
+    .replace(/_/g, ' ')                    // Replace underscores with spaces
+    .replace(/\s*\([^)]*\)\s*$/g, '')     // Remove parenthetical content
+    .trim();
+  
+  return forDisplay 
+    ? cleaned.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+    : cleaned.toLowerCase();
+};
+
+export const extractCreators = (record) => {
+  const creators = [];
+
+  if (record.proxies && Array.isArray(record.proxies)) {
+    // Try Europeana proxy first
+    const europeanaProxy = record.proxies.find(proxy => proxy.europeanaProxy === true);
+    const providerProxy = record.proxies.find(proxy => proxy.europeanaProxy === false);
+    
+    // Use Europeana proxy if it has creators, otherwise fall back to provider proxy
+    const targetProxy = (europeanaProxy?.dcCreator) ? europeanaProxy : providerProxy;
+    
+    if (targetProxy?.dcCreator) {
+      let creatorNames = [];
+      
+      // Try to get English creators first
+      if (targetProxy.dcCreator.en) {
+        creatorNames = Array.isArray(targetProxy.dcCreator.en) ? targetProxy.dcCreator.en : [targetProxy.dcCreator.en];
+      } 
+      // If no English, try 'def' (default)
+      else if (targetProxy.dcCreator.def) {
+        creatorNames = Array.isArray(targetProxy.dcCreator.def) ? targetProxy.dcCreator.def : [targetProxy.dcCreator.def];
+      }
+      // If it's just a string/array (not an object with languages), use that
+      else if (typeof targetProxy.dcCreator === 'string' || Array.isArray(targetProxy.dcCreator)) {
+        creatorNames = Array.isArray(targetProxy.dcCreator) ? targetProxy.dcCreator : [targetProxy.dcCreator];
+      }
+      
+      creatorNames.forEach(name => {
+        if (!isUrlOrMeaningless(name)) {
+          const cleanName = cleanCreatorName(name, true);
+          if (cleanName) {
+            creators.push({
+              role: "Creator",
+              names: [cleanName],
+              displayText: cleanName
+            });
+          }
+        }
+      });
+    }
+  }
+
+  return removeDuplicates(creators, creator => `${creator.role}:${cleanCreatorName(creator.displayText, false)}`);
+};
+
 const extractYear = (dateStr) => {
   if (!dateStr) return "";
   if (dateStr.includes("(digitised)")) return dateStr;
   const yearMatch = dateStr.match(/\b\d{4}\b/);
   return yearMatch?.[0] || "";
-};
-
-const extractCreators = (record) => {
-  const creators = [];
-
-  extractFromProxies(record, (proxy) => {
-    if (proxy.dcCreator) {
-      const creatorNames = getMultilingual(proxy.dcCreator, true);
-      
-      creatorNames.forEach(name => {
-        if (!isUrlOrMeaningless(name)) {
-          creators.push({
-            role: "Creator",
-            names: [name],
-            displayText: name
-          });
-        }
-      });
-    }
-    return null; 
-  });
-
-  return removeDuplicates(creators, creator => `${creator.role}:${creator.displayText}`);
 };
 
 const isUrlOrMeaningless = (text) => {
@@ -338,7 +375,6 @@ const extractDescriptions = (record) => {
     }
     return null; 
   }) || []; 
-
 
   if (record.concepts?.length > 0) {
     record.concepts.forEach(concept => {
