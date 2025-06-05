@@ -1,4 +1,4 @@
-# Museum Collection Explorer - Project Summary
+# CURA - Curating the World's Collections
 
 ## Overview
 
@@ -276,7 +276,9 @@ Creating a unified and coherent user experience was a fascinating challenge. A k
 
 ## Support
 
-This project was made possible by the amazing folks at Tech Returners - a part of the NorthCoders group. To find out more visit:
+This project was made possible by the support from Tech Returners - a part of the Northcoders group.
+
+To find out more visit:
 
 https://www.techreturners.com/
 
