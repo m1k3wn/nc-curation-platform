@@ -14,35 +14,41 @@
 │   │   │   ├── europeanaAdapter.js
 │   │   │   ├── smithsonianAdapter.js
 │   │   │   └── smithsonianMuseumCodes.js
-│   │   ├── cache.js
 │   │   ├── config.js
-│   │   ├── europeanaExample.js
-│   │   ├── index.js
 │   │   ├── museumService.js
 │   │   └── repositories
 │   │       ├── europeanaRepository.js
 │   │       └── smithsonianRepository.js
 │   ├── assets
-│   │   └── load-spinner-green.lottie
+│   │   ├── load-spinner-green.lottie
+│   │   └── missing-image.png
 │   ├── components
 │   │   ├── collections
 │   │   │   ├── AddToCollectionButton.jsx
 │   │   │   ├── CollectionCard.jsx
+│   │   │   ├── CollectionCascade.jsx
 │   │   │   ├── CollectionModal.jsx
+│   │   │   ├── EmptyCollectionCard.jsx
 │   │   │   ├── EmptyCollectionsList.jsx
 │   │   │   └── RemoveFromCollectionButton.jsx
 │   │   ├── common
 │   │   │   ├── BrokenImage.jsx
+│   │   │   ├── CustomDropdown.jsx
 │   │   │   ├── DeleteConfirmation.jsx
-│   │   │   └── ImageZoomModal.jsx
+│   │   │   ├── ImageZoomModal.jsx
+│   │   │   └── RecordUnavailable.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
 │   │   │   ├── Header.jsx
-│   │   │   └── Layout.jsx
+│   │   │   └── MasonryGrid.jsx
 │   │   └── search
+│   │       ├── DateFilter.jsx
+│   │       ├── DateSort.jsx
+│   │       ├── FilterMenu.jsx
 │   │       ├── ItemCard.jsx
 │   │       ├── Pagination.jsx
 │   │       ├── SearchBar.jsx
+│   │       ├── SearchInfo.jsx
 │   │       ├── SearchProgress.jsx
 │   │       ├── SearchResultsGrid.jsx
 │   │       └── SingleItemCard.jsx
@@ -50,24 +56,22 @@
 │   │   ├── AuthContext.jsx
 │   │   ├── CollectionsContext.jsx
 │   │   └── SearchContext.jsx
-│   ├── hooks
 │   ├── main.jsx
 │   ├── pages
 │   │   ├── AboutPage.jsx
 │   │   ├── CollectionView.jsx
 │   │   ├── CollectionsPage.jsx
-│   │   ├── EuropeanaTestPage.jsx
-│   │   ├── ExplorePage.jsx
 │   │   ├── HomePage.jsx
 │   │   ├── ItemPage.jsx
 │   │   ├── SearchResultsPage.jsx
 │   │   └── UserProfilePage.jsx
 │   ├── styles
-│   │   ├── App.css
 │   │   └── index.css
 │   └── utils
+│       ├── collectionsList.json
+│       ├── dateUtils.js
 │       └── searchResultsManager.js
 ├── tailwind.config.js
 └── vite.config.js
 
-16 directories, 55 files
+15 directories, 60 files
