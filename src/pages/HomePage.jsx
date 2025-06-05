@@ -7,10 +7,10 @@ export default function HomePage() {
   const popularSearches = [
     "Yorkshire",
     "Occult",
-    "Ancient Weapons",
-    "Glamour",
-    "Something Pagan",
-    "Greek Pottery",
+    "Curious",
+    "Amour",
+    "Druids",
+    "Ancient Temple",
   ];
 
   const categories = ["Natural History", "Ancient Civilizations", "Modern Art"];
@@ -25,8 +25,8 @@ export default function HomePage() {
         {/* Header */}
         <div className="text-center mb-4 mt-0">
           <h1 className="text-title text-5xl mb-2 ">Search the Archives</h1>
-          <p className="text-body text-xl max-w-xl mx-auto">
-            Explore over -900- international museums and collections
+          <p className="text-body text-lg max-w-xl mx-auto">
+            Explore millions of items from over 1000 collections
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function HomePage() {
         </div>
 
         {/* Categories */}
-        <div className="mt-8">
+        {/* <div className="mt-8">
           <h2 className="text-subtitle mb-4 text-center">Popular Categories</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {categories.map((category) => (
@@ -65,7 +65,7 @@ export default function HomePage() {
               </button>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

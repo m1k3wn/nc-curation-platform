@@ -35,7 +35,7 @@ const handleApiError = (error, source, id = null) => {
 
 /**
  * UNIFIED FETCH FUNCTION 
- * Search all museum sources with progressive results (Caching happens in respective repositories)
+ * Search all museum sources with progressive results (Caching happens in repositories)
  * Europeana results come first, then Smithsonian results are added 
  */
 export const searchAllSources = async (query, progressCallback = null) => {
@@ -92,7 +92,7 @@ export const searchAllSources = async (query, progressCallback = null) => {
       if (smithsonianResponse.items?.length > 0) {
         results.items.push(...smithsonianResponse.items);
       }
-      console.log(`Smithsonian search complete: ${smithsonianResponse.total} results found`);
+
       return smithsonianResponse;
     })
     .catch((error) => {
@@ -103,7 +103,7 @@ export const searchAllSources = async (query, progressCallback = null) => {
 
   if (results.items.length > 0) {
     smithsonianPromise.then(() => {
-      // search completes after smithsonian results return
+      // search completes when smithsonian results return
       updateProgress(`Search complete: ${results.items.length} results found`);
     });
 
@@ -117,14 +117,6 @@ export const searchAllSources = async (query, progressCallback = null) => {
   await smithsonianPromise;
   updateProgress(`Search complete: ${results.items.length} results found`);
   
-  // Cache final unified results - REDUNDANT! INDIVIDUALLY CACHED
-  // searchResultsManager.storeResults(
-  //   query,
-  //   results.items,
-  //   results.total,
-  //   "unified"
-  // );
-
   return {
     total: results.total,
     items: results.items,
