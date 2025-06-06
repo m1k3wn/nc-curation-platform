@@ -1,5 +1,4 @@
 import CollectionCascade from "../components/collections/CollectionCascade";
-// import landingGraphic from "../assets/cura-landing-graphic.png";
 import landingGraphic from "../assets/cura-landing-graphic-inv.png";
 
 export default function AboutPage() {
