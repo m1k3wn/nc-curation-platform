@@ -232,16 +232,20 @@ export default function SearchResultsPage() {
           )}
 
           {/* Filter Menu & Results */}
-          {!loading && !error && results && results.length > 0 && !progress && (
-            <>
-              <FilterMenu
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                resultCounts={resultCounts}
-              />
-              <SearchResultsGrid results={processedResults} />
-            </>
-          )}
+          {!loading &&
+            !error &&
+            results &&
+            results.length > 0 &&
+            query === queryParam && (
+              <>
+                <FilterMenu
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  resultCounts={resultCounts}
+                />
+                <SearchResultsGrid results={processedResults} />
+              </>
+            )}
         </div>
       </div>
     </div>
