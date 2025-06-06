@@ -8,17 +8,8 @@ import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import SearchProgress from "../components/search/SearchProgress";
 import SearchInfo from "../components/search/SearchInfo";
 import WarningMessage from "../components/common/WarningMessage";
+import ErrorMessage from "../components/common/ErrorMessage";
 import { useSearch } from "../context/SearchContext";
-
-const ErrorMessage = ({ message }) => (
-  <div
-    className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
-    role="alert"
-    aria-live="assertive"
-  >
-    {message}
-  </div>
-);
 
 const EmptyResults = () => (
   <div className="text-center py-16" role="status" aria-live="polite">
@@ -71,6 +62,7 @@ export default function SearchResultsPage() {
     setPage,
     page,
     dismissWarnings,
+    refreshSearch,
   } = useSearch();
 
   // Read filters from URL
@@ -209,7 +201,15 @@ export default function SearchResultsPage() {
           )}
 
           {/* Error State */}
-          {error && <ErrorMessage message={error} />}
+          {error && (
+            <ErrorMessage
+              message={error}
+              title="Search unavailable"
+              onRetry={() => performUnifiedSearch(queryParam, false)}
+              retryText="Search again"
+              type="search"
+            />
+          )}
 
           {/* Warning State */}
           <WarningMessage

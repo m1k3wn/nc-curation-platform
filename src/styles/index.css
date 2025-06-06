@@ -95,22 +95,47 @@
            transition-colors duration-200 cursor-pointer hover:border-gray-400
            flex items-center justify-between;
   }
-  
+
   .dropdown-arrow {
     @apply w-4 h-4 text-gray-400 transition-transform duration-200;
   }
-  
+
   .dropdown-menu {
     @apply absolute top-full left-0 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg z-10
            max-h-60 overflow-auto;
   }
-  
   .dropdown-option {
     @apply w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-accent-primary hover:text-white 
            transition-colors duration-150 cursor-pointer;
   }
-  
+
   .dropdown-option-selected {
     @apply bg-accent-secondary text-white;
   }
+
+/* Error & Warning Messages */
+.error-message {
+  @apply bg-error-light border border-error-border text-error-text p-4 rounded-lg mb-6;
+}
+
+.warning-message {
+  @apply bg-warning-light border border-warning-border text-warning-text p-4 rounded-lg mb-6;
+}
+
+.error-title {
+  @apply font-medium mb-1;
+}
+
+.error-text {
+  @apply text-sm;
+}
+
+.error-retry-btn {
+  @apply ml-4 px-3 py-1 bg-error-button hover:bg-error-button-hover text-error-text text-sm rounded border border-error-border transition-colors flex-shrink-0;
+}
+
+.warning-dismiss-btn {
+  @apply text-warning-button hover:text-warning-button-hover ml-4 flex-shrink-0;
+}
+
 }
