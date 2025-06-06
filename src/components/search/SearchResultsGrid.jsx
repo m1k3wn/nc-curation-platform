@@ -3,6 +3,7 @@ import ItemCard from "./ItemCard";
 import Pagination from "./Pagination";
 import { useSearch } from "../../context/SearchContext";
 import MasonryGrid from "../layout/MasonryGrid";
+import { useAutoAnimate } from "../../utils/useAutoAnimate";
 
 const CacheIndicator = ({ itemCount, onRefresh }) => (
   <div className="flex justify-between items-center mb-3 py-1 px-2 bg-accent-primary rounded">
@@ -23,6 +24,8 @@ const CacheIndicator = ({ itemCount, onRefresh }) => (
  * @param {Array} results - Pre-filtered and sorted results to display - any sorting/filtering orchestrated in the parent component
  */
 export default function SearchResultsGrid({ results = [] }) {
+  const [animateRef] = useAutoAnimate();
+
   const { isFromCache, page, changePage, refreshSearch, pageSize, allResults } =
     useSearch();
 
@@ -61,11 +64,13 @@ export default function SearchResultsGrid({ results = [] }) {
       </div>
 
       {/* Results Grid */}
-      <MasonryGrid
-        items={paginatedResults}
-        renderItem={(item) => <ItemCard item={item} />}
-        minItemWidth={250}
-      />
+      <div ref={animateRef}>
+        <MasonryGrid
+          items={paginatedResults}
+          renderItem={(item) => <ItemCard item={item} />}
+          minItemWidth={250}
+        />
+      </div>
 
       {/* Pagination */}
       {totalFilteredPages > 1 && (

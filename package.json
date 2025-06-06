@@ -12,6 +12,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@formkit/auto-animate": "^0.8.2",
     "@lottiefiles/dotlottie-react": "^0.13.5",
     "axios": "^1.9.0",
     "cors": "^2.8.5",

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
+import { useAutoAnimate } from "./utils/useAutoAnimate";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -20,6 +21,8 @@ import { SearchProvider } from "./context/SearchContext";
  * Main application component that sets up routing and context providers
  */
 export default function App() {
+  const [animateRef] = useAutoAnimate();
+
   return (
     <AuthProvider>
       <CollectionsProvider>
@@ -28,7 +31,7 @@ export default function App() {
             <div className="min-h-screen flex flex-col">
               <Header />
 
-              <main className="flex-grow">
+              <main className="flex-grow" ref={animateRef}>
                 <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/about" element={<AboutPage />} />
