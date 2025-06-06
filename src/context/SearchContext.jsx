@@ -110,8 +110,17 @@ export function SearchProvider({ children }) {
     }
   }, []);
 
+  // debugs
   const handleSearchProgress = useCallback(
     (progressData) => {
+      console.log("🔍 Progress update:", {
+        message: progressData.message,
+        itemsFound: progressData.itemsFound,
+        totalResults: progressData.totalResults,
+        currentResultsLength: progressData.currentResults?.length || 0,
+        hasCurrentResults: !!progressData.currentResults,
+      });
+
       setProgress(progressData);
 
       if (progressData.errors && progressData.errors.length > 0) {
@@ -125,17 +134,29 @@ export function SearchProvider({ children }) {
         progressData.currentResults &&
         progressData.currentResults.length > 0
       ) {
+        console.log(
+          "📊 Setting results from progress:",
+          progressData.currentResults.length
+        );
         setLoading(false);
 
         setResults((prevResults) => {
+          console.log(
+            "📊 Previous results:",
+            prevResults.length,
+            "New results:",
+            progressData.currentResults.length
+          );
           const existingIds = new Set(prevResults.map((item) => item.id));
           const newItems = progressData.currentResults.filter(
             (item) => !existingIds.has(item.id)
           );
 
           if (newItems.length > 0) {
+            console.log("📊 Adding new items:", newItems.length);
             return [...prevResults, ...newItems];
           }
+          console.log("📊 No new items to add");
           return prevResults;
         });
 

@@ -133,7 +133,7 @@ export const searchAllSources = async (query, progressCallback = null) => {
       success: false,
       error: {
         type: 'api',
-        message: 'All museum sources are temporarily unavailable',
+        message: 'Both museum sources are temporarily unavailable',
         details: results.errors
       }
     };
