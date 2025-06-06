@@ -1,4 +1,6 @@
 import CollectionCascade from "../components/collections/CollectionCascade";
+// import landingGraphic from "../assets/cura-landing-graphic.png";
+import landingGraphic from "../assets/cura-landing-graphic-inv.png";
 
 export default function AboutPage() {
   return (
@@ -21,8 +23,16 @@ export default function AboutPage() {
               and images.
             </p>
           </section>
+          {/* Graphic */}
+          <div>
+            <img
+              src={landingGraphic}
+              alt="Cura About Graphic"
+              className="mx-auto mt-2 w-full max-w-2xl"
+            />
+          </div>
           {/* Links */}
-          <section className="text-center text-subtitle text-base max-w-2xl mx-auto bg-main text-inverse mt-4 px-2 py-4 rounded-lg">
+          <section className="text-center text-subtitle text-ml max-w-2xl mx-auto bg-main text-inverse mt-0 px-2 py-4 rounded-lg">
             <p>
               Built by
               <a
@@ -45,7 +55,7 @@ export default function AboutPage() {
                 Northcoders / Tech Returners.
               </a>
             </p>
-            <p className="text-subtitle text-base  text-inverse pt-4">
+            <p className="text-subtitle text-ml  text-inverse pt-4">
               <a
                 href="https://github.com/m1k3wn/nc-curation-platform"
                 target="_blank"
