@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import SingleItemCard from "../components/search/SingleItemCard";
 import WarningMessage from "../components/common/WarningMessage";
+import ErrorMessage from "../components/common/ErrorMessage";
 import { useSearch } from "../context/SearchContext";
 
+/**
+ * Displays detailed information about a single item
+ */
 export default function ItemPage() {
   const { source, id } = useParams();
   const navigate = useNavigate();
@@ -13,15 +17,17 @@ export default function ItemPage() {
 
   useEffect(() => {
     if (id) {
-      setWarnings([]);
+      setWarnings([]); // Clear previous warnings
       fetchItemDetails(source, id);
     }
   }, [id, source, fetchItemDetails]);
 
+  // Check for partial loading issues
   useEffect(() => {
     if (currentItem && !itemLoading) {
       const newWarnings = [];
 
+      // Check if item loaded but has no images
       if (
         !currentItem.media?.primaryImage &&
         !currentItem.media?.fullImage &&
@@ -30,10 +36,12 @@ export default function ItemPage() {
         newWarnings.push("No images available for this item");
       }
 
+      // Check if item has minimal metadata
       if (!currentItem.title && !currentItem.description) {
         newWarnings.push("Limited information available for this item");
       }
 
+      // Check if this is error data (from handleApiError)
       if (currentItem.error) {
         newWarnings.push("Some details may be incomplete");
       }
@@ -76,13 +84,13 @@ export default function ItemPage() {
 
       {/* Error message */}
       {itemError && (
-        <div
-          className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"
-          role="alert"
-        >
-          <p className="font-medium">Error loading item</p>
-          <p>{itemError}</p>
-        </div>
+        <ErrorMessage
+          message={itemError}
+          title="Record unavailable"
+          onRetry={() => fetchItemDetails(source, id)}
+          retryText="Reload record"
+          type="record"
+        />
       )}
 
       {/* Warning message for partial failures */}
