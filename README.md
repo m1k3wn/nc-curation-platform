@@ -43,7 +43,7 @@ The app is live at: https://cura-sand.vercel.app/
 │   ├── context                        # React state management providers
 │   ├── pages                          # Route components
 │   ├── styles                         # Global CSS
-│   └── utils                          # Helper functions, data processing and caching
+│   └── utils                          # Helper functions, error handlers, data processing and caching
 ├── tailwind.config.js                 # Tailwind CSS configuration
 └── vite.config.js                     # Vite build configuration
 
@@ -116,6 +116,28 @@ This is done as the Smithsonian API has not enabled CORS (Cross-Origin Resource 
 The server is hosted seperately from main app via Render.
 
 Healtcheck endpoint can be visited at: https://nc-curation-platform.onrender.com/
+
+## Error Handling
+
+Graceful error handling with no exceptions thrown. Custom error messages created and displayed to user.
+
+- Partial API failures: Shows results from working APIs with warnings for unavailable sources
+- Complete API failures: Error messages with retry options
+- Network issues: Specific messages for timeouts / connection problems / server errors
+- Individual items: Detailed error handling for single record fetching
+
+#### Error Handling Architecture:
+
+- **Utility Layer** (apiErrorHandler): classifies and formats error messages.
+- **Repository Layer** (/repositories): Fetch functions return { success: boolean, data/error } instead of throwing exceptions
+- **Service Layer** (.museumService.js): Agreggates and distinguishes errors, shows partial results when a single API fails
+- **Context Layer** (/context/SearchContext.jsx): Manages error and warning states and sets UI state accordingly. Provides specific error messages
+- **UI Layer** (/components): Displays WarningMessage (yellow, partial failure) or ErrorMessage (red, complete failure)
+
+To test API request failures, block network requests to:
+
+- **\*nc-curation-platform.onrender.com\***: For Smithsonian Proxy requests
+- **\*europeana.eu\***: For Europeana requests
 
 ## Key Features
 
