@@ -7,6 +7,7 @@ import SearchBar from "../components/search/SearchBar";
 import SearchResultsGrid from "../components/search/SearchResultsGrid";
 import SearchProgress from "../components/search/SearchProgress";
 import SearchInfo from "../components/search/SearchInfo";
+import WarningMessage from "../components/common/WarningMessage";
 import { useSearch } from "../context/SearchContext";
 
 const ErrorMessage = ({ message }) => (
@@ -64,10 +65,12 @@ export default function SearchResultsPage() {
     totalResults,
     loading,
     error,
+    warnings,
     progress,
     clearSearch,
     setPage,
     page,
+    dismissWarnings,
   } = useSearch();
 
   // Read filters from URL
@@ -192,7 +195,9 @@ export default function SearchResultsPage() {
           {queryParam && (
             <div className="mb-4">
               <h1 className="text-subtitle font-bold mb-0">
-                {loading || !totalResults
+                {error
+                  ? "Couldn't search for"
+                  : loading || !totalResults
                   ? "Searching for"
                   : "You searched for"}{" "}
                 "{queryParam}"
@@ -205,6 +210,13 @@ export default function SearchResultsPage() {
 
           {/* Error State */}
           {error && <ErrorMessage message={error} />}
+
+          {/* Warning State */}
+          <WarningMessage
+            warnings={warnings}
+            onDismiss={dismissWarnings}
+            hasResults={results && results.length > 0}
+          />
 
           {/* Initial Loading State */}
           {loading && (!results || results.length === 0) && (

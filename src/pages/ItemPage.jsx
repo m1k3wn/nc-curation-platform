@@ -1,25 +1,53 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import SingleItemCard from "../components/search/SingleItemCard";
+import WarningMessage from "../components/common/WarningMessage";
 import { useSearch } from "../context/SearchContext";
 
-/**
- * Displays detailed information about a single item
- */
 export default function ItemPage() {
   const { source, id } = useParams();
   const navigate = useNavigate();
+  const [warnings, setWarnings] = useState([]);
 
   const { currentItem, itemLoading, itemError, fetchItemDetails } = useSearch();
 
   useEffect(() => {
     if (id) {
+      setWarnings([]);
       fetchItemDetails(source, id);
     }
   }, [id, source, fetchItemDetails]);
 
+  useEffect(() => {
+    if (currentItem && !itemLoading) {
+      const newWarnings = [];
+
+      if (
+        !currentItem.media?.primaryImage &&
+        !currentItem.media?.fullImage &&
+        !currentItem.media?.thumbnail
+      ) {
+        newWarnings.push("No images available for this item");
+      }
+
+      if (!currentItem.title && !currentItem.description) {
+        newWarnings.push("Limited information available for this item");
+      }
+
+      if (currentItem.error) {
+        newWarnings.push("Some details may be incomplete");
+      }
+
+      setWarnings(newWarnings);
+    }
+  }, [currentItem, itemLoading]);
+
   const handleBackClick = () => {
     navigate(-1);
+  };
+
+  const dismissWarnings = () => {
+    setWarnings([]);
   };
 
   return (
@@ -56,6 +84,13 @@ export default function ItemPage() {
           <p>{itemError}</p>
         </div>
       )}
+
+      {/* Warning message for partial failures */}
+      <WarningMessage
+        warnings={warnings}
+        onDismiss={dismissWarnings}
+        title="Item partially loaded"
+      />
 
       {/* Loading state */}
       {itemLoading && !currentItem && (
