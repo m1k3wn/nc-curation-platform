@@ -14,11 +14,26 @@ const CascadeAnimation = () => {
 
   useEffect(() => {
     setVisibleItems([]);
-    collections.forEach((_, index) => {
+
+    const groupSize = 2;
+    const delay = 75;
+
+    for (let i = 0; i < collections.length; i += groupSize) {
+      const groupIndex = Math.floor(i / groupSize);
       setTimeout(() => {
-        setVisibleItems((prev) => [...prev, index]);
-      }, index * 150);
-    });
+        setVisibleItems((prev) => {
+          const newItems = [];
+          for (
+            let j = i;
+            j < Math.min(i + groupSize, collections.length);
+            j++
+          ) {
+            newItems.push(j);
+          }
+          return [...prev, ...newItems];
+        });
+      }, groupIndex * delay);
+    }
   }, []);
 
   return (
@@ -29,7 +44,7 @@ const CascadeAnimation = () => {
           <div
             key={index}
             onClick={() => handleCollectionClick(name)}
-            className={`text-body text-ml btn-action px-3 ${
+            className={`text-body text-ml btn-action px-3 transition-all duration-200 ease-out ${
               visibleItems.includes(index)
                 ? "opacity-100 transform translate-y-0"
                 : "opacity-0 transform translate-y-4"
