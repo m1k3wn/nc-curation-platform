@@ -5,9 +5,40 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overscroll-behavior: none;
+  position: fixed;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+#root {
+  overflow: auto;
+  height: 100vh;
+}
+
 @layer base {
   html {
     @apply font-body text-gray-900 bg-white antialiased;
+    overscroll-behavior: none;
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  
+  body {
+    overscroll-behavior: none;
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+
+  #root {
+    overflow: auto;
+    height: 100vh;
   }
 }
 
