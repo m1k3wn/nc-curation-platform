@@ -232,7 +232,7 @@ export default function SearchResultsPage() {
           )}
 
           {/* Filter Menu & Results */}
-          {!loading && !error && results && results.length > 0 && (
+          {!loading && !error && results && results.length > 0 && !progress && (
             <>
               <FilterMenu
                 filters={filters}
