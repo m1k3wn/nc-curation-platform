@@ -32,6 +32,7 @@ export function SearchProvider({ children }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [warnings, setWarnings] = useState([]);
   const [totalResults, setTotalResults] = useState(0);
   const [isFromCache, setIsFromCache] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -84,24 +85,26 @@ export function SearchProvider({ children }) {
         return itemDetailsCache.current.get(cacheKey);
       }
 
-      const detailedItem = await getItemDetails(
+      const result = await getItemDetails(
         source,
         itemId,
         itemCancelTokenRef.current.token
       );
 
-      itemDetailsCache.current.set(cacheKey, detailedItem);
+      if (!result.success) {
+        setItemError(result.error.message || "Failed to load item details");
+        return null;
+      }
 
-      setCurrentItem(detailedItem);
-      return detailedItem;
+      itemDetailsCache.current.set(cacheKey, result.data);
+      setCurrentItem(result.data);
+      return result.data;
     } catch (error) {
       if (axios.isCancel(error)) {
         return;
       }
 
-      setItemError(
-        `Failed to load item details. ${error.message || "Please try again."}`
-      );
+      setItemError("Failed to load item details. Please try again.");
     } finally {
       setItemLoading(false);
     }
@@ -110,6 +113,13 @@ export function SearchProvider({ children }) {
   const handleSearchProgress = useCallback(
     (progressData) => {
       setProgress(progressData);
+
+      if (progressData.errors && progressData.errors.length > 0) {
+        const warningMessages = progressData.errors.map(
+          (err) => `${err.error.message}`
+        );
+        setWarnings(warningMessages);
+      }
 
       if (
         progressData.currentResults &&
@@ -136,9 +146,7 @@ export function SearchProvider({ children }) {
   );
 
   /**
-   * Perform unified search across all sources (default search method)
-   * @param {string} searchQuery - The search term
-   * @param {boolean} reset - Whether to reset pagination and state
+   * Perform unified search across all sources (default method)
    */
   const performUnifiedSearch = useCallback(
     async (searchQuery, reset = true) => {
@@ -156,6 +164,7 @@ export function SearchProvider({ children }) {
 
         setLoading(true);
         setError(null);
+        setWarnings([]);
         setProgress(null);
 
         if (reset) {
@@ -165,6 +174,7 @@ export function SearchProvider({ children }) {
           setIsFromCache(false);
         }
 
+        // Check cache
         const smithsonianCache = searchResultsManager.getCachedResults(
           normalizedQuery,
           "smithsonian"
@@ -192,7 +202,7 @@ export function SearchProvider({ children }) {
 
         setIsFromCache(false);
 
-        const response = await searchAllSources(
+        const result = await searchAllSources(
           normalizedQuery,
           handleSearchProgress
         );
@@ -201,13 +211,32 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        setResults(response.items || []);
-        setTotalResults(response.total || 0);
+        if (!result.success) {
+          setError(result.error.message);
+          setResults([]);
+          setTotalResults(0);
+          setWarnings([]);
+          setLoading(false);
+          setProgress(null);
+          return;
+        }
 
-        if (response.smithsonianPromise) {
-          backgroundPromiseRef.current = response.smithsonianPromise;
+        setResults(result.data.items || []);
+        setTotalResults(result.data.total || 0);
 
-          response.smithsonianPromise
+        if (result.data.errors && result.data.errors.length > 0) {
+          const warningMessages = result.data.errors.map(
+            (err) => err.error.message
+          );
+          setWarnings(warningMessages);
+        } else {
+          setWarnings([]);
+        }
+
+        if (result.smithsonianPromise) {
+          backgroundPromiseRef.current = result.smithsonianPromise;
+
+          result.smithsonianPromise
             .then(() => {
               setLoading(false);
               setProgress(null);
@@ -215,6 +244,12 @@ export function SearchProvider({ children }) {
             .catch((error) => {
               if (!axios.isCancel(error)) {
                 console.error("Background Smithsonian search failed:", error);
+                if (results.length === 0) {
+                  setWarnings((prev) => [
+                    ...prev,
+                    "Smithsonian search incomplete",
+                  ]);
+                }
               }
               setLoading(false);
               setProgress(null);
@@ -223,25 +258,21 @@ export function SearchProvider({ children }) {
           setLoading(false);
           setProgress(null);
         }
-
-        // debug: Removed the entire caching block - now handled in museumService
       } catch (error) {
         if (axios.isCancel(error)) {
           return;
         }
-        setError("Failed to search collections. Please try again.");
+        console.error("Search failed:", error);
+        setError("Search temporarily unavailable. Please try again.");
         setLoading(false);
         setProgress(null);
       }
     },
-    [handleSearchProgress]
+    [handleSearchProgress, results.length]
   );
 
   /**
    * Perform search on a specific source (Smithsonian or Europeana) - LEGACY
-   * @param {string} searchQuery - The search term
-   * @param {string} source - API source ("smithsonian" or "europeana")
-   * @param {boolean} reset - Whether to reset pagination and state
    */
   const performSearch = useCallback(
     async (searchQuery, source = "smithsonian", reset = true) => {
@@ -259,6 +290,7 @@ export function SearchProvider({ children }) {
 
         setLoading(true);
         setError(null);
+        setWarnings([]);
         setProgress(null);
 
         if (reset) {
@@ -268,6 +300,7 @@ export function SearchProvider({ children }) {
           setIsFromCache(false);
         }
 
+        // Check cache
         const cachedResults = searchResultsManager.getCachedResults(
           normalizedQuery,
           source
@@ -283,7 +316,7 @@ export function SearchProvider({ children }) {
 
         setIsFromCache(false);
 
-        const response = await searchItems(
+        const result = await searchItems(
           source,
           normalizedQuery,
           handleSearchProgress
@@ -293,23 +326,29 @@ export function SearchProvider({ children }) {
           return;
         }
 
-        setResults(response.items || []);
-        setTotalResults(response.total || 0);
+        if (!result.success) {
+          setError(result.error.message || "Search failed");
+          setResults([]);
+          setTotalResults(0);
+        } else {
+          setResults(result.data.items || []);
+          setTotalResults(result.data.total || 0);
 
-        if (response.items?.length > 0) {
-          searchResultsManager.storeResults(
-            normalizedQuery,
-            response.items,
-            response.total,
-            source
-          );
+          if (result.data.items?.length > 0) {
+            searchResultsManager.storeResults(
+              normalizedQuery,
+              result.data.items,
+              result.data.total,
+              source
+            );
+          }
         }
       } catch (error) {
         if (axios.isCancel(error)) {
           return;
         }
-
-        setError("Failed to search collections. Please try again.");
+        console.error("Search failed:", error);
+        setError("Search temporarily unavailable. Please try again.");
       } finally {
         if (!searchCancelTokenRef.current?.token.reason) {
           setLoading(false);
@@ -325,7 +364,6 @@ export function SearchProvider({ children }) {
       if (pageNumber < 1) return;
       setPage(pageNumber);
 
-      // Only update URL if on the search page
       if (window.location.pathname === "/search") {
         const currentUrl = new URL(window.location);
         if (pageNumber === 1) {
@@ -355,6 +393,7 @@ export function SearchProvider({ children }) {
     setResults([]);
     setPage(1);
     setError(null);
+    setWarnings([]);
     setTotalResults(0);
     setIsFromCache(false);
     setProgress(null);
@@ -372,12 +411,17 @@ export function SearchProvider({ children }) {
     );
 
     setIsFromCache(false);
+    setWarnings([]);
 
     performUnifiedSearch(query, false);
   }, [query, results, performUnifiedSearch]);
 
   const clearItemCache = useCallback(() => {
     itemDetailsCache.current.clear();
+  }, []);
+
+  const dismissWarnings = useCallback(() => {
+    setWarnings([]);
   }, []);
 
   const totalPages = Math.ceil(results.length / pageSize);
@@ -391,6 +435,7 @@ export function SearchProvider({ children }) {
     allResults: results,
     loading,
     error,
+    warnings,
     totalResults,
     isFromCache,
     progress,
@@ -404,6 +449,7 @@ export function SearchProvider({ children }) {
     performUnifiedSearch,
     clearSearch,
     refreshSearch,
+    dismissWarnings,
 
     currentItem,
     itemLoading,

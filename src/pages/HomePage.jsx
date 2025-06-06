@@ -49,23 +49,6 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-
-        {/* Categories */}
-        {/* <div className="mt-8">
-          <h2 className="text-subtitle mb-4 text-center">Popular Categories</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {categories.map((category) => (
-              <button
-                key={category}
-                className="btn-black"
-                onClick={() => handleSearch(category)}
-                aria-label={`Browse ${category} category`}
-              >
-                <h3 className="text-body text-inverse text-ml">{category}</h3>
-              </button>
-            ))}
-          </div>
-        </div> */}
       </div>
     </div>
   );
