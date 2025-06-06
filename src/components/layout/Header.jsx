@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import userIcon from "../../assets/user-icon.svg";
+import collectionIcon from "../../assets/collection-icon.svg";
 
 export default function Header() {
   const { currentUser, isAuthenticated, logout } = useAuth();
@@ -35,7 +37,13 @@ export default function Header() {
               <>
                 {/* Collections icon */}
                 <Link to="/collections" className="icon-circle ">
-                  <span className="text-icon">C</span>
+                  <span className="text-icon">
+                    <img
+                      src={collectionIcon}
+                      alt="Collections Icon"
+                      className="w-7 h-7"
+                    />
+                  </span>
                 </Link>
 
                 {/* User account icon */}
@@ -43,7 +51,9 @@ export default function Header() {
                   to={`/user/${currentUser.username}`}
                   className="icon-circle"
                 >
-                  <span className="text-icon">U</span>
+                  <span className="text-icon">
+                    <img src={userIcon} alt="User Icon" className="w-7 h-7" />
+                  </span>
                 </Link>
               </>
             ) : (

@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/search/SearchBar";
-
 import topGraphic from "../assets/cura-split-top.png";
 import btmGraphic from "../assets/cura-split-btm.png";
 
@@ -13,10 +12,9 @@ export default function HomePage() {
     "Curious",
     "Amour",
     "Druids",
-    "Ancient Temple",
+    "Dance",
+    "victory",
   ];
-
-  const categories = ["Natural History", "Ancient Civilizations", "Modern Art"];
 
   const handleSearch = (term) => {
     navigate(`/search?q=${encodeURIComponent(term)}`);
